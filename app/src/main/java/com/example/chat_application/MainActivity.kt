@@ -19,6 +19,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
+//test
 class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
     private lateinit var chatRecyclerView: RecyclerView
