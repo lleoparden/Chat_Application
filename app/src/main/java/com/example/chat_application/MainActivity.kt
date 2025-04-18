@@ -2,6 +2,7 @@ package com.example.chat_application
 
 import Chat
 import ChatAdapter
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.ImageView
@@ -67,8 +68,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
         // Setup settings button
         settingsButton.setOnClickListener {
-            Toast.makeText(this, "Settings clicked", Toast.LENGTH_SHORT).show()
-            // TODO: Implement settings functionality
+//            Toast.makeText(this, "Settings clicked", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, SettingsActivity::class.java))
+            finish()
         }
 
         // Setup FAB
@@ -105,9 +107,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 }
 
                 R.id.navigation_stories -> {
-                    Toast.makeText(this, "Stories page not implemented yet", Toast.LENGTH_SHORT)
-                        .show()
-                    // TODO: Implement stories functionality
+//                    Toast.makeText(this, "Stories page not implemented yet", Toast.LENGTH_SHORT).show()
+                    startActivity(Intent(this, StoryActivity::class.java))
+                    finish()
                     true
                 }
 
@@ -255,8 +257,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     }
 
     override fun onChatClick(chat: Chat) {
-        // TODO: Open chat conversation screen
-        Toast.makeText(this, "Opening chat with ${chat.name}", Toast.LENGTH_SHORT).show()
+        startActivity(Intent(this, ChatRoomActivity::class.java))
+        finish()
+//        Toast.makeText(this, "Opening chat with ${chat.name}", Toast.LENGTH_SHORT).show()
     }
 
 
