@@ -11,58 +11,79 @@ import android.util.Log
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
-import com.google.firebase.FirebaseException
-import com.google.firebase.FirebaseTooManyRequestsException
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
-import com.google.firebase.auth.FirebaseAuthMissingActivityForRecaptchaException
-import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.auth.PhoneAuthCredential
-import com.google.firebase.auth.PhoneAuthOptions
-import com.google.firebase.auth.PhoneAuthProvider
-import com.google.firebase.auth.auth
-import com.google.firebase.Firebase
-import com.google.firebase.database.FirebaseDatabase
-import java.util.concurrent.TimeUnit
+import com.google.firebase.firestore.FirebaseFirestore
 
 class AuthActivity : AppCompatActivity() {
-    // Firebase Auth
-    private lateinit var auth: FirebaseAuth
-
     // Current view state tracking
-    private var currentView = "AUTH" // AUTH, LOGIN, SIGNUP, OTP
+    private var currentView = "AUTH" // AUTH, LOGIN, SIGNUP
 
     // User data storage for registration process
     private var userName: String = ""
     private var userPhone: String = ""
     private var userPassword: String = ""
 
+    // Firestore instance
+    private lateinit var db: FirebaseFirestore
+
+    // Auth instance
+    private lateinit var auth: FirebaseAuth
+
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Initialize Firestore
+        db = FirebaseFirestore.getInstance()
+
         // Initialize Firebase Auth
-        auth = Firebase.auth
+        auth = FirebaseAuth.getInstance()
 
-        // Check if user is already signed in
-        if (auth.currentUser != null) {
-            // User is already signed in, go to main activity
-            navigateToMainActivity()
-            return
+        // Check if user is already logged in
+        checkUserLoggedIn()
+    }
+
+    private fun checkUserLoggedIn() {
+        // Check shared preferences for user ID
+        val prefs = getSharedPreferences("ChatAppPrefs", MODE_PRIVATE)
+        val userId = prefs.getString("userId", null)
+
+        if (userId != null) {
+            // User ID exists, verify it in Firestore
+            db.collection("users").document(userId)
+                .get()
+                .addOnSuccessListener { document ->
+                    if (document != null && document.exists()) {
+                        // User exists and is logged in, navigate to MainActivity
+                        navigateToMainActivity()
+                    } else {
+                        // User ID in preferences but not in Firestore, clear and show auth
+                        prefs.edit().remove("userId").apply()
+                        showAuthView()
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "Error checking user login status", e)
+                    showAuthView()
+                }
+        } else {
+            // No user ID stored, show authentication view
+            showAuthView()
         }
+    }
 
+    private fun showAuthView() {
         // Set initial view
         setContentView(R.layout.authentication_page)
         setupAuthView()
-
     }
 
     private fun setupAuthView() {
-        val toSigninPage = findViewById<Button>(R.id.goToLogin)
+        val toSignInPage = findViewById<Button>(R.id.goToLogin)
         val toSignUpPage = findViewById<Button>(R.id.goToSignup)
 
-        toSigninPage.setOnClickListener {
+        toSignInPage.setOnClickListener {
             setContentView(R.layout.login_page)
             currentView = "LOGIN"
             setupLoginView()
@@ -94,6 +115,9 @@ class AuthActivity : AppCompatActivity() {
             val formattedPhone = formatPhoneNumber(phoneNumber)
             userPhone = formattedPhone
             this.userPassword = userPassword
+
+            // Check if user exists and verify password
+            validateLogin(formattedPhone, userPassword)
         }
 
         // Switch to signup
@@ -121,11 +145,13 @@ class AuthActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Store user data for registration after verification
+            // Store user data for registration
             userName = nameText
             userPhone = formatPhoneNumber(phoneNumber)
             userPassword = passwordText
 
+            // Check if user already exists with this phone number
+            checkUserExists(userPhone)
         }
 
         // Switch to login
@@ -148,80 +174,118 @@ class AuthActivity : AppCompatActivity() {
         return formattedNumber
     }
 
-
-    private fun signInWithPhoneAuthCredential(credential: PhoneAuthCredential) {
-        auth.signInWithCredential(credential)
-            .addOnCompleteListener(this) { task ->
-                if (task.isSuccessful) {
-                    Log.d(TAG, "signInWithCredential:success")
-
-                    // Update user profile info if this is a signup
-                    val user = task.result?.user
-                    if (currentView == "SIGNUP" && user != null) {
-                        updateUserProfile(user)
-                    } else {
-                        navigateToMainActivity()
-                    }
+    private fun checkUserExists(phoneNumber: String) {
+        // Query Firestore to check if user with this phone number already exists
+        db.collection("users")
+            .whereEqualTo("phoneNumber", phoneNumber)
+            .get()
+            .addOnSuccessListener { documents ->
+                if (!documents.isEmpty) {
+                    // User with this phone number already exists
+                    Toast.makeText(this@AuthActivity,
+                        "An account with this phone number already exists",
+                        Toast.LENGTH_SHORT).show()
                 } else {
-                    Log.w(TAG, "signInWithCredential:failure", task.exception)
-
-                    val errorMessage = if (task.exception is FirebaseAuthInvalidCredentialsException) {
-                        "Invalid verification code"
-                    } else {
-                        "Authentication failed: ${task.exception?.message}"
-                    }
-
-                    Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
+                    // No user with this phone number, proceed with registration
+                    registerUser()
                 }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Error checking if user exists", e)
+                Toast.makeText(this@AuthActivity,
+                    "Database error: ${e.message}",
+                    Toast.LENGTH_SHORT).show()
             }
     }
 
-    private fun updateUserProfile(user: FirebaseUser) {
-        // Get reference to Firebase Realtime Database
-        val database = FirebaseDatabase.getInstance().reference
+    private fun registerUser() {
+        // Generate a unique ID for the user or use Firebase Auth
+        val userId = db.collection("users").document().id
 
-        // Get user information from FirebaseUser object
-        val uid = user.uid
-        val email = user.email ?: ""
-        val displayName = user.displayName ?: ""
-
-        // Create a UserProfile object
-        val userProfile = UserProfile(
-            uid = uid,
-            email = email,
-            displayName = displayName,
+        // Create user profile
+        val userProfile = hashMapOf(
+            "uid" to userId,
+            "displayName" to userName,
+            "phoneNumber" to userPhone,
+            "password" to userPassword
         )
 
-        // Save user profile to Firebase Realtime Database
-        database.child("users").child(uid).setValue(userProfile)
+        // Save user profile to Firestore
+        db.collection("users").document(userId)
+            .set(userProfile)
             .addOnSuccessListener {
-                // Profile updated successfully
+                // Profile created successfully
                 Toast.makeText(this, "Account created successfully", Toast.LENGTH_SHORT).show()
+
+                // Store the user ID locally for session management
+                val prefs = getSharedPreferences("ChatAppPrefs", MODE_PRIVATE)
+                prefs.edit().putString("userId", userId).apply()
+
                 navigateToMainActivity()
             }
             .addOnFailureListener { e ->
                 // Handle failure
-                Toast.makeText(this, "Failed to create profile: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Failed to create profile: ${e.message}",
+                    Toast.LENGTH_LONG).show()
                 Log.e(TAG, "Error creating user profile", e)
             }
     }
 
-    // User profile data class
-    data class UserProfile(
-        val uid: String = "",
-        val email: String = "",
-        val displayName: String = "",
-        val phoneNumber: String = "",
-        val isProfileComplete: Boolean = false
-    )
+    private fun validateLogin(phoneNumber: String, password: String) {
+        // Query Firestore to find user with this phone number
+        db.collection("users")
+            .whereEqualTo("phoneNumber", phoneNumber)
+            .get()
+            .addOnSuccessListener { documents ->
+                if (!documents.isEmpty) {
+                    // User found, check password
+                    var isPasswordCorrect = false
+                    var userId = ""
+
+                    for (document in documents) {
+                        val userPassword = document.getString("password")
+                        if (userPassword == password) {
+                            isPasswordCorrect = true
+                            userId = document.getString("uid") ?: document.id
+                            break
+                        }
+                    }
+
+                    if (isPasswordCorrect) {
+                        // Password correct, login successful
+                        Toast.makeText(this@AuthActivity,
+                            "Login successful",
+                            Toast.LENGTH_SHORT).show()
+
+                        // Store the user ID locally for session management
+                        val prefs = getSharedPreferences("ChatAppPrefs", MODE_PRIVATE)
+                        prefs.edit().putString("userId", userId).apply()
+
+                        navigateToMainActivity()
+                    } else {
+                        // Password incorrect
+                        Toast.makeText(this@AuthActivity,
+                            "Incorrect password",
+                            Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    // No user with this phone number
+                    Toast.makeText(this@AuthActivity,
+                        "No account found with this phone number",
+                        Toast.LENGTH_SHORT).show()
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Error validating login", e)
+                Toast.makeText(this@AuthActivity,
+                    "Database error: ${e.message}",
+                    Toast.LENGTH_SHORT).show()
+            }
+    }
 
     private fun navigateToMainActivity() {
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
         finish() // Close AuthActivity so user can't go back
     }
-
-
-
-
 }

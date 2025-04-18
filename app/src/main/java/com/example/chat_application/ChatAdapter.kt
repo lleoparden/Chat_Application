@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.chat_application.R
 import java.util.Date
 import java.util.Locale
+import java.util.Stack
 
 data class Chat(
     val id: String = "",
@@ -16,9 +17,86 @@ data class Chat(
     val unreadCount: Int = 0
 )
 
+/**
+ * ChatManager using the standard Java Stack class
+ * Provides stack functionality while maintaining timestamp-based ordering
+ */
+class ChatManager {
+    private val chatStack = Stack<Chat>()
+
+    // Add a new chat to the stack
+    fun push(chat: Chat) {
+        chatStack.push(chat)
+        sortByTimestamp()
+    }
+
+    // Add multiple chats at once
+    fun pushAll(chats: List<Chat>) {
+        chatStack.addAll(chats)
+        sortByTimestamp()
+    }
+
+    // Remove and return the top chat from the stack
+    fun pop(): Chat? {
+        if (chatStack.isEmpty()) return null
+        return chatStack.pop()
+    }
+
+    // Look at the top chat without removing it
+    fun peek(): Chat? {
+        if (chatStack.isEmpty()) return null
+        return chatStack.peek()
+    }
+
+    // Get the size of the stack
+    fun size(): Int = chatStack.size
+
+    // Check if the stack is empty
+    fun isEmpty(): Boolean = chatStack.isEmpty()
+
+    // Clear the stack
+    fun clear() {
+        chatStack.clear()
+    }
+
+    // Get a specific chat by index
+    fun get(index: Int): Chat {
+        return chatStack[index]
+    }
+
+    // Get all chats as a list
+    fun getAll(): List<Chat> {
+        return chatStack.toList()
+    }
+
+    // Sort chats by timestamp (newest first)
+    private fun sortByTimestamp() {
+        val sortedList = chatStack.sortedByDescending { it.timestamp }
+        chatStack.clear()
+        chatStack.addAll(sortedList)
+    }
+
+    // Remove a chat by ID
+    fun removeById(id: String): Boolean {
+        val chat = chatStack.find { it.id == id } ?: return false
+        return chatStack.remove(chat)
+    }
+
+    // Update a chat by ID
+    fun updateById(id: String, updatedChat: Chat): Boolean {
+        val index = chatStack.indexOfFirst { it.id == id }
+        if (index != -1) {
+            chatStack[index] = updatedChat
+            sortByTimestamp()
+            return true
+        }
+        return false
+    }
+}
+
 // Chat adapter for RecyclerView
-class ChatAdapter(private val chats: List<Chat>, private val listener: OnChatClickListener) :
-RecyclerView.Adapter<ChatAdapter.ChatViewHolder>() {
+class ChatAdapter(private val chatManager: ChatManager, private val listener: OnChatClickListener) :
+    RecyclerView.Adapter<ChatAdapter.ChatViewHolder>() {
 
     interface OnChatClickListener {
         fun onChatClick(chat: Chat)
@@ -41,10 +119,11 @@ RecyclerView.Adapter<ChatAdapter.ChatViewHolder>() {
             // Show unread count if any
             if (chat.unreadCount > 0) {
                 unreadCountTextView.visibility = View.VISIBLE
-                if(chat.unreadCount > 99){
+                if (chat.unreadCount > 99) {
                     unreadCountTextView.text = "99+"
-                }else
-                unreadCountTextView.text = chat.unreadCount.toString()
+                } else {
+                    unreadCountTextView.text = chat.unreadCount.toString()
+                }
             } else {
                 unreadCountTextView.visibility = View.GONE
             }
@@ -62,8 +141,8 @@ RecyclerView.Adapter<ChatAdapter.ChatViewHolder>() {
     }
 
     override fun onBindViewHolder(holder: ChatViewHolder, position: Int) {
-        holder.bind(chats[position])
+        holder.bind(chatManager.get(position))
     }
 
-    override fun getItemCount(): Int = chats.size
+    override fun getItemCount(): Int = chatManager.size()
 }

@@ -2,6 +2,7 @@ package com.example.chat_application
 
 import Chat
 import ChatAdapter
+import ChatManager
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -17,10 +18,8 @@ import com.google.firebase.database.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import java.text.SimpleDateFormat
 import java.util.*
 
-//test
 class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
     private lateinit var chatRecyclerView: RecyclerView
@@ -30,7 +29,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     private lateinit var bottomNavigation: BottomNavigationView
 
     private lateinit var chatAdapter: ChatAdapter
-    private val chatsList = mutableListOf<Chat>()
+    private val chatManager = ChatManager()
     private lateinit var firebaseDatabase: FirebaseDatabase
     private lateinit var chatsReference: DatabaseReference
 
@@ -68,7 +67,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
         // Setup settings button
         settingsButton.setOnClickListener {
-//            Toast.makeText(this, "Settings clicked", Toast.LENGTH_SHORT).show()
             startActivity(Intent(this, SettingsActivity::class.java))
             finish()
         }
@@ -76,20 +74,18 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         // Setup FAB
         newChatFab.setOnClickListener {
             Toast.makeText(this, "New chat clicked", Toast.LENGTH_SHORT).show()
-            // TODO: Implement new chat functionality
+            // Create a new chat and push it to the stack
             val currentTime = System.currentTimeMillis()
-            chatsList.add(
-                Chat(
-                    id = "demo" + UUID.randomUUID().toString().substring(0, 8),
-                    name = "New Chat",
-                    lastMessage = "This is a new conversation",
-                    timestamp = currentTime,
-                    unreadCount = 1
-                )
+            val newChat = Chat(
+                id = "demo" + UUID.randomUUID().toString().substring(0, 8),
+                name = "New Chat",
+                lastMessage = "This is a new conversation",
+                timestamp = currentTime,
+                unreadCount = 1
             )
 
-            // Sort chats by timestamp (newest first)
-            chatsList.sortByDescending { it.timestamp }
+            // Push to stack
+            chatManager.push(newChat)
 
             // Save chats to local storage
             saveChatsToLocalStorage()
@@ -107,7 +103,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 }
 
                 R.id.navigation_stories -> {
-//                    Toast.makeText(this, "Stories page not implemented yet", Toast.LENGTH_SHORT).show()
                     startActivity(Intent(this, StoryActivity::class.java))
                     finish()
                     true
@@ -120,7 +115,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
     private fun setupRecyclerView() {
         chatRecyclerView.layoutManager = LinearLayoutManager(this)
-        chatAdapter = ChatAdapter(chatsList, this)
+        chatAdapter = ChatAdapter(chatManager, this)
         chatRecyclerView.adapter = chatAdapter
     }
 
@@ -134,9 +129,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
     private fun loadChatsFromLocalStorage() {
         val file = File(filesDir, "chats.json")
-
         val jsonString = readChatsFromFile()
-
 
         if (!file.exists() || jsonString.isEmpty()) {
             // File doesn't exist or is empty, create it with demo chats
@@ -147,7 +140,8 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
         try {
             val jsonArray = JSONArray(jsonString)
-            chatsList.clear()
+            chatManager.clear()
+            val tempChats = mutableListOf<Chat>()
 
             for (i in 0 until jsonArray.length()) {
                 val chatObject = jsonArray.getJSONObject(i)
@@ -158,11 +152,11 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                     timestamp = chatObject.getLong("timestamp"),
                     unreadCount = chatObject.getInt("unreadCount")
                 )
-                chatsList.add(chat)
+                tempChats.add(chat)
             }
 
-            // Sort chats by timestamp (newest first)
-            chatsList.sortByDescending { it.timestamp }
+            // Add all chats to the stack at once
+            chatManager.pushAll(tempChats)
 
             // Update UI
             chatAdapter.notifyDataSetChanged()
@@ -184,24 +178,18 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         }
     }
 
-
     private fun addDemoChat() {
         Log.d("MainActivity", "Adding demo chats")
-        chatsList.clear()
+        chatManager.clear()
         val currentTime = System.currentTimeMillis()
-
-        // Add demo chats
-        chatsList.add(
+        val demoChats = listOf(
             Chat(
                 id = "demo1",
                 name = "Demo Group",
                 lastMessage = "Welcome to FireChat! This is a demo message.",
                 timestamp = currentTime - 6000,
                 unreadCount = 999999999
-            )
-        )
-
-        chatsList.add(
+            ),
             Chat(
                 id = "demo2",
                 name = "John Doe",
@@ -211,19 +199,23 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
             )
         )
 
+        // Add all demo chats to the stack
+        chatManager.pushAll(demoChats)
+
         // Save demo chats to local storage
         saveChatsToLocalStorage()
 
         // Update UI
         chatAdapter.notifyDataSetChanged()
 
-        Log.d("MainActivity", "Demo chats added: ${chatsList.size}")
+        Log.d("MainActivity", "Demo chats added: ${chatManager.size()}")
     }
 
     private fun saveChatsToLocalStorage() {
         val jsonArray = JSONArray()
+        val allChats = chatManager.getAll()
 
-        for (chat in chatsList) {
+        for (chat in allChats) {
             val chatObject = JSONObject().apply {
                 put("id", chat.id)
                 put("name", chat.name)
@@ -235,15 +227,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         }
 
         val jsonString = jsonArray.toString()
-
-        try {
-            val file = File(filesDir, "chats.json")
-            file.writeText(jsonString)
-            Log.d("MainActivity", "Chats saved to file: ${file.absolutePath}")
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error saving chats: ${e.message}")
-            Toast.makeText(this, "Error saving chats: ${e.message}", Toast.LENGTH_SHORT).show()
-        }
+        writeChatsToFile(jsonString)
     }
 
     private fun writeChatsToFile(jsonString: String) {
@@ -259,33 +243,25 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     override fun onChatClick(chat: Chat) {
         startActivity(Intent(this, ChatRoomActivity::class.java))
         finish()
-//        Toast.makeText(this, "Opening chat with ${chat.name}", Toast.LENGTH_SHORT).show()
     }
 
-
-
-
-
-
-
-
     private fun loadChatsFromFirebase() {
-
         firebaseDatabase = FirebaseDatabase.getInstance()
         chatsReference = firebaseDatabase.getReference("chats")
 
         // Listen for changes in the chats
         chatsReference.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                chatsList.clear()
+                chatManager.clear()
+                val tempChats = mutableListOf<Chat>()
 
                 for (chatSnapshot in snapshot.children) {
                     val chat = chatSnapshot.getValue(Chat::class.java)
-                    chat?.let { chatsList.add(it) }
+                    chat?.let { tempChats.add(it) }
                 }
 
-                // Sort chats by timestamp (newest first)
-                chatsList.sortByDescending { it.timestamp }
+                // Add all chats to the stack at once
+                chatManager.pushAll(tempChats)
 
                 // Save chats to local storage
                 saveChatsToLocalStorage()
@@ -304,6 +280,5 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 loadChatsFromLocalStorage()
             }
         })
-
     }
 }
