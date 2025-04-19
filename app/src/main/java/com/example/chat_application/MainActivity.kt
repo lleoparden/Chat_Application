@@ -35,6 +35,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(UserSettings.theme)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.mainpage)
