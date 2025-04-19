@@ -119,10 +119,12 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     }
 
     private fun loadChats() {
+        // Always load local chats first
+        loadChatsFromLocalStorage()
+
+        // Then add Firebase chats if enabled (but don't clear existing chats)
         if (resources.getBoolean(R.bool.firebaseOn)) {
-            loadChatsFromFirebase()
-        } else {
-            loadChatsFromLocalStorage()
+            mergeChatsFromFirebase()
         }
     }
 
@@ -198,14 +200,18 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 name = "Demo Group",
                 lastMessage = "Welcome to FireChat! This is a demo message.",
                 timestamp = currentTime - 6000,
-                unreadCount = 999999999
+                unreadCount =9,
+                participantIds = mutableListOf("demo_user_1", "demo_user_2"),
+                type = "group"
             ),
             Chat(
                 id = "demo2",
                 name = "John Doe",
                 lastMessage = "Hey there! How are you doing?",
                 timestamp = currentTime,
-                unreadCount = 0
+                unreadCount = 0,
+                participantIds = mutableListOf("demo_user_1"),
+                type = "direct"
             )
         )
 
@@ -232,8 +238,15 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 put("lastMessage", chat.lastMessage)
                 put("timestamp", chat.timestamp)
                 put("unreadCount", chat.unreadCount)
-                put("participantIds",chat.participantIds)
-                put("type",chat.type)
+
+                // Create a JSONArray for participantIds
+                val participantIdsArray = JSONArray()
+                for (participantId in chat.participantIds) {
+                    participantIdsArray.put(participantId)
+                }
+                put("participantIds", participantIdsArray)
+
+                put("type", chat.type ?: "direct")
             }
             jsonArray.put(chatObject)
         }
@@ -241,6 +254,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
         val jsonString = jsonArray.toString()
         writeChatsToFile(jsonString)
+
     }
 
     private fun writeChatsToFile(jsonString: String) {
@@ -263,40 +277,45 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
 
 
-    private fun loadChatsFromFirebase() {
+    private fun mergeChatsFromFirebase() {
         firebaseDatabase = FirebaseDatabase.getInstance()
         chatsReference = firebaseDatabase.getReference("chats")
 
         // Listen for changes in the chats
         chatsReference.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                chatManager.clear()
-                val tempChats = mutableListOf<Chat>()
+                val existingChatIds = chatManager.getAll().map { it.id }.toSet()
+                val firebaseChats = mutableListOf<Chat>()
 
                 for (chatSnapshot in snapshot.children) {
                     val chat = chatSnapshot.getValue(Chat::class.java)
-                    chat?.let { tempChats.add(it) }
+                    // Only add chats that don't already exist locally
+                    if (chat != null && chat.id !in existingChatIds) {
+                        firebaseChats.add(chat)
+                    }
                 }
 
-                // Add all chats to the stack at once
-                chatManager.pushAll(tempChats)
+                // Add new Firebase chats to the stack without clearing existing ones
+                if (firebaseChats.isNotEmpty()) {
+                    chatManager.pushAll(firebaseChats)
 
-                // Save chats to local storage
-                saveChatsToLocalStorage()
+                    // Save merged chats to local storage
+                    saveChatsToLocalStorage()
 
-                // Update UI
-                chatAdapter.notifyDataSetChanged()
+                    // Update UI
+                    chatAdapter.notifyDataSetChanged()
+                }
             }
 
             override fun onCancelled(error: DatabaseError) {
                 Toast.makeText(
                     this@MainActivity,
-                    "Failed to load chats: ${error.message}",
+                    "Failed to load chats from Firebase: ${error.message}",
                     Toast.LENGTH_SHORT
                 ).show()
-                // If Firebase fails, try loading from local storage as fallback
-                loadChatsFromLocalStorage()
             }
         })
     }
+
+
 }
