@@ -144,13 +144,23 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
             for (i in 0 until jsonArray.length()) {
                 val chatObject = jsonArray.getJSONObject(i)
+                val participantIdsJsonArray = chatObject.getJSONArray("participantIds")
+                val participantIds = mutableListOf<String>()
+
+                for (j in 0 until participantIdsJsonArray.length()) {
+                    participantIds.add(participantIdsJsonArray.getString(j))
+                }
+
                 val chat = Chat(
                     id = chatObject.getString("id"),
                     name = chatObject.getString("name"),
                     lastMessage = chatObject.getString("lastMessage"),
                     timestamp = chatObject.getLong("timestamp"),
-                    unreadCount = chatObject.getInt("unreadCount")
+                    unreadCount = chatObject.getInt("unreadCount"),
+                    participantIds = participantIds,
+                    type = chatObject.getString("type")
                 )
+
                 tempChats.add(chat)
             }
 
@@ -221,6 +231,8 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 put("lastMessage", chat.lastMessage)
                 put("timestamp", chat.timestamp)
                 put("unreadCount", chat.unreadCount)
+                put("participantIds",chat.participantIds)
+                put("type",chat.type)
             }
             jsonArray.put(chatObject)
         }
@@ -244,6 +256,8 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         startActivity(Intent(this, ChatRoomActivity::class.java))
         finish()
     }
+
+
 
     private fun loadChatsFromFirebase() {
         firebaseDatabase = FirebaseDatabase.getInstance()
