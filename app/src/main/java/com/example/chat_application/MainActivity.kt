@@ -254,7 +254,10 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     }
 
     override fun onChatClick(chat: Chat) {
-        startActivity(Intent(this, ChatRoomActivity::class.java))
+        val intent = Intent(this, ChatRoomActivity::class.java).apply {
+            putExtra("CHAT_OBJECT", chat)
+        }
+        startActivity(intent)
         finish()
     }
 
