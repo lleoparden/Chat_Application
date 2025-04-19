@@ -33,8 +33,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     private lateinit var firebaseDatabase: FirebaseDatabase
     private lateinit var chatsReference: DatabaseReference
 
-    // Control flag for Firebase access
-    private val firebase_on = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -120,7 +118,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     }
 
     private fun loadChats() {
-        if (firebase_on) {
+        if (resources.getBoolean(R.bool.firebaseOn)) {
             loadChatsFromFirebase()
         } else {
             loadChatsFromLocalStorage()
@@ -128,6 +126,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     }
 
     private fun loadChatsFromLocalStorage() {
+        Log.d("MainActivity", "Loading chats from local storage")
         val file = File(filesDir, "chats.json")
         val jsonString = readChatsFromFile()
 
@@ -225,6 +224,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
             }
             jsonArray.put(chatObject)
         }
+        Log.d("MainActivity", "Saving ${chatManager.size()} chats to local storage")
 
         val jsonString = jsonArray.toString()
         writeChatsToFile(jsonString)

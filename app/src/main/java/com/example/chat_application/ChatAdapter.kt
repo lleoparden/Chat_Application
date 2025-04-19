@@ -10,17 +10,15 @@ import java.util.Locale
 import java.util.Stack
 
 data class Chat(
-    val id: String = "",
-    val name: String = "",
-    val lastMessage: String = "",
-    val timestamp: Long = 0,
-    val unreadCount: Int = 0
+    val id: String,
+    val name: String,
+    val lastMessage: String,
+    val timestamp: Long,
+    val unreadCount: Int,
+    val participantIds: List<String> = listOf(),
+    val type: String = "direct" // "direct" or "group"
 )
 
-/**
- * ChatManager using the standard Java Stack class
- * Provides stack functionality while maintaining timestamp-based ordering
- */
 class ChatManager {
     private val chatStack = Stack<Chat>()
 
