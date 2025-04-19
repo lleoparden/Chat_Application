@@ -47,6 +47,7 @@ class AuthActivity : AppCompatActivity() {
 
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(UserSettings.theme)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 

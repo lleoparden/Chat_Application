@@ -8,7 +8,10 @@ import com.example.chat_application.R
 import java.util.Date
 import java.util.Locale
 import java.util.Stack
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 
+@Parcelize
 data class Chat(
     val id: String,
     val name: String,
@@ -16,8 +19,8 @@ data class Chat(
     val timestamp: Long,
     val unreadCount: Int,
     val participantIds: List<String> = listOf(),
-    val type: String = "direct" // "direct" or "group"
-)
+    val type: String = "direct"
+) : Parcelable
 
 class ChatManager {
     private val chatStack = Stack<Chat>()
