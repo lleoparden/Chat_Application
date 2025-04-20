@@ -2,19 +2,21 @@ package com.example.chat_application
 
 import Chat
 import android.content.Intent
+import android.graphics.Rect
 import android.os.Bundle
-import com.example.chat_application.Message
+import android.view.View
+import android.view.ViewTreeObserver.OnGlobalLayoutListener
+import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
-import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.recyclerview.widget.RecyclerView.LayoutManager
 import java.util.UUID
+
 
 class ChatRoomActivity : AppCompatActivity() {
 
@@ -36,6 +38,33 @@ class ChatRoomActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.chatroom)
+
+
+        // Set window flags
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+
+
+        // Optional: Add a keyboard listener to handle animation or custom behavior
+        val rootView: View = findViewById(android.R.id.content)
+        rootView.getViewTreeObserver().addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
+            private val r = Rect()
+            private var lastVisibleHeight = 0
+
+            override fun onGlobalLayout() {
+                // Calculate visible height
+                rootView.getWindowVisibleDisplayFrame(r)
+                val visibleHeight = r.height()
+
+
+                // Detect keyboard visibility changes
+                if (lastVisibleHeight != 0 && lastVisibleHeight != visibleHeight) {
+                    val isKeyboardVisible = lastVisibleHeight > visibleHeight
+                    // You can add custom animations or behavior when keyboard appears/disappears
+                }
+
+                lastVisibleHeight = visibleHeight
+            }
+        })
 
         // Retrieve the chat object from intent
         val chat = intent.getParcelableExtra<Chat>("CHAT_OBJECT")
