@@ -6,6 +6,7 @@ import ChatManager
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -47,7 +48,40 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         setupUI()
         setupRecyclerView()
         loadChats()
+        setupLogoutButton()
     }
+
+    private fun setupLogoutButton() {
+        val logoutButton = findViewById<Button>(R.id.logoutButton)
+        logoutButton.setOnClickListener {
+            logout()
+        }
+    }
+
+    private fun logout() {
+        // Clear user session from SharedPreferences
+        val prefs = getSharedPreferences("ChatAppPrefs", MODE_PRIVATE)
+        prefs.edit().remove("userId").apply()
+
+        // Reset UserSettings
+        UserSettings.userId = ""
+
+        // Navigate back to AuthActivity
+        val intent = Intent(this, AuthActivity::class.java)
+        // Clear back stack so user can't go back to MainActivity after logout
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        finish()
+    }
+
+
+
+
+
+
+
+
+
 
     private fun initViews() {
         chatRecyclerView = findViewById(R.id.chatRecyclerView)
