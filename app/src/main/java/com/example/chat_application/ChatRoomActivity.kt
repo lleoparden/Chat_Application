@@ -4,6 +4,7 @@ import Chat
 import android.content.Intent
 import android.graphics.Rect
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.ViewTreeObserver.OnGlobalLayoutListener
 import android.view.WindowManager
@@ -11,10 +12,16 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.chat_application.AuthActivity.UserData
+import com.google.firebase.firestore.FirebaseFirestore
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
 import java.util.UUID
 
 
@@ -31,7 +38,11 @@ class ChatRoomActivity : AppCompatActivity() {
     private val currentUserId = "user_123"
     private lateinit var  chatId : String
 
+    // Firestore instance
+    private lateinit var db: FirebaseFirestore
 
+    // JSON file for local storage
+    private lateinit var localchat: File
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(UserSettings.theme)
@@ -65,6 +76,7 @@ class ChatRoomActivity : AppCompatActivity() {
                 lastVisibleHeight = visibleHeight
             }
         })
+        db = FirebaseFirestore.getInstance()
 
         // Retrieve the chat object from intent
         val chat = intent.getParcelableExtra<Chat>("CHAT_OBJECT")
@@ -102,14 +114,15 @@ class ChatRoomActivity : AppCompatActivity() {
             }
 
         }
-        addSampleMessages()
+
+        loadMessagesFromLocalStorage()
     }
 
 
 
     fun sendMessage(textmessage:String){
 
-        val messageId =UUID.randomUUID().toString()
+        val messageId = generateMessageId()
 
         val message = Message(
             id = messageId,
@@ -121,6 +134,7 @@ class ChatRoomActivity : AppCompatActivity() {
         )
 
         messageList.add(message)
+        saveMessage(messageId)
         messageAdapter.notifyItemInserted(messageList.size-1)
         messagesRecyclerView.smoothScrollToPosition(messageList.size-1)
 
@@ -168,6 +182,166 @@ class ChatRoomActivity : AppCompatActivity() {
         messageList.addAll(messages)
         messageAdapter.notifyDataSetChanged()
         messagesRecyclerView.scrollToPosition(messageList.size - 1)
+    }
+
+
+
+    private fun saveMessage(messageId: String) {
+
+        // Create a localMessageData object for local storage
+        val messageData = messageList[messageList.size-1]
+
+
+
+        // Save to local storage first
+        saveMessagesToLocalStorage()
+
+
+        // Then attempt to save to Firebase
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            saveMessageToFirebase(messageData, messageId)
+        }
+
+    }
+
+    private fun generateMessageId(): String {
+        return db.collection("users").document().id
+    }
+
+    private fun saveMessageToFirebase(messageData: Message, messageId: String) {
+        val messageMap = hashMapOf(
+            "id" to messageData.id,
+            "chatId" to messageData.chatId,
+            "senderId" to messageData.senderId,
+            "content" to messageData.content,
+            "timestamp" to messageData.timestamp,
+            "readStatus" to messageData.readStatus
+        )
+
+        db.collection("messages").document(messageId)
+            .set(messageMap)
+            .addOnSuccessListener {
+                //save locally
+            }
+            .addOnFailureListener { e ->
+                //add to queue and save locally
+            }
+    }
+
+
+    private fun saveMessagesToLocalStorage() {
+        val jsonArray = JSONArray()
+
+        for (message in messageList) {
+            val messageObject = JSONObject().apply {
+                put("id", message.id)
+                put("chatId", message.chatId)
+                put("senderId", message.senderId)
+                put("content", message.content)
+                put("timestamp", message.timestamp)
+
+                // Create a JSONObject for readStatus
+                val readStatusObject = JSONObject()
+                for ((userId, status) in message.readStatus) {
+                    readStatusObject.put(userId, status)
+                }
+                put("readStatus", readStatusObject)
+            }
+            jsonArray.put(messageObject)
+        }
+
+        Log.d("ChatRoomActivity", "Saving ${messageList.size} messages to local storage")
+        val jsonString = jsonArray.toString()
+        writeMessagesToFile(jsonString)
+    }
+
+    private fun writeMessagesToFile(jsonString: String) {
+        try {
+            val file = File(filesDir, "messages.json")
+            file.writeText(jsonString)
+            Log.d("ChatRoomActivity", "messages saved to file: ${file.absolutePath}")
+        } catch (e: Exception) {
+            Log.e("ChatRoomActivity", "Error writing to file: ${e.message}")
+        }
+    }
+
+    private fun loadMessagesFromLocalStorage() {
+        Log.d("ChatRoomActivity", "Loading messages from local storage")
+        val file = File(filesDir, "messages.json")
+        val jsonString = readMessagesFromFile()
+
+        if (!file.exists() || jsonString.isEmpty()) {
+            Log.d("ChatRoomActivity", "No messages file found, creating demo messages")
+            addSampleMessages()
+            return
+        }
+
+        try {
+            val jsonArray = JSONArray(jsonString)
+            messageList.clear()
+            val tempMessages = mutableListOf<Message>()
+
+            for (i in 0 until jsonArray.length()) {
+                val messageObject = jsonArray.getJSONObject(i)
+                val readStatus = mutableMapOf<String, Boolean>()
+
+                try {
+                    // Try to parse as JSONObject first (preferred format)
+                    val readStatusJsonObject = messageObject.getJSONObject("readStatus")
+                    val keys = readStatusJsonObject.keys()
+                    while (keys.hasNext()) {
+                        val key = keys.next()
+                        readStatus[key] = readStatusJsonObject.getBoolean(key)
+                    }
+                } catch (e: Exception) {
+                    // If that fails, try to parse as JSONArray
+                    try {
+                        val readStatusArray = messageObject.getJSONArray("readStatus")
+                        for (j in 0 until readStatusArray.length()) {
+                            val entry = readStatusArray.getString(j)
+                            // Parse entries like "user_789=true"
+                            if (entry.contains("=")) {
+                                val parts = entry.split("=")
+                                if (parts.size == 2) {
+                                    readStatus[parts[0]] = parts[1].toBoolean()
+                                }
+                            }
+                        }
+                    } catch (e2: Exception) {
+                        Log.e("ChatRoomActivity", "Error parsing readStatus: ${e2.message}")
+                    }
+                }
+
+                val message = Message(
+                    id = messageObject.getString("id"),
+                    chatId = messageObject.getString("chatId"),
+                    senderId = messageObject.getString("senderId"),
+                    content = messageObject.getString("content"),
+                    timestamp = messageObject.getLong("timestamp"),
+                    readStatus = readStatus
+                )
+
+                tempMessages.add(message)
+            }
+
+            messageList.addAll(tempMessages)
+            messageAdapter.notifyDataSetChanged()
+            messagesRecyclerView.scrollToPosition(messageList.size - 1)
+
+        } catch (e: Exception) {
+            Log.e("ChatRoomActivity", "Error loading messages: ${e.message}")
+            Toast.makeText(this, "Error loading messages: ${e.message}", Toast.LENGTH_SHORT).show()
+            addSampleMessages()
+        }
+    }
+
+    private fun readMessagesFromFile(): String {
+        val file = File(filesDir, "messages.json")
+        return if (file.exists()) {
+            file.readText()
+        } else {
+            ""
+        }
     }
 
 }

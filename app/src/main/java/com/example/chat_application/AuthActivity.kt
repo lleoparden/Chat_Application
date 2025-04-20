@@ -31,9 +31,6 @@ class AuthActivity : AppCompatActivity() {
     // Firestore instance
     private lateinit var db: FirebaseFirestore
 
-    // Auth instance
-    private lateinit var auth: FirebaseAuth
-
     // JSON file for local storage
     private lateinit var localUsersFile: File
 
@@ -66,7 +63,6 @@ class AuthActivity : AppCompatActivity() {
     // Firebase initialization
     private fun initializeFirebase() {
         db = FirebaseFirestore.getInstance()
-        auth = FirebaseAuth.getInstance()
     }
 
     // Local storage initialization
