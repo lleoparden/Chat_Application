@@ -17,6 +17,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.database.ChildEventListener
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
 import org.json.JSONArray
 import org.json.JSONObject
@@ -32,6 +37,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var menuBtn: ImageButton
     private lateinit var messagesRecyclerView: RecyclerView
 
+
     // Data & Adapters
     private lateinit var messageAdapter: MessageAdapter
     private val messageList = mutableListOf<Message>()
@@ -42,6 +48,8 @@ class ChatRoomActivity : AppCompatActivity() {
 
     // Firebase
     private lateinit var db: FirebaseFirestore
+    private lateinit var database: DatabaseReference
+    private var messagesListener: ChildEventListener? = null
 
     // Storage
     private lateinit var localChat: File
@@ -54,7 +62,21 @@ class ChatRoomActivity : AppCompatActivity() {
         initializeViews()
         setupRecyclerView()
         setupClickListeners()
+
+        //!uncomment to clear jason file
+        //File(filesDir, "messages.json").delete()
+
+
         loadMessagesFromLocalStorage()
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            setupRealtimeMessageListener()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Remove the realtime listener when activity is destroyed
+        removeRealtimeMessageListener()
     }
 
     //region Setup Methods
@@ -94,6 +116,7 @@ class ChatRoomActivity : AppCompatActivity() {
 
     private fun initializeFirebase() {
         db = FirebaseFirestore.getInstance()
+        database = FirebaseDatabase.getInstance().reference
     }
 
     private fun setupChatInfo() {
@@ -154,22 +177,21 @@ class ChatRoomActivity : AppCompatActivity() {
             readStatus = mapOf()
         )
 
-        messageList.add(message)
-        saveMessage(messageId)
-        messageAdapter.notifyItemInserted(messageList.size - 1)
-        messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
+        // We don't need to add to messageList here anymore since the listener will do it
+        saveMessage(message, messageId)
     }
 
     private fun generateMessageId(): String {
         return db.collection("users").document().id
     }
 
-    private fun saveMessage(messageId: String) {
-        // Get the last message added to the list
-        val messageData = messageList[messageList.size - 1]
-
-        // Save to local storage first
+    private fun saveMessage(messageData: Message, messageId: String) {
+        // Save to local storage
+        messageList.add(messageData)
         saveMessagesToLocalStorage()
+
+        // Scroll to new message position
+        messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
 
         // Then attempt to save to Firebase
         if (resources.getBoolean(R.bool.firebaseOn)) {
@@ -187,65 +209,129 @@ class ChatRoomActivity : AppCompatActivity() {
             "readStatus" to messageData.readStatus
         )
 
-//        db.collection("messages").document(messageId)
-//            .set(messageMap)
-//            .addOnSuccessListener {
-//                // Success handling could be added here
-//            }
-//            .addOnFailureListener { e ->
-//                // Error handling could be added here
-//                // Could add to offline queue
-//            }
+        // Save under messages/chatId/messageId in Realtime Database
+        database.child("messages")
+            .child(chatId)
+            .child(messageId)
+            .setValue(messageMap)
+            .addOnSuccessListener {
+                Log.d("Firebase", "Message saved to Realtime DB")
+            }
+            .addOnFailureListener { e ->
+                Log.e("Firebase", "Error saving to Realtime DB: ${e.message}")
+                Toast.makeText(this, "Failed to send message. Check your connection.", Toast.LENGTH_SHORT).show()
+            }
     }
 
+    private fun setupRealtimeMessageListener() {
+        if (!resources.getBoolean(R.bool.firebaseOn)) {
+            Log.d("ChatRoomActivity", "Firebase is disabled, not setting up realtime listener")
+            return
+        }
 
-    //region Sample Data
+        val messagesRef = database.child("messages").child(chatId)
 
-//    private fun addSampleMessages() {
-//        // Add some sample messages for testing the UI
-//        val otherUserId = "user_789"
-//
-//        val messages = listOf(
-//            Message(
-//                id = "msg1",
-//                chatId = chatId,
-//                senderId = otherUserId,
-//                content = "Hello there!",
-//                timestamp = System.currentTimeMillis() - 3600000,
-//                readStatus = mapOf(otherUserId to true, currentUserId to true)
-//            ),
-//            Message(
-//                id = "msg2",
-//                chatId = chatId,
-//                senderId = currentUserId,
-//                content = "Hi! How are you?",
-//                timestamp = System.currentTimeMillis() - 3500000,
-//                readStatus = mapOf(currentUserId to true, otherUserId to true)
-//            ),
-//            Message(
-//                id = "msg3",
-//                chatId = chatId,
-//                senderId = otherUserId,
-//                content = "I'm doing well, thanks for asking!",
-//                timestamp = System.currentTimeMillis() - 3400000,
-//                readStatus = mapOf(otherUserId to true, currentUserId to true)
-//            ),
-//            Message(
-//                id = "msg4",
-//                chatId = chatId,
-//                senderId = currentUserId,
-//                content = "That's great to hear!",
-//                timestamp = System.currentTimeMillis() - 3300000,
-//                readStatus = mapOf(currentUserId to true, otherUserId to false)
-//            )
-//        )
-//
-//        messageList.addAll(messages)
-//        messageAdapter.notifyDataSetChanged()
-//        messagesRecyclerView.scrollToPosition(messageList.size - 1)
-//    }
+        messagesListener = messagesRef.addChildEventListener(object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                Log.d("Firebase", "New message received in realtime")
+                val messageMap = snapshot.value as? Map<*, *> ?: return
+                processMessageFromFirebase(messageMap, snapshot.key ?: "")
+            }
 
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                Log.d("Firebase", "Message updated in realtime")
+                val messageMap = snapshot.value as? Map<*, *> ?: return
+                val messageId = snapshot.key ?: return
 
+                // Find and update the message in our list
+                val messageIndex = messageList.indexOfFirst { it.id == messageId }
+                if (messageIndex >= 0) {
+                    val updatedMessage = createMessageFromMap(messageMap) ?: return
+                    messageList[messageIndex] = updatedMessage
+                    messageAdapter.notifyItemChanged(messageIndex)
+                    saveMessagesToLocalStorage()
+                }
+            }
+
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                val messageId = snapshot.key ?: return
+                val messageIndex = messageList.indexOfFirst { it.id == messageId }
+                if (messageIndex >= 0) {
+                    messageList.removeAt(messageIndex)
+                    messageAdapter.notifyItemRemoved(messageIndex)
+                    saveMessagesToLocalStorage()
+                }
+            }
+
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
+                // Not needed for this implementation
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("Firebase", "Database error: ${error.message}")
+                Toast.makeText(
+                    this@ChatRoomActivity,
+                    "Database connection error: ${error.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        })
+    }
+
+    private fun processMessageFromFirebase(messageMap: Map<*, *>, messageId: String) {
+        val message = createMessageFromMap(messageMap) ?: return
+
+        // Check if we already have this message
+        val existingIndex = messageList.indexOfFirst { it.id == message.id }
+        if (existingIndex >= 0) {
+            // Update existing message
+            messageList[existingIndex] = message
+            messageAdapter.notifyItemChanged(existingIndex)
+        } else {
+            // Add new message
+            messageList.add(message)
+            messageAdapter.notifyItemInserted(messageList.size - 1)
+            messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
+        }
+
+        saveMessagesToLocalStorage()
+    }
+
+    private fun createMessageFromMap(messageMap: Map<*, *>): Message? {
+        try {
+            val id = messageMap["id"] as? String ?: return null
+            val chatId = messageMap["chatId"] as? String ?: return null
+            val senderId = messageMap["senderId"] as? String ?: return null
+            val content = messageMap["content"] as? String ?: ""
+            val timestamp = (messageMap["timestamp"] as? Long) ?: 0L
+
+            val readStatusMap = mutableMapOf<String, Boolean>()
+            val readStatusRaw = messageMap["readStatus"] as? Map<*, *>
+            readStatusRaw?.forEach { (key, value) ->
+                if (key is String && value is Boolean) {
+                    readStatusMap[key] = value
+                }
+            }
+
+            return Message(
+                id = id,
+                chatId = chatId,
+                senderId = senderId,
+                content = content,
+                timestamp = timestamp,
+                readStatus = readStatusMap
+            )
+        } catch (e: Exception) {
+            Log.e("ChatRoomActivity", "Error creating message from map: ${e.message}")
+            return null
+        }
+    }
+
+    private fun removeRealtimeMessageListener() {
+        messagesListener?.let {
+            database.child("messages").child(chatId).removeEventListener(it)
+        }
+    }
 
     //region Local Storage
 
@@ -291,7 +377,7 @@ class ChatRoomActivity : AppCompatActivity() {
         val jsonString = readMessagesFromFile()
 
         if (!file.exists() || jsonString.isEmpty()) {
-            Log.d("ChatRoomActivity", "No messages file found, creating demo messages")
+            Log.d("ChatRoomActivity", "No messages file found")
             return
         }
 
