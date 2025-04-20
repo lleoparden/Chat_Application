@@ -88,7 +88,7 @@ class AuthActivity : AppCompatActivity() {
             // First check if the user exists locally
             if (checkUserExistsLocally(userId)) {
                 Log.d(TAG, "User found locally, logging in")
-                navigateToMainActivity()
+                navigateToMainActivity(userId)
                 return
             }
 
@@ -118,7 +118,7 @@ class AuthActivity : AppCompatActivity() {
                     )
 
                     saveUserToLocalStorage(userToSave)
-                    navigateToMainActivity()
+                    navigateToMainActivity(userId)
                 } else {
                     // User ID in preferences but not in Firestore, clear and show auth
                     clearUserSession()
@@ -349,7 +349,7 @@ class AuthActivity : AppCompatActivity() {
             // Store the user ID for session management
             saveUserSession(matchingUser.uid)
 
-            navigateToMainActivity()
+            navigateToMainActivity(matchingUser.uid)
             return true
         }
 
@@ -452,7 +452,7 @@ class AuthActivity : AppCompatActivity() {
         // Save user session
         saveUserSession(userId)
 
-        navigateToMainActivity()
+        navigateToMainActivity(userId)
     }
 
     private fun handleRegistrationFailure(e: Exception) {
@@ -516,10 +516,11 @@ class AuthActivity : AppCompatActivity() {
         // Store the user ID for session management
         saveUserSession(userId)
 
-        navigateToMainActivity()
+        navigateToMainActivity(userId)
     }
 
-    private fun navigateToMainActivity() {
+    private fun navigateToMainActivity(userId: String) {
+        UserSettings.userId = userId
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
         finish() // Close AuthActivity so user can't go back
