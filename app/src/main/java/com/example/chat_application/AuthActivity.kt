@@ -13,11 +13,6 @@ import android.widget.TextView
 import android.widget.Toast
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import org.json.JSONArray
-import org.json.JSONObject
-import java.io.File
-import java.io.FileReader
-import java.io.FileWriter
 
 class AuthActivity : AppCompatActivity() {
     // Current view state tracking
@@ -31,52 +26,22 @@ class AuthActivity : AppCompatActivity() {
     // Firestore instance
     private lateinit var db: FirebaseFirestore
 
-    // JSON file for local storage
-    private lateinit var localUsersFile: File
-
-    // User data class
-    data class UserData(
-        val uid: String,
-        val displayName: String,
-        val phoneNumber: String,
-        val password: String
-    )
+    // Auth instance
+    private lateinit var auth: FirebaseAuth
 
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(UserSettings.theme)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Initialize Firebase components
-        if (resources.getBoolean(R.bool.firebaseOn)) {
-            initializeFirebase()
-        }
+        // Initialize Firestore
+        db = FirebaseFirestore.getInstance()
 
-        // Initialize local storage file
-        initializeLocalStorage()
+        // Initialize Firebase Auth
+        auth = FirebaseAuth.getInstance()
 
         // Check if user is already logged in
         checkUserLoggedIn()
-    }
-
-    // Firebase initialization
-    private fun initializeFirebase() {
-        db = FirebaseFirestore.getInstance()
-    }
-
-    // Local storage initialization
-    private fun initializeLocalStorage() {
-        localUsersFile = File(filesDir, "local_users.json")
-        if (!localUsersFile.exists()) {
-            try {
-                localUsersFile.createNewFile()
-                saveUsersToJson(emptyList())
-                Log.d(TAG, "Created new local users file at: ${localUsersFile.absolutePath}")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error creating local users file", e)
-            }
-        }
     }
 
     private fun checkUserLoggedIn() {
@@ -85,55 +50,27 @@ class AuthActivity : AppCompatActivity() {
         val userId = prefs.getString("userId", null)
 
         if (userId != null) {
-            // First check if the user exists locally
-            if (checkUserExistsLocally(userId)) {
-                Log.d(TAG, "User found locally, logging in")
-                navigateToMainActivity(userId)
-                return
-            }
-
-            // If not found locally, verify in Firestore
-            if (resources.getBoolean(R.bool.firebaseOn)) {
-                verifyUserInFirestore(userId)
-            }
+            // User ID exists, verify it in Firestore
+            db.collection("users").document(userId)
+                .get()
+                .addOnSuccessListener { document ->
+                    if (document != null && document.exists()) {
+                        // User exists and is logged in, navigate to MainActivity
+                        navigateToMainActivity()
+                    } else {
+                        // User ID in preferences but not in Firestore, clear and show auth
+                        prefs.edit().remove("userId").apply()
+                        showAuthView()
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "Error checking user login status", e)
+                    showAuthView()
+                }
         } else {
             // No user ID stored, show authentication view
             showAuthView()
         }
-    }
-
-    // Firebase verification
-    private fun verifyUserInFirestore(userId: String) {
-        db.collection("users").document(userId)
-            .get()
-            .addOnSuccessListener { document ->
-                if (document != null && document.exists()) {
-                    // User exists in Firestore, save locally for future
-                    val userData = document.data
-                    val userToSave = UserData(
-                        uid = userId,
-                        displayName = userData?.get("displayName") as? String ?: "",
-                        phoneNumber = userData?.get("phoneNumber") as? String ?: "",
-                        password = userData?.get("password") as? String ?: ""
-                    )
-
-                    saveUserToLocalStorage(userToSave)
-                    navigateToMainActivity(userId)
-                } else {
-                    // User ID in preferences but not in Firestore, clear and show auth
-                    clearUserSession()
-                    showAuthView()
-                }
-            }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "Error checking user login status", e)
-                showAuthView()
-            }
-    }
-
-    private fun clearUserSession() {
-        val prefs = getSharedPreferences("ChatAppPrefs", MODE_PRIVATE)
-        prefs.edit().remove("userId").apply()
     }
 
     private fun showAuthView() {
@@ -170,7 +107,7 @@ class AuthActivity : AppCompatActivity() {
             val userPassword = password.text.toString().trim()
 
             if (phoneNumber.isEmpty() || userPassword.isEmpty()) {
-                showToast("Please fill all fields")
+                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -179,15 +116,8 @@ class AuthActivity : AppCompatActivity() {
             userPhone = formattedPhone
             this.userPassword = userPassword
 
-            // Attempt local login first
-            if (validateLoginLocally(formattedPhone, userPassword)) {
-                return@setOnClickListener
-            }
-
-            // If local login fails, check database
-            if (resources.getBoolean(R.bool.firebaseOn)) {
-                validateLoginRemote(formattedPhone, userPassword)
-            }
+            // Check if user exists and verify password
+            validateLogin(formattedPhone, userPassword)
         }
 
         // Switch to signup
@@ -211,7 +141,7 @@ class AuthActivity : AppCompatActivity() {
             val passwordText = password.text.toString().trim()
 
             if (nameText.isEmpty() || phoneNumber.isEmpty() || passwordText.isEmpty()) {
-                showToast("Please fill all fields")
+                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -220,16 +150,8 @@ class AuthActivity : AppCompatActivity() {
             userPhone = formatPhoneNumber(phoneNumber)
             userPassword = passwordText
 
-            // Check if user already exists locally with this phone number
-            if (checkPhoneExistsLocally(userPhone)) {
-                showToast("An account with this phone number already exists locally")
-                return@setOnClickListener
-            }
-
-            // Check if user exists in the database
-            if (resources.getBoolean(R.bool.firebaseOn)) {
-                checkUserExistsRemote(userPhone)
-            }
+            // Check if user already exists with this phone number
+            checkUserExists(userPhone)
         }
 
         // Switch to login
@@ -252,275 +174,116 @@ class AuthActivity : AppCompatActivity() {
         return formattedNumber
     }
 
-    private fun showToast(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-    }
-
-    //-----------------------------
-    // Local Storage Functions
-    //-----------------------------
-
-    private fun getLocalUsers(): List<UserData> {
-        if (!localUsersFile.exists() || localUsersFile.length() == 0L) {
-            return emptyList()
-        }
-
-        return try {
-            val fileContent = FileReader(localUsersFile).use { it.readText() }
-
-            // If file is empty or not proper JSON array, return empty list
-            if (fileContent.isBlank() || !fileContent.trim().startsWith("[")) {
-                return emptyList()
-            }
-
-            val usersList = mutableListOf<UserData>()
-            val jsonArray = JSONArray(fileContent)
-
-            for (i in 0 until jsonArray.length()) {
-                val jsonUser = jsonArray.getJSONObject(i)
-                val user = UserData(
-                    uid = jsonUser.getString("uid"),
-                    displayName = jsonUser.getString("displayName"),
-                    phoneNumber = jsonUser.getString("phoneNumber"),
-                    password = jsonUser.getString("password")
-                )
-                usersList.add(user)
-            }
-
-            usersList
-        } catch (e: Exception) {
-            Log.e(TAG, "Error reading local users file", e)
-            emptyList()
-        }
-    }
-
-    private fun saveUsersToJson(users: List<UserData>) {
-        try {
-            val jsonArray = JSONArray()
-
-            users.forEach { userData ->
-                val jsonUser = JSONObject().apply {
-                    put("uid", userData.uid)
-                    put("displayName", userData.displayName)
-                    put("phoneNumber", userData.phoneNumber)
-                    put("password", userData.password)
-                }
-                jsonArray.put(jsonUser)
-            }
-
-            FileWriter(localUsersFile).use { writer ->
-                writer.write(jsonArray.toString())
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error saving users to local storage", e)
-        }
-    }
-
-    private fun saveUserToLocalStorage(userData: UserData) {
-        val users = getLocalUsers().toMutableList()
-
-        // Check if user already exists
-        val existingUserIndex = users.indexOfFirst { it.uid == userData.uid }
-        if (existingUserIndex >= 0) {
-            users[existingUserIndex] = userData
-        } else {
-            users.add(userData)
-        }
-
-        saveUsersToJson(users)
-    }
-
-    private fun checkUserExistsLocally(userId: String): Boolean {
-        return getLocalUsers().any { it.uid == userId }
-    }
-
-    private fun checkPhoneExistsLocally(phoneNumber: String): Boolean {
-        return getLocalUsers().any { it.phoneNumber == phoneNumber }
-    }
-
-    private fun validateLoginLocally(phoneNumber: String, password: String): Boolean {
-        val users = getLocalUsers()
-        val matchingUser = users.find { it.phoneNumber == phoneNumber && it.password == password }
-
-        if (matchingUser != null) {
-            // Local login successful
-            showToast("Login successful (local)")
-
-            // Store the user ID for session management
-            saveUserSession(matchingUser.uid)
-
-            navigateToMainActivity(matchingUser.uid)
-            return true
-        }
-
-        return false
-    }
-
-    private fun saveUserSession(userId: String) {
-        val prefs = getSharedPreferences("ChatAppPrefs", MODE_PRIVATE)
-        prefs.edit().putString("userId", userId).apply()
-    }
-
-    //-----------------------------
-    // Firebase Remote Functions
-    //-----------------------------
-
-    private fun checkUserExistsRemote(phoneNumber: String) {
+    private fun checkUserExists(phoneNumber: String) {
+        // Query Firestore to check if user with this phone number already exists
         db.collection("users")
             .whereEqualTo("phoneNumber", phoneNumber)
             .get()
             .addOnSuccessListener { documents ->
                 if (!documents.isEmpty) {
-                    showToast("An account with this phone number already exists")
+                    // User with this phone number already exists
+                    Toast.makeText(this@AuthActivity,
+                        "An account with this phone number already exists",
+                        Toast.LENGTH_SHORT).show()
                 } else {
+                    // No user with this phone number, proceed with registration
                     registerUser()
                 }
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "Error checking if user exists", e)
-                showToast("Database error: ${e.message}")
+                Toast.makeText(this@AuthActivity,
+                    "Database error: ${e.message}",
+                    Toast.LENGTH_SHORT).show()
             }
     }
 
     private fun registerUser() {
-        // Generate a unique ID for the user
-        val userId = generateUserId()
+        // Generate a unique ID for the user or use Firebase Auth
+        val userId = db.collection("users").document().id
 
-        // Create user data
-        val userData = createUserData(userId)
-
-        // Create a UserData object for local storage
-        val localUserData = UserData(
-            uid = userId,
-            displayName = userName,
-            phoneNumber = userPhone,
-            password = userPassword
-        )
-
-        // Save to local storage first
-        saveUserToLocalStorage(localUserData)
-
-        // Save user session
-        saveUserSession(userId)
-
-        // Then attempt to save to Firebase
-        if (resources.getBoolean(R.bool.firebaseOn)) {
-            saveUserToFirebase(userData, userId)
-        }
-
-        // Note: Even if Firebase save fails, user can still log in using local data
-        showToast("Account created successfully (saved locally)")
-    }
-
-    private fun generateUserId(): String {
-        return db.collection("users").document().id
-    }
-
-    private fun createUserData(userId: String): HashMap<String, String> {
-        return hashMapOf(
+        // Create user profile
+        val userProfile = hashMapOf(
             "uid" to userId,
             "displayName" to userName,
             "phoneNumber" to userPhone,
             "password" to userPassword
         )
-    }
 
-    private fun saveUserToFirebase(userData: HashMap<String, String>, userId: String) {
+        // Save user profile to Firestore
         db.collection("users").document(userId)
-            .set(userData)
+            .set(userProfile)
             .addOnSuccessListener {
-                handleSuccessfulRegistration(userData, userId)
+                // Profile created successfully
+                Toast.makeText(this, "Account created successfully", Toast.LENGTH_SHORT).show()
+
+                // Store the user ID locally for session management
+                val prefs = getSharedPreferences("ChatAppPrefs", MODE_PRIVATE)
+                prefs.edit().putString("userId", userId).apply()
+
+                navigateToMainActivity()
             }
             .addOnFailureListener { e ->
-                handleRegistrationFailure(e)
+                // Handle failure
+                Toast.makeText(this, "Failed to create profile: ${e.message}",
+                    Toast.LENGTH_LONG).show()
+                Log.e(TAG, "Error creating user profile", e)
             }
     }
 
-    private fun handleSuccessfulRegistration(userData: HashMap<String, String>, userId: String) {
-        showToast("Account created successfully")
-
-        // Save user data locally
-        saveUserToLocalStorage(
-            UserData(
-                uid = userId,
-                displayName = userData["displayName"] ?: "",
-                phoneNumber = userData["phoneNumber"] ?: "",
-                password = userData["password"] ?: ""
-            )
-        )
-
-        // Save user session
-        saveUserSession(userId)
-
-        navigateToMainActivity(userId)
-    }
-
-    private fun handleRegistrationFailure(e: Exception) {
-        showToast("Failed to create profile: ${e.message}")
-        Log.e(TAG, "Error creating user profile", e)
-    }
-
-    private fun validateLoginRemote(phoneNumber: String, password: String) {
+    private fun validateLogin(phoneNumber: String, password: String) {
+        // Query Firestore to find user with this phone number
         db.collection("users")
             .whereEqualTo("phoneNumber", phoneNumber)
             .get()
             .addOnSuccessListener { documents ->
-                handleLoginQueryResult(documents, phoneNumber, password)
+                if (!documents.isEmpty) {
+                    // User found, check password
+                    var isPasswordCorrect = false
+                    var userId = ""
+
+                    for (document in documents) {
+                        val userPassword = document.getString("password")
+                        if (userPassword == password) {
+                            isPasswordCorrect = true
+                            userId = document.getString("uid") ?: document.id
+                            break
+                        }
+                    }
+
+                    if (isPasswordCorrect) {
+                        // Password correct, login successful
+                        Toast.makeText(this@AuthActivity,
+                            "Login successful",
+                            Toast.LENGTH_SHORT).show()
+
+                        // Store the user ID locally for session management
+                        val prefs = getSharedPreferences("ChatAppPrefs", MODE_PRIVATE)
+                        prefs.edit().putString("userId", userId).apply()
+
+                        navigateToMainActivity()
+                    } else {
+                        // Password incorrect
+                        Toast.makeText(this@AuthActivity,
+                            "Incorrect password",
+                            Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    // No user with this phone number
+                    Toast.makeText(this@AuthActivity,
+                        "No account found with this phone number",
+                        Toast.LENGTH_SHORT).show()
+                }
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "Error validating login", e)
-                showToast("Database error: ${e.message}")
+                Toast.makeText(this@AuthActivity,
+                    "Database error: ${e.message}",
+                    Toast.LENGTH_SHORT).show()
             }
     }
 
-    private fun handleLoginQueryResult(documents: com.google.firebase.firestore.QuerySnapshot, phoneNumber: String, password: String) {
-        if (!documents.isEmpty) {
-            // User found, check password
-            var isPasswordCorrect = false
-            var userId = ""
-            var displayName = ""
-
-            for (document in documents) {
-                val userPassword = document.getString("password")
-                if (userPassword == password) {
-                    isPasswordCorrect = true
-                    userId = document.getString("uid") ?: document.id
-                    displayName = document.getString("displayName") ?: ""
-                    break
-                }
-            }
-
-            if (isPasswordCorrect) {
-                handleSuccessfulRemoteLogin(userId, displayName, phoneNumber, password)
-            } else {
-                showToast("Incorrect password")
-            }
-        } else {
-            showToast("No account found with this phone number")
-        }
-    }
-
-    private fun handleSuccessfulRemoteLogin(userId: String, displayName: String, phoneNumber: String, password: String) {
-        showToast("Login successful")
-
-        // Save user data locally for future logins
-        saveUserToLocalStorage(
-            UserData(
-                uid = userId,
-                displayName = displayName,
-                phoneNumber = phoneNumber,
-                password = password
-            )
-        )
-
-        // Store the user ID for session management
-        saveUserSession(userId)
-
-        navigateToMainActivity(userId)
-    }
-
-    private fun navigateToMainActivity(userId: String) {
-        UserSettings.userId = userId
+    private fun navigateToMainActivity() {
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
         finish() // Close AuthActivity so user can't go back

@@ -9,4 +9,10 @@
     <color name="white">#FFFFFFFF</color>
     <color name="primary_dark">#1cbf64</color>
     <color name="secondary_dark">#0b0f13</color>
+    <color name="lightBG">#F2F2FF</color>
+    <color name="darkBG">#3D3D3d</color>
+    <color name="lightModeText">#665695</color>
+    <color name="darkModeText">#E0E0FF</color>
+    <color name="darkModeButton">#B6B6FF</color>
+    <color name="lightModeButton">#9BA8DD</color>
 </resources>

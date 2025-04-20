@@ -11,5 +11,9 @@
         <item name="colorSecondaryVariant">@color/white</item>
         <item name="colorOnSecondary">@color/black</item>
         <!-- Customize your theme here. -->
+        <item name="BG">@color/lightBG</item>
+        <item name="AuthText">@color/lightModeText</item>
+        <item name="AuthButton">@color/lightModeButton</item>
     </style>
+
 </resources>

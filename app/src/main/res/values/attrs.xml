@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="BG" format="reference|color"/>
+    <attr name="AuthText" format="reference|color"/>
+    <attr name="AuthButton" format="reference|color"/>
+</resources>
