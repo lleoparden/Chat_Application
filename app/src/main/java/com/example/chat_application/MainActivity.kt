@@ -1,8 +1,7 @@
 package com.example.chat_application
 
-import Chat
-import ChatAdapter
-import ChatManager
+
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -11,7 +10,6 @@ import android.text.TextWatcher
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
-import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -26,7 +24,9 @@ import com.google.firebase.database.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import java.util.*
+
+private const val TAG = "MainActivity"
+private const val CHATS_FILE = "chats.json"
 
 class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
@@ -44,22 +44,17 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     private lateinit var firebaseDatabase: FirebaseDatabase
     private lateinit var chatsReference: DatabaseReference
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(UserSettings.theme)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.mainpage)
 
-        //!uncomment to clear jason file
-        //File(filesDir, "chats.json").delete()
-
         initViews()
         setupUI()
         setupRecyclerView()
         loadChats()
     }
-
 
     private fun initViews() {
         chatRecyclerView = findViewById(R.id.chatRecyclerView)
@@ -72,11 +67,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
         // Initially hide search bar
         searchContainer.visibility = View.GONE
-
-        settingsButton.setOnClickListener {
-            startActivity(Intent(this, SettingsActivity::class.java))
-            finish()
-        }
     }
 
     private fun setupUI() {
@@ -88,9 +78,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         // Setup search bar functionality
         searchBar.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-
             override fun afterTextChanged(s: Editable?) {
                 performSearch(s.toString())
             }
@@ -111,17 +99,12 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         // Setup bottom navigation
         bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.navigation_chats -> {
-                    // Already on chats page
-                    true
-                }
-
+                R.id.navigation_chats -> true // Already on chats page
                 R.id.navigation_stories -> {
                     startActivity(Intent(this, StoryActivity::class.java))
                     finish()
                     true
                 }
-
                 else -> false
             }
         }
@@ -144,14 +127,11 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     }
 
     private fun loadChatsFromLocalStorage() {
-        Log.d("MainActivity", "Loading chats from local storage")
-        val file = File(filesDir, "chats.json")
+        Log.d(TAG, "Loading chats from local storage")
         val jsonString = readChatsFromFile()
 
-        if (!file.exists() || jsonString.isEmpty()) {
-            // File doesn't exist or is empty, create it with demo chats
-            Log.d("MainActivity", "No chats file found, creating demo chats")
-            //addDemoChat()
+        if (jsonString.isEmpty()) {
+            Log.d(TAG, "No chats file found or empty file")
             return
         }
 
@@ -182,65 +162,24 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 tempChats.add(chat)
             }
 
-            // Add all chats to the stack at once
+            // Add all chats to the manager at once
             chatManager.pushAll(tempChats)
-
-            // Update UI
             chatAdapter.notifyDataSetChanged()
 
         } catch (e: Exception) {
-            Log.e("MainActivity", "Error loading chats: ${e.message}")
+            Log.e(TAG, "Error loading chats: ${e.message}")
             Toast.makeText(this, "Error loading chats: ${e.message}", Toast.LENGTH_SHORT).show()
-            // If parsing fails, add a demo chat
-            //addDemoChat()
         }
     }
 
     private fun readChatsFromFile(): String {
-        val file = File(filesDir, "chats.json")
+        val file = File(filesDir, CHATS_FILE)
         return if (file.exists()) {
             file.readText()
         } else {
             ""
         }
     }
-
-//    private fun addDemoChat() {
-//        Log.d("MainActivity", "Adding demo chats")
-//        chatManager.clear()
-//        val currentTime = System.currentTimeMillis()
-//        val demoChats = listOf(
-//            Chat(
-//                id = "demo1",
-//                name = "Demo Group",
-//                lastMessage = "Welcome to FireChat! This is a demo message.",
-//                timestamp = currentTime - 6000,
-//                unreadCount =9,
-//                participantIds = mutableListOf("demo_user_1", "demo_user_2"),
-//                type = "group"
-//            ),
-//            Chat(
-//                id = "demo2",
-//                name = "John Doe",
-//                lastMessage = "Hey there! How are you doing?",
-//                timestamp = currentTime,
-//                unreadCount = 0,
-//                participantIds = mutableListOf("demo_user_1"),
-//                type = "direct"
-//            )
-//        )
-//
-//        // Add all demo chats to the stack
-//        chatManager.pushAll(demoChats)
-//
-//        // Save demo chats to local storage
-//        saveChatsToLocalStorage()
-//
-//        // Update UI
-//        chatAdapter.notifyDataSetChanged()
-//
-//        Log.d("MainActivity", "Demo chats added: ${chatManager.size()}")
-//    }
 
     private fun saveChatsToLocalStorage() {
         val jsonArray = JSONArray()
@@ -260,25 +199,23 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                     participantIdsArray.put(participantId)
                 }
                 put("participantIds", participantIdsArray)
-
-                put("type", chat.type ?: "direct")
+                put("type", chat.type)
             }
             jsonArray.put(chatObject)
         }
-        Log.d("MainActivity", "Saving ${chatManager.size()} chats to local storage")
+        Log.d(TAG, "Saving ${chatManager.size()} chats to local storage")
 
         val jsonString = jsonArray.toString()
         writeChatsToFile(jsonString)
-
     }
 
     private fun writeChatsToFile(jsonString: String) {
         try {
-            val file = File(filesDir, "chats.json")
+            val file = File(filesDir, CHATS_FILE)
             file.writeText(jsonString)
-            Log.d("MainActivity", "Chats saved to file: ${file.absolutePath}")
+            Log.d(TAG, "Chats saved to file: ${file.absolutePath}")
         } catch (e: Exception) {
-            Log.e("MainActivity", "Error writing to file: ${e.message}")
+            Log.e(TAG, "Error writing to file: ${e.message}")
         }
     }
 
@@ -289,8 +226,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         startActivity(intent)
         finish()
     }
-
-
 
     private fun mergeChatsFromFirebase() {
         firebaseDatabase = FirebaseDatabase.getInstance()
@@ -313,11 +248,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 // Add new Firebase chats to the stack without clearing existing ones
                 if (firebaseChats.isNotEmpty()) {
                     chatManager.pushAll(firebaseChats)
-
-                    // Save merged chats to local storage
                     saveChatsToLocalStorage()
-
-                    // Update UI
                     chatAdapter.notifyDataSetChanged()
                 }
             }
@@ -332,19 +263,14 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         })
     }
 
-
     private fun toggleSearchBar() {
         isSearchVisible = !isSearchVisible
 
-        // Make sure we're showing/hiding the correct container
         if (isSearchVisible) {
             searchContainer.visibility = View.VISIBLE
             searchBar.requestFocus()
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.showSoftInput(searchBar, InputMethodManager.SHOW_IMPLICIT)
-
-            // Log for debugging
-            Log.d("MainActivity", "Search bar should be visible now")
         } else {
             searchContainer.visibility = View.GONE
             searchBar.text.clear()
@@ -355,9 +281,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
             // Reset RecyclerView to show all chats
             chatAdapter = ChatAdapter(chatManager, this)
             chatRecyclerView.adapter = chatAdapter
-
-            // Log for debugging
-            Log.d("MainActivity", "Search bar should be hidden now")
         }
     }
 
@@ -397,5 +320,4 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
             }
         }
     }
-
 }

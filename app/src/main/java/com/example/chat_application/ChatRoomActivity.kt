@@ -1,16 +1,18 @@
 package com.example.chat_application
 
-import Chat
+
 import android.content.Intent
 import android.graphics.Rect
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.view.ViewTreeObserver.OnGlobalLayoutListener
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -27,6 +29,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
+
 class ChatRoomActivity : AppCompatActivity() {
 
     // UI Components
@@ -37,6 +40,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var menuBtn: ImageButton
     private lateinit var messagesRecyclerView: RecyclerView
     private lateinit var nameView : TextView
+    private lateinit var inputLayout: LinearLayout
 
 
     // Data & Adapters
@@ -107,13 +111,58 @@ class ChatRoomActivity : AppCompatActivity() {
                 // Detect keyboard visibility changes
                 if (lastVisibleHeight != 0 && lastVisibleHeight != visibleHeight) {
                     val isKeyboardVisible = lastVisibleHeight > visibleHeight
-                    // Custom animations or behavior can be added here
+
+                    if (isKeyboardVisible) {
+                        // Keyboard is now visible - adjust RecyclerView
+                        adjustRecyclerViewHeight()
+                    } else {
+                        // Keyboard is hidden - reset RecyclerView height if needed
+                        resetRecyclerViewHeight()
+                    }
                 }
 
                 lastVisibleHeight = visibleHeight
             }
         })
     }
+
+    private fun adjustRecyclerViewHeight() {
+        // Get position of input layout
+        val location = IntArray(2)
+        inputLayout.getLocationOnScreen(location)
+        val inputY = location[1]
+
+        // Apply padding (10dp)
+        val density: Float = resources.displayMetrics.density
+        val paddingBottom = (100 * density).toInt()
+
+        // Calculate and set new height
+        val newHeight = inputY - paddingBottom
+
+        val params = messagesRecyclerView.layoutParams
+        params.height = newHeight
+        messagesRecyclerView.layoutParams = params
+
+        // Scroll to bottom
+        messagesRecyclerView.scrollToPosition(messageList.size - 1)
+    }
+
+    private fun resetRecyclerViewHeight() {
+        // Reset to MATCH_PARENT
+        val params = messagesRecyclerView.layoutParams
+        params.height = ViewGroup.LayoutParams.MATCH_PARENT
+        messagesRecyclerView.layoutParams = params
+
+        // If you need additional space at the bottom, use padding instead
+        messagesRecyclerView.setPadding(
+            messagesRecyclerView.paddingLeft,
+            messagesRecyclerView.paddingTop,
+            messagesRecyclerView.paddingRight,
+            (35 * resources.displayMetrics.density).toInt() // 10dp bottom padding
+        )
+    }
+
+
 
     private fun initializeFirebase() {
         db = FirebaseFirestore.getInstance()
@@ -140,6 +189,7 @@ class ChatRoomActivity : AppCompatActivity() {
         menuBtn = findViewById(R.id.menuButton)
         messagesRecyclerView = findViewById(R.id.messagesRecyclerView)
         nameView = findViewById(R.id.contactNameTextView)
+        inputLayout= findViewById(R.id.messageInputLayout)
     }
 
     private fun setupRecyclerView() {
@@ -173,6 +223,8 @@ class ChatRoomActivity : AppCompatActivity() {
             finish()
         }
     }
+
+
 
 
     //region Message Handling
@@ -299,6 +351,7 @@ class ChatRoomActivity : AppCompatActivity() {
             // Update existing message
             messageList[existingIndex] = message
             messageAdapter.notifyItemChanged(existingIndex)
+            messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
         } else {
             // Add new message
             messageList.add(message)

@@ -1,18 +1,16 @@
+package com.example.chat_application
+
 import android.icu.text.SimpleDateFormat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.example.chat_application.R
-import java.util.Date
-import java.util.Locale
-import java.util.Stack
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
+import java.util.*
 
 @Parcelize
-
 data class Chat(
     val id: String,
     val name: String,
@@ -75,7 +73,6 @@ class ChatManager {
             }
             else -> {
                 // Names are equal, decide based on ID or other criterion
-                // (This prevents overwriting nodes with same names)
                 if (chat.id != node.chat.id) {
                     node.right = node.right?.let { insertNode(it, chat) } ?: ChatBSTNode(chat)
                 }
@@ -108,8 +105,7 @@ class ChatManager {
         val removed = chatStack.remove(chat)
 
         if (removed) {
-            // Rebuild BST after removal (for simplicity)
-            rebuildBST()
+            rebuildBST() // Rebuild BST after removal
         }
 
         return removed
@@ -141,7 +137,6 @@ class ChatManager {
         }
     }
 
-    // Existing methods for timestamp-based organization
     fun pop(): Chat? {
         if (chatStack.isEmpty()) return null
         val chat = chatStack.pop()
@@ -150,8 +145,7 @@ class ChatManager {
     }
 
     fun peek(): Chat? {
-        if (chatStack.isEmpty()) return null
-        return chatStack.peek()
+        return if (chatStack.isEmpty()) null else chatStack.peek()
     }
 
     fun size(): Int = chatStack.size
@@ -163,13 +157,9 @@ class ChatManager {
         bstRoot = null
     }
 
-    fun get(index: Int): Chat {
-        return chatStack[index]
-    }
+    fun get(index: Int): Chat = chatStack[index]
 
-    fun getAll(): List<Chat> {
-        return chatStack.toList()
-    }
+    fun getAll(): List<Chat> = chatStack.toList()
 
     // Sort chats by timestamp (newest first)
     private fun sortByTimestamp() {
@@ -226,11 +216,7 @@ class ChatAdapter(private val chatManager: ChatManager, private val listener: On
             // Show unread count if any
             if (chat.unreadCount > 0) {
                 unreadCountTextView.visibility = View.VISIBLE
-                if (chat.unreadCount > 99) {
-                    unreadCountTextView.text = "99+"
-                } else {
-                    unreadCountTextView.text = chat.unreadCount.toString()
-                }
+                unreadCountTextView.text = if (chat.unreadCount > 99) "99+" else chat.unreadCount.toString()
             } else {
                 unreadCountTextView.visibility = View.GONE
             }
@@ -254,8 +240,6 @@ class ChatAdapter(private val chatManager: ChatManager, private val listener: On
     override fun getItemCount(): Int = chatManager.size()
 }
 
-
-
 class ChatCreationManager(private val chatManager: ChatManager) {
 
     // Create a new chat and return it without saving
@@ -273,33 +257,24 @@ class ChatCreationManager(private val chatManager: ChatManager) {
 
     // Save a chat to both local storage and data structures
     fun saveChat(chat: Chat) {
-        // Add to ChatManager (both stack and BST)
         chatManager.push(chat)
-
-        // Save to local storage
         saveChatsToLocalStorage()
     }
 
     // Save multiple chats at once
     fun saveChats(chats: List<Chat>) {
-        // Add all to ChatManager
         chatManager.pushAll(chats)
-
-        // Save to local storage
         saveChatsToLocalStorage()
     }
 
-    // Save all chats to local storage
+    // Save all chats to local storage - needs implementation
     private fun saveChatsToLocalStorage() {
-        // Get all chats from ChatManager
-        val allChats = chatManager.getAll()
-
-        // Convert to JSON and save (implementation remains the same as your original code)
-        // ...
+        // Implementation needs to be added
+        // This should convert chats to JSON and save to file
     }
 
     // Generate a unique ID for new chats
     private fun generateUniqueId(): String {
-        return "chat_" + System.currentTimeMillis() + "_" + (0..999).random()
+        return "chat_${System.currentTimeMillis()}_${(0..999).random()}"
     }
 }
