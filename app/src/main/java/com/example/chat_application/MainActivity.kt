@@ -3,11 +3,18 @@ package com.example.chat_application
 import Chat
 import ChatAdapter
 import ChatManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
+import android.view.View
+import android.view.inputmethod.InputMethodManager
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -28,6 +35,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     private lateinit var settingsButton: ImageView
     private lateinit var newChatFab: FloatingActionButton
     private lateinit var bottomNavigation: BottomNavigationView
+    private lateinit var searchBar: EditText
+    private lateinit var searchContainer: LinearLayout
+    private var isSearchVisible = false
 
     private lateinit var chatAdapter: ChatAdapter
     private val chatManager = ChatManager()
@@ -51,21 +61,17 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     }
 
 
-
-
-
-
-
-
-
-
-
     private fun initViews() {
         chatRecyclerView = findViewById(R.id.chatRecyclerView)
         searchButton = findViewById(R.id.searchButton)
         settingsButton = findViewById(R.id.settingsButton)
         newChatFab = findViewById(R.id.newChatFab)
         bottomNavigation = findViewById(R.id.bottomNavigation)
+        searchBar = findViewById(R.id.searchBar)
+        searchContainer = findViewById(R.id.searchContainer)
+
+        // Initially hide search bar
+        searchContainer.visibility = View.GONE
 
         settingsButton.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
@@ -76,9 +82,19 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     private fun setupUI() {
         // Setup search button
         searchButton.setOnClickListener {
-            Toast.makeText(this, "Search clicked", Toast.LENGTH_SHORT).show()
-            // TODO: Implement search functionality
+            toggleSearchBar()
         }
+
+        // Setup search bar functionality
+        searchBar.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+
+            override fun afterTextChanged(s: Editable?) {
+                performSearch(s.toString())
+            }
+        })
 
         // Setup settings button
         settingsButton.setOnClickListener {
@@ -135,7 +151,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         if (!file.exists() || jsonString.isEmpty()) {
             // File doesn't exist or is empty, create it with demo chats
             Log.d("MainActivity", "No chats file found, creating demo chats")
-            addDemoChat()
+            //addDemoChat()
             return
         }
 
@@ -176,7 +192,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
             Log.e("MainActivity", "Error loading chats: ${e.message}")
             Toast.makeText(this, "Error loading chats: ${e.message}", Toast.LENGTH_SHORT).show()
             // If parsing fails, add a demo chat
-            addDemoChat()
+            //addDemoChat()
         }
     }
 
@@ -189,42 +205,42 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         }
     }
 
-    private fun addDemoChat() {
-        Log.d("MainActivity", "Adding demo chats")
-        chatManager.clear()
-        val currentTime = System.currentTimeMillis()
-        val demoChats = listOf(
-            Chat(
-                id = "demo1",
-                name = "Demo Group",
-                lastMessage = "Welcome to FireChat! This is a demo message.",
-                timestamp = currentTime - 6000,
-                unreadCount =9,
-                participantIds = mutableListOf("demo_user_1", "demo_user_2"),
-                type = "group"
-            ),
-            Chat(
-                id = "demo2",
-                name = "John Doe",
-                lastMessage = "Hey there! How are you doing?",
-                timestamp = currentTime,
-                unreadCount = 0,
-                participantIds = mutableListOf("demo_user_1"),
-                type = "direct"
-            )
-        )
-
-        // Add all demo chats to the stack
-        chatManager.pushAll(demoChats)
-
-        // Save demo chats to local storage
-        saveChatsToLocalStorage()
-
-        // Update UI
-        chatAdapter.notifyDataSetChanged()
-
-        Log.d("MainActivity", "Demo chats added: ${chatManager.size()}")
-    }
+//    private fun addDemoChat() {
+//        Log.d("MainActivity", "Adding demo chats")
+//        chatManager.clear()
+//        val currentTime = System.currentTimeMillis()
+//        val demoChats = listOf(
+//            Chat(
+//                id = "demo1",
+//                name = "Demo Group",
+//                lastMessage = "Welcome to FireChat! This is a demo message.",
+//                timestamp = currentTime - 6000,
+//                unreadCount =9,
+//                participantIds = mutableListOf("demo_user_1", "demo_user_2"),
+//                type = "group"
+//            ),
+//            Chat(
+//                id = "demo2",
+//                name = "John Doe",
+//                lastMessage = "Hey there! How are you doing?",
+//                timestamp = currentTime,
+//                unreadCount = 0,
+//                participantIds = mutableListOf("demo_user_1"),
+//                type = "direct"
+//            )
+//        )
+//
+//        // Add all demo chats to the stack
+//        chatManager.pushAll(demoChats)
+//
+//        // Save demo chats to local storage
+//        saveChatsToLocalStorage()
+//
+//        // Update UI
+//        chatAdapter.notifyDataSetChanged()
+//
+//        Log.d("MainActivity", "Demo chats added: ${chatManager.size()}")
+//    }
 
     private fun saveChatsToLocalStorage() {
         val jsonArray = JSONArray()
@@ -316,5 +332,70 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         })
     }
 
+
+    private fun toggleSearchBar() {
+        isSearchVisible = !isSearchVisible
+
+        // Make sure we're showing/hiding the correct container
+        if (isSearchVisible) {
+            searchContainer.visibility = View.VISIBLE
+            searchBar.requestFocus()
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(searchBar, InputMethodManager.SHOW_IMPLICIT)
+
+            // Log for debugging
+            Log.d("MainActivity", "Search bar should be visible now")
+        } else {
+            searchContainer.visibility = View.GONE
+            searchBar.text.clear()
+            // Hide keyboard
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(searchBar.windowToken, 0)
+
+            // Reset RecyclerView to show all chats
+            chatAdapter = ChatAdapter(chatManager, this)
+            chatRecyclerView.adapter = chatAdapter
+
+            // Log for debugging
+            Log.d("MainActivity", "Search bar should be hidden now")
+        }
+    }
+
+    private fun performSearch(query: String) {
+        if (query.isEmpty()) {
+            // Show all chats when query is empty
+            chatAdapter = ChatAdapter(chatManager, this)
+            chatRecyclerView.adapter = chatAdapter
+            return
+        }
+
+        // Use binary search to find matching chats
+        val matchingChat = chatManager.findByName(query)
+
+        if (matchingChat != null) {
+            // Show only the exact match
+            val singleChatManager = ChatManager()
+            singleChatManager.push(matchingChat)
+            chatAdapter = ChatAdapter(singleChatManager, this)
+            chatRecyclerView.adapter = chatAdapter
+        } else {
+            // If no exact match, try to find partial matches
+            val partialMatches = chatManager.findPartialMatches(query)
+
+            if (partialMatches.isNotEmpty()) {
+                val tempChatManager = ChatManager()
+                tempChatManager.pushAll(partialMatches)
+                chatAdapter = ChatAdapter(tempChatManager, this)
+                chatRecyclerView.adapter = chatAdapter
+            } else {
+                // Display a message for no results
+                Toast.makeText(this, "No chats found matching '$query'", Toast.LENGTH_SHORT).show()
+                // Show empty list
+                val emptyChatManager = ChatManager()
+                chatAdapter = ChatAdapter(emptyChatManager, this)
+                chatRecyclerView.adapter = chatAdapter
+            }
+        }
+    }
 
 }

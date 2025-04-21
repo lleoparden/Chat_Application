@@ -29,6 +29,8 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+
+
         <ImageView
             android:id="@+id/searchButton"
             android:layout_width="32dp"
@@ -61,6 +63,29 @@
 
     <!-- RecyclerView for chat messages -->
 
+    <LinearLayout
+        android:id="@+id/searchContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@+id/topBar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <EditText
+            android:id="@+id/searchBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Search chat by name..."
+            android:inputType="text"
+            android:padding="12dp"
+            android:background="@drawable/search_background"
+            android:drawablePadding="8dp"
+            android:imeOptions="actionSearch"/>
+    </LinearLayout>
+
     <!-- Floating Action Button -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/chatRecyclerView"
@@ -70,9 +95,7 @@
         android:clipToPadding="false"
         android:padding="8dp"
         app:layout_constraintBottom_toTopOf="@+id/bottomNavigation"
-        app:layout_constraintTop_toBottomOf="@+id/topBar"
-        app:layout_constraintVertical_bias="0.0"
-        tools:layout_editor_absoluteX="0dp" />
+        app:layout_constraintTop_toBottomOf="@+id/searchContainer"/>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/newChatFab"

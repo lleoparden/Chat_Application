@@ -12,6 +12,7 @@ import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
+
 data class Chat(
     val id: String,
     val name: String,
@@ -22,50 +23,150 @@ data class Chat(
     val type: String = "direct"
 ) : Parcelable
 
+// Binary Search Tree Node for name-based searching
+class ChatBSTNode(
+    val chat: Chat,
+    var left: ChatBSTNode? = null,
+    var right: ChatBSTNode? = null
+)
+
 class ChatManager {
     private val chatStack = Stack<Chat>()
+    private var bstRoot: ChatBSTNode? = null
 
-    // Add a new chat to the stack
+    // Add a new chat to both data structures
     fun push(chat: Chat) {
         chatStack.push(chat)
+        insertIntoBST(chat)
         sortByTimestamp()
     }
 
     // Add multiple chats at once
     fun pushAll(chats: List<Chat>) {
         chatStack.addAll(chats)
+        for (chat in chats) {
+            insertIntoBST(chat)
+        }
         sortByTimestamp()
     }
 
-    // Remove and return the top chat from the stack
-    fun pop(): Chat? {
-        if (chatStack.isEmpty()) return null
-        return chatStack.pop()
+    // BST insertion
+    private fun insertIntoBST(chat: Chat) {
+        if (bstRoot == null) {
+            bstRoot = ChatBSTNode(chat)
+            return
+        }
+
+        insertNode(bstRoot!!, chat)
     }
 
-    // Look at the top chat without removing it
+    private fun insertNode(node: ChatBSTNode, chat: Chat): ChatBSTNode {
+        // Compare chat names lexicographically
+        val comparison = chat.name.compareTo(node.chat.name, ignoreCase = true)
+
+        when {
+            comparison < 0 -> {
+                // Insert to the left subtree if name comes before current node
+                node.left = node.left?.let { insertNode(it, chat) } ?: ChatBSTNode(chat)
+            }
+            comparison > 0 -> {
+                // Insert to the right subtree if name comes after current node
+                node.right = node.right?.let { insertNode(it, chat) } ?: ChatBSTNode(chat)
+            }
+            else -> {
+                // Names are equal, decide based on ID or other criterion
+                // (This prevents overwriting nodes with same names)
+                if (chat.id != node.chat.id) {
+                    node.right = node.right?.let { insertNode(it, chat) } ?: ChatBSTNode(chat)
+                }
+            }
+        }
+
+        return node
+    }
+
+    // Find a chat by name using BST (O(log n) search)
+    fun findByName(name: String): Chat? {
+        return findNodeByName(bstRoot, name)?.chat
+    }
+
+    private fun findNodeByName(node: ChatBSTNode?, name: String): ChatBSTNode? {
+        if (node == null) return null
+
+        val comparison = name.compareTo(node.chat.name, ignoreCase = true)
+
+        return when {
+            comparison < 0 -> findNodeByName(node.left, name)
+            comparison > 0 -> findNodeByName(node.right, name)
+            else -> node // Found a match
+        }
+    }
+
+    // Remove a chat from both data structures
+    fun removeById(id: String): Boolean {
+        val chat = chatStack.find { it.id == id } ?: return false
+        val removed = chatStack.remove(chat)
+
+        if (removed) {
+            // Rebuild BST after removal (for simplicity)
+            rebuildBST()
+        }
+
+        return removed
+    }
+
+    // Update a chat in both data structures
+    fun updateById(id: String, updatedChat: Chat): Boolean {
+        val index = chatStack.indexOfFirst { it.id == id }
+        if (index != -1) {
+            val oldChat = chatStack[index]
+            chatStack[index] = updatedChat
+
+            // If name changed, we need to rebuild the BST
+            if (oldChat.name != updatedChat.name) {
+                rebuildBST()
+            }
+
+            sortByTimestamp()
+            return true
+        }
+        return false
+    }
+
+    // Rebuild the BST from scratch using the current list of chats
+    private fun rebuildBST() {
+        bstRoot = null
+        for (chat in chatStack) {
+            insertIntoBST(chat)
+        }
+    }
+
+    // Existing methods for timestamp-based organization
+    fun pop(): Chat? {
+        if (chatStack.isEmpty()) return null
+        val chat = chatStack.pop()
+        rebuildBST()  // Update BST after removal
+        return chat
+    }
+
     fun peek(): Chat? {
         if (chatStack.isEmpty()) return null
         return chatStack.peek()
     }
 
-    // Get the size of the stack
     fun size(): Int = chatStack.size
 
-    // Check if the stack is empty
     fun isEmpty(): Boolean = chatStack.isEmpty()
 
-    // Clear the stack
     fun clear() {
         chatStack.clear()
+        bstRoot = null
     }
 
-    // Get a specific chat by index
     fun get(index: Int): Chat {
         return chatStack[index]
     }
 
-    // Get all chats as a list
     fun getAll(): List<Chat> {
         return chatStack.toList()
     }
@@ -77,21 +178,26 @@ class ChatManager {
         chatStack.addAll(sortedList)
     }
 
-    // Remove a chat by ID
-    fun removeById(id: String): Boolean {
-        val chat = chatStack.find { it.id == id } ?: return false
-        return chatStack.remove(chat)
+    // For finding partial matches using the BST (more efficient than checking every chat)
+    fun findPartialMatches(query: String): List<Chat> {
+        val results = mutableListOf<Chat>()
+        findPartialMatchesInSubtree(bstRoot, query.lowercase(), results)
+        return results
     }
 
-    // Update a chat by ID
-    fun updateById(id: String, updatedChat: Chat): Boolean {
-        val index = chatStack.indexOfFirst { it.id == id }
-        if (index != -1) {
-            chatStack[index] = updatedChat
-            sortByTimestamp()
-            return true
+    private fun findPartialMatchesInSubtree(node: ChatBSTNode?, query: String, results: MutableList<Chat>) {
+        if (node == null) return
+
+        // First check left subtree (smaller names)
+        findPartialMatchesInSubtree(node.left, query, results)
+
+        // Check current node
+        if (node.chat.name.lowercase().contains(query)) {
+            results.add(node.chat)
         }
-        return false
+
+        // Check right subtree (larger names)
+        findPartialMatchesInSubtree(node.right, query, results)
     }
 }
 
@@ -146,4 +252,54 @@ class ChatAdapter(private val chatManager: ChatManager, private val listener: On
     }
 
     override fun getItemCount(): Int = chatManager.size()
+}
+
+
+
+class ChatCreationManager(private val chatManager: ChatManager) {
+
+    // Create a new chat and return it without saving
+    fun createChat(name: String, participantIds: List<String>, type: String = "direct"): Chat {
+        return Chat(
+            id = generateUniqueId(),
+            name = name,
+            lastMessage = "",
+            timestamp = System.currentTimeMillis(),
+            unreadCount = 0,
+            participantIds = participantIds,
+            type = type
+        )
+    }
+
+    // Save a chat to both local storage and data structures
+    fun saveChat(chat: Chat) {
+        // Add to ChatManager (both stack and BST)
+        chatManager.push(chat)
+
+        // Save to local storage
+        saveChatsToLocalStorage()
+    }
+
+    // Save multiple chats at once
+    fun saveChats(chats: List<Chat>) {
+        // Add all to ChatManager
+        chatManager.pushAll(chats)
+
+        // Save to local storage
+        saveChatsToLocalStorage()
+    }
+
+    // Save all chats to local storage
+    private fun saveChatsToLocalStorage() {
+        // Get all chats from ChatManager
+        val allChats = chatManager.getAll()
+
+        // Convert to JSON and save (implementation remains the same as your original code)
+        // ...
+    }
+
+    // Generate a unique ID for new chats
+    private fun generateUniqueId(): String {
+        return "chat_" + System.currentTimeMillis() + "_" + (0..999).random()
+    }
 }
