@@ -48,31 +48,8 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         setupUI()
         setupRecyclerView()
         loadChats()
-        setupLogoutButton()
     }
 
-    private fun setupLogoutButton() {
-        val logoutButton = findViewById<Button>(R.id.logoutButton)
-        logoutButton.setOnClickListener {
-            logout()
-        }
-    }
-
-    private fun logout() {
-        // Clear user session from SharedPreferences
-        val prefs = getSharedPreferences("ChatAppPrefs", MODE_PRIVATE)
-        prefs.edit().remove("userId").apply()
-
-        // Reset UserSettings
-        UserSettings.userId = ""
-
-        // Navigate back to AuthActivity
-        val intent = Intent(this, AuthActivity::class.java)
-        // Clear back stack so user can't go back to MainActivity after logout
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
-        finish()
-    }
 
 
 
@@ -89,6 +66,11 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         settingsButton = findViewById(R.id.settingsButton)
         newChatFab = findViewById(R.id.newChatFab)
         bottomNavigation = findViewById(R.id.bottomNavigation)
+
+        settingsButton.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+            finish()
+        }
     }
 
     private fun setupUI() {
@@ -106,25 +88,8 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
         // Setup FAB
         newChatFab.setOnClickListener {
-            Toast.makeText(this, "New chat clicked", Toast.LENGTH_SHORT).show()
-            // Create a new chat and push it to the stack
-            val currentTime = System.currentTimeMillis()
-            val newChat = Chat(
-                id = "demo" + UUID.randomUUID().toString().substring(0, 8),
-                name = "New Chat",
-                lastMessage = "This is a new conversation",
-                timestamp = currentTime,
-                unreadCount = 1
-            )
-
-            // Push to stack
-            chatManager.push(newChat)
-
-            // Save chats to local storage
-            saveChatsToLocalStorage()
-
-            // Update UI
-            chatAdapter.notifyDataSetChanged()
+            startActivity(Intent(this, AddNewChatActivity::class.java))
+            finish()
         }
 
         // Setup bottom navigation

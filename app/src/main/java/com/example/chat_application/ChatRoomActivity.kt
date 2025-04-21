@@ -36,6 +36,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var profilePic: ImageButton
     private lateinit var menuBtn: ImageButton
     private lateinit var messagesRecyclerView: RecyclerView
+    private lateinit var nameView : TextView
 
 
     // Data & Adapters
@@ -138,6 +139,7 @@ class ChatRoomActivity : AppCompatActivity() {
         inputText = findViewById(R.id.messageInput)
         menuBtn = findViewById(R.id.menuButton)
         messagesRecyclerView = findViewById(R.id.messagesRecyclerView)
+        nameView = findViewById(R.id.contactNameTextView)
     }
 
     private fun setupRecyclerView() {
@@ -159,6 +161,16 @@ class ChatRoomActivity : AppCompatActivity() {
                 sendMessage(textMsg)
                 inputText.text.clear()
             }
+        }
+
+        profilePic.setOnClickListener{
+            startActivity(Intent(this, UserProfileActivity::class.java))
+            finish()
+        }
+
+        nameView.setOnClickListener{
+            startActivity(Intent(this, UserProfileActivity::class.java))
+            finish()
         }
     }
 

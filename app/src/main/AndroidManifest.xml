@@ -45,7 +45,7 @@
             android:name=".NotificationActivity"
             android:exported="true" />
         <activity
-            android:name=".ProfileActivity"
+            android:name=".EditProfileActivity"
             android:exported="true" />
         <activity
             android:name=".SettingsActivity"
@@ -53,6 +53,13 @@
         <activity
             android:name=".StoryActivity"
             android:exported="true" />
+        <activity
+            android:name=".AddNewChatActivity"
+            android:exported="true" />
+        <activity
+            android:name=".UserProfileActivity"
+            android:exported="true" />
+
     </application>
 
 </manifest>
