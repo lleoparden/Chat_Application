@@ -1,13 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?attr/BG"
     >
 
     <ImageView
-        android:id="@+id/imageView4"
+
+        android:id="@+id/topleftbg"
+        android:layout_width="125dp"
+        android:layout_height="289dp"
+        android:scaleType="centerCrop"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.0"
+        app:srcCompat="@drawable/topleft" />
+
+    <ImageView
+        android:id="@+id/bottomleftbg"
         android:layout_width="218dp"
         android:layout_height="465dp"
         android:scaleType="centerCrop"
@@ -20,7 +35,7 @@
         app:srcCompat="@drawable/botleft" />
 
     <ImageView
-        android:id="@+id/imageView5"
+        android:id="@+id/bottomrightbg"
         android:layout_width="245dp"
         android:layout_height="519dp"
         android:scaleType="centerCrop"
@@ -33,48 +48,7 @@
         app:srcCompat="@drawable/botright" />
 
     <ImageView
-        android:id="@+id/imageView8"
-        android:layout_width="135dp"
-        android:layout_height="356dp"
-        android:scaleType="fitEnd"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.872"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.718"
-        app:srcCompat="@drawable/circle2" />
-
-    <ImageView
-        android:id="@+id/imageView7"
-        android:layout_width="190dp"
-        android:layout_height="522dp"
-        android:scaleType="fitEnd"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.399"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.975"
-        app:srcCompat="@drawable/circle1" />
-
-    <ImageView
-
-        android:id="@+id/imageView3"
-        android:layout_width="125dp"
-        android:layout_height="289dp"
-        android:scaleType="centerCrop"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.0"
-        app:srcCompat="@drawable/topleft" />
-
-
-    <ImageView
-        android:id="@+id/imageView6"
+        android:id="@+id/toprightbg"
         android:layout_width="243dp"
         android:layout_height="450dp"
         android:scaleType="centerCrop"
@@ -87,7 +61,33 @@
         app:srcCompat="@drawable/topright" />
 
     <ImageView
-        android:id="@+id/imageView9"
+        android:id="@+id/ballbottomright"
+        android:layout_width="135dp"
+        android:layout_height="356dp"
+        android:scaleType="fitEnd"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.872"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.718"
+        app:srcCompat="@drawable/circle2" />
+
+    <ImageView
+        android:id="@+id/ballbottomleft"
+        android:layout_width="190dp"
+        android:layout_height="522dp"
+        android:scaleType="fitEnd"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.399"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.975"
+        app:srcCompat="@drawable/circle1" />
+
+    <ImageView
+        android:id="@+id/balltopright"
         android:layout_width="119dp"
         android:layout_height="331dp"
         android:scaleType="fitStart"
@@ -100,7 +100,7 @@
         app:srcCompat="@drawable/circle3" />
 
     <ImageView
-        android:id="@+id/imageView10"
+        android:id="@+id/balltopleft"
         android:layout_width="117dp"
         android:layout_height="427dp"
         android:scaleType="fitStart"
@@ -113,8 +113,9 @@
         app:srcCompat="@drawable/circle4" />
 
     <LinearLayout
-        android:layout_width="278dp"
-        android:layout_height="472dp"
+        android:id="@+id/signUpLayout"
+        android:layout_width="293dp"
+        android:layout_height="508dp"
         android:layout_marginLeft="50dp"
         android:layout_marginTop="50dp"
         android:layout_marginRight="50dp"
@@ -127,13 +128,13 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.499">
+        app:layout_constraintVertical_bias="0.688">
 
         <EditText
             android:id="@+id/signUpName"
             android:layout_width="wrap_content"
             android:layout_height="37dp"
-            android:layout_marginBottom="15dp"
+            android:layout_marginBottom="30dp"
             android:background="@drawable/border"
             android:ems="10"
             android:hint="  Name"
@@ -142,25 +143,28 @@
         <EditText
             android:id="@+id/signInPhone"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="15dp"
+            android:layout_height="39dp"
+            android:layout_marginBottom="30dp"
+            android:background="@drawable/border"
+            android:hint="  Phone Number"
             android:ems="10"
             android:inputType="phone" />
 
         <EditText
             android:id="@+id/signInPassword"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="37dp"
             android:layout_marginBottom="15dp"
+            android:background="@drawable/border"
             android:ems="10"
+            android:hint="  Password"
             android:inputType="textPassword" />
 
         <TextView
             android:id="@+id/switchSignInButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="15dp"
+            android:layout_marginBottom="25dp"
             android:text="Log in instead?"
             android:textColor="?attr/AuthText"
             android:textSize="16sp" />
