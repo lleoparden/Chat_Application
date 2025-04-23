@@ -1,7 +1,6 @@
 package com.example.chat_application
 
 
-
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -29,7 +28,7 @@ import java.io.File
 private const val TAG = "MainActivity"
 private const val CHATS_FILE = "chats.json"
 
-class MainActivity :  AppCompatActivity(), ChatAdapter.OnChatClickListener {
+class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
     private lateinit var chatRecyclerView: RecyclerView
     private lateinit var searchButton: ImageView
@@ -109,6 +108,7 @@ class MainActivity :  AppCompatActivity(), ChatAdapter.OnChatClickListener {
                     finish()
                     true
                 }
+
                 else -> false
             }
         }
@@ -134,8 +134,10 @@ class MainActivity :  AppCompatActivity(), ChatAdapter.OnChatClickListener {
         Log.d(TAG, "Loading chats from local storage")
         val jsonString = readChatsFromFile()
 
+
         if (jsonString.isEmpty()) {
             Log.d(TAG, "No chats file found or empty file")
+            addDemoChat()
             return
         }
 
@@ -265,6 +267,43 @@ class MainActivity :  AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 ).show()
             }
         })
+    }
+
+    private fun addDemoChat() {
+        Log.d("MainActivity", "Adding demo chats")
+        chatManager.clear()
+        val currentTime = System.currentTimeMillis()
+        val demoChats = listOf(
+            Chat(
+                id = "demo1",
+                name = "Demo Group",
+                lastMessage = "Welcome to FireChat! This is a demo message.",
+                timestamp = currentTime - 6000,
+                unreadCount = 9,
+                participantIds = mutableListOf("demo_user_1", "demo_user_2"),
+                type = "group"
+            ),
+            Chat(
+                id = "demo2",
+                name = "John Doe",
+                lastMessage = "Hey there! How are you doing?",
+                timestamp = currentTime,
+                unreadCount = 0,
+                participantIds = mutableListOf("demo_user_1"),
+                type = "direct"
+            )
+        )
+
+        // Add all demo chats to the stack
+        chatManager.pushAll(demoChats)
+
+        // Save demo chats to local storage
+        saveChatsToLocalStorage()
+
+        // Update UI
+        chatAdapter.notifyDataSetChanged()
+
+        Log.d("MainActivity", "Demo chats added: ${chatManager.size()}")
     }
 
     private fun toggleSearchBar() {

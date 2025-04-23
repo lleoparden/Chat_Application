@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import java.io.File
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -126,6 +127,8 @@ class SettingsActivity : AppCompatActivity() {
         try {
             var deletedCount = 0
             var failedCount = 0
+
+            File(filesDir, "local_users.json").delete()
 
             // Find all message files in the app's internal storage
             val files = filesDir.listFiles { file ->
