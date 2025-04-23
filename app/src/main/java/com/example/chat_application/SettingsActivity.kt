@@ -13,6 +13,10 @@ import androidx.appcompat.widget.Toolbar
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var deleteChats : LinearLayout
+
+
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(UserSettings.theme)
         super.onCreate(savedInstanceState)
