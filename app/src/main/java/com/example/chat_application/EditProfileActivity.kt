@@ -1,5 +1,6 @@
 package com.example.chat_application
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -11,6 +12,14 @@ class EditProfileActivity  : AppCompatActivity(){
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.edit_profile)
+
+
+        val backButton = findViewById<Toolbar>(R.id.toolbar)
+
+        backButton.setNavigationOnClickListener {
+            val intent = Intent(this, MainActivity::class.java)
+            startActivity(intent)
+        }
 
 
     }

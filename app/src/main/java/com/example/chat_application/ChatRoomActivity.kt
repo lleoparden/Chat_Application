@@ -1,6 +1,5 @@
 package com.example.chat_application
 
-
 import android.content.Intent
 import android.graphics.Rect
 import android.os.Bundle
@@ -25,10 +24,10 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.auth.User
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-
 
 class ChatRoomActivity : AppCompatActivity() {
 
@@ -39,9 +38,8 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var profilePic: ImageButton
     private lateinit var menuBtn: ImageButton
     private lateinit var messagesRecyclerView: RecyclerView
-    private lateinit var nameView : TextView
+    private lateinit var nameView: TextView
     private lateinit var inputLayout: LinearLayout
-
 
     // Data & Adapters
     private lateinit var messageAdapter: MessageAdapter
@@ -57,22 +55,18 @@ class ChatRoomActivity : AppCompatActivity() {
     private var messagesListener: ChildEventListener? = null
 
     // Storage
-    private lateinit var localChat: File
+    private lateinit var chatMessagesFile: File
+
+    private lateinit var chat : Chat
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setupThemeAndLayout(savedInstanceState)
         setupKeyboardBehavior()
-        initializeFirebase()
-        setupChatInfo()
-        initializeViews()
-        setupRecyclerView()
+        initializeComponents()
         setupClickListeners()
 
-        //!uncomment to clear jason file
-        //File(filesDir, "messages.json").delete()
-
-
         loadMessagesFromLocalStorage()
+
         if (resources.getBoolean(R.bool.firebaseOn)) {
             setupRealtimeMessageListener()
         }
@@ -80,7 +74,6 @@ class ChatRoomActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Remove the realtime listener when activity is destroyed
         removeRealtimeMessageListener()
     }
 
@@ -91,6 +84,47 @@ class ChatRoomActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.chatroom)
+    }
+
+    private fun initializeComponents() {
+        // Initialize Firebase
+        db = FirebaseFirestore.getInstance()
+        database = FirebaseDatabase.getInstance().reference
+
+        // Set up chat info
+        chat = intent.getParcelableExtra<Chat>("CHAT_OBJECT")
+            ?: Chat(id = "", name = "Chat", lastMessage = "", timestamp = 0, unreadCount = 0)
+        chatId = chat.id
+
+        // Initialize UI elements
+        initializeViews()
+
+        // Set contact name in the top bar
+        nameView.text = chat.name
+
+        // Initialize RecyclerView
+        setupRecyclerView()
+
+        // Initialize chat-specific messages file
+        chatMessagesFile = File(filesDir, "messages_${chatId}.json")
+    }
+
+    private fun initializeViews() {
+        sendBtn = findViewById(R.id.sendButton)
+        backBtn = findViewById(R.id.backButton)
+        profilePic = findViewById(R.id.accountpic)
+        inputText = findViewById(R.id.messageInput)
+        menuBtn = findViewById(R.id.menuButton)
+        messagesRecyclerView = findViewById(R.id.messagesRecyclerView)
+        nameView = findViewById(R.id.contactNameTextView)
+        inputLayout = findViewById(R.id.messageInputLayout)
+    }
+
+    private fun setupRecyclerView() {
+        messageAdapter = MessageAdapter(currentUserId, messageList)
+        val layoutManager = LinearLayoutManager(this)
+        messagesRecyclerView.layoutManager = layoutManager
+        messagesRecyclerView.adapter = messageAdapter
     }
 
     private fun setupKeyboardBehavior() {
@@ -113,10 +147,8 @@ class ChatRoomActivity : AppCompatActivity() {
                     val isKeyboardVisible = lastVisibleHeight > visibleHeight
 
                     if (isKeyboardVisible) {
-                        // Keyboard is now visible - adjust RecyclerView
                         adjustRecyclerViewHeight()
                     } else {
-                        // Keyboard is hidden - reset RecyclerView height if needed
                         resetRecyclerViewHeight()
                     }
                 }
@@ -132,7 +164,7 @@ class ChatRoomActivity : AppCompatActivity() {
         inputLayout.getLocationOnScreen(location)
         val inputY = location[1]
 
-        // Apply padding (10dp)
+        // Apply padding
         val density: Float = resources.displayMetrics.density
         val paddingBottom = (100 * density).toInt()
 
@@ -153,50 +185,13 @@ class ChatRoomActivity : AppCompatActivity() {
         params.height = ViewGroup.LayoutParams.MATCH_PARENT
         messagesRecyclerView.layoutParams = params
 
-        // If you need additional space at the bottom, use padding instead
+        // Add bottom padding for spacing
         messagesRecyclerView.setPadding(
             messagesRecyclerView.paddingLeft,
             messagesRecyclerView.paddingTop,
             messagesRecyclerView.paddingRight,
-            (35 * resources.displayMetrics.density).toInt() // 10dp bottom padding
+            (35 * resources.displayMetrics.density).toInt()
         )
-    }
-
-
-
-    private fun initializeFirebase() {
-        db = FirebaseFirestore.getInstance()
-        database = FirebaseDatabase.getInstance().reference
-    }
-
-    private fun setupChatInfo() {
-        // Retrieve the chat object from intent
-        val chat = intent.getParcelableExtra<Chat>("CHAT_OBJECT")
-            ?: Chat(id = "", name = "Chat", lastMessage = "", timestamp = 0, unreadCount = 0)
-
-        chatId = chat.id
-
-        // Set the contact name in the top bar
-        val contactNameTextView = findViewById<TextView>(R.id.contactNameTextView)
-        contactNameTextView.text = chat.name
-    }
-
-    private fun initializeViews() {
-        sendBtn = findViewById(R.id.sendButton)
-        backBtn = findViewById(R.id.backButton)
-        profilePic = findViewById(R.id.accountpic)
-        inputText = findViewById(R.id.messageInput)
-        menuBtn = findViewById(R.id.menuButton)
-        messagesRecyclerView = findViewById(R.id.messagesRecyclerView)
-        nameView = findViewById(R.id.contactNameTextView)
-        inputLayout= findViewById(R.id.messageInputLayout)
-    }
-
-    private fun setupRecyclerView() {
-        messageAdapter = MessageAdapter(currentUserId, messageList)
-        val layoutManager = LinearLayoutManager(this)
-        messagesRecyclerView.layoutManager = layoutManager
-        messagesRecyclerView.adapter = messageAdapter
     }
 
     private fun setupClickListeners() {
@@ -213,19 +208,24 @@ class ChatRoomActivity : AppCompatActivity() {
             }
         }
 
-        profilePic.setOnClickListener{
-            startActivity(Intent(this, UserProfileActivity::class.java))
+        profilePic.setOnClickListener {
+            val intent = Intent(this, UserProfileActivity::class.java).apply {
+                putExtra("came_from", "ChatRoom")
+                putExtra("CHAT_OBJECT", chat)
+            }
+            startActivity(intent)
             finish()
         }
 
-        nameView.setOnClickListener{
-            startActivity(Intent(this, UserProfileActivity::class.java))
+        nameView.setOnClickListener {
+            val intent = Intent(this, UserProfileActivity::class.java).apply {
+                putExtra("came_from", "ChatRoom")
+                putExtra("CHAT_OBJECT", chat)
+            }
+            startActivity(intent)
             finish()
         }
     }
-
-
-
 
     //region Message Handling
 
@@ -241,27 +241,139 @@ class ChatRoomActivity : AppCompatActivity() {
             readStatus = mapOf()
         )
 
-        // We don't need to add to messageList here anymore since the listener will do it
-        saveMessage(message, messageId)
+        // Add message to local list and update UI immediately
+        messageList.add(message)
+        messageAdapter.notifyItemInserted(messageList.size - 1)
+        messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
+
+        // Save locally immediately
+        saveMessagesToLocalStorage()
+
+        // Then attempt to save to Firebase if enabled
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            saveMessageToFirebase(message, messageId)
+        }
     }
 
     private fun generateMessageId(): String {
         return db.collection("users").document().id
     }
 
-    private fun saveMessage(messageData: Message, messageId: String) {
-        // Save to local storage
-        messageList.add(messageData)
-        saveMessagesToLocalStorage()
+    //region Local Storage
 
-        // Scroll to new message position
-        messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
+    private fun saveMessagesToLocalStorage() {
+        val jsonArray = JSONArray()
 
-        // Then attempt to save to Firebase
-        if (resources.getBoolean(R.bool.firebaseOn)) {
-            saveMessageToFirebase(messageData, messageId)
+        for (message in messageList) {
+            val messageObject = JSONObject().apply {
+                put("id", message.id)
+                put("chatId", message.chatId)
+                put("senderId", message.senderId)
+                put("content", message.content)
+                put("timestamp", message.timestamp)
+
+                // Create a JSONObject for readStatus
+                val readStatusObject = JSONObject()
+                for ((userId, status) in message.readStatus) {
+                    readStatusObject.put(userId, status)
+                }
+                put("readStatus", readStatusObject)
+            }
+            jsonArray.put(messageObject)
+        }
+
+        Log.d("ChatRoomActivity", "Saving ${messageList.size} messages to chat-specific storage")
+        val jsonString = jsonArray.toString()
+        writeMessagesToFile(jsonString)
+    }
+
+    private fun writeMessagesToFile(jsonString: String) {
+        try {
+            chatMessagesFile.writeText(jsonString)
+            Log.d("ChatRoomActivity", "Messages saved to file: ${chatMessagesFile.absolutePath}")
+        } catch (e: Exception) {
+            Log.e("ChatRoomActivity", "Error writing to file: ${e.message}")
         }
     }
+
+    private fun loadMessagesFromLocalStorage() {
+        Log.d("ChatRoomActivity", "Loading messages from chat-specific storage")
+        if (!chatMessagesFile.exists()) {
+            Log.d("ChatRoomActivity", "No messages file found for this chat")
+            return
+        }
+
+        try {
+            val jsonString = chatMessagesFile.readText()
+            if (jsonString.isNotEmpty()) {
+                loadMessages(jsonString)
+            }
+        } catch (e: Exception) {
+            Log.e("ChatRoomActivity", "Error loading messages: ${e.message}")
+            Toast.makeText(this, "Error loading messages: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun loadMessages(jsonString: String) {
+        val jsonArray = JSONArray(jsonString)
+        messageList.clear()
+
+        for (i in 0 until jsonArray.length()) {
+            val messageObject = jsonArray.getJSONObject(i)
+            val readStatus = parseReadStatus(messageObject)
+
+            val message = Message(
+                id = messageObject.getString("id"),
+                chatId = messageObject.getString("chatId"),
+                senderId = messageObject.getString("senderId"),
+                content = messageObject.getString("content"),
+                timestamp = messageObject.getLong("timestamp"),
+                readStatus = readStatus
+            )
+
+            messageList.add(message)
+        }
+
+        Log.d("ChatRoomActivity", "Loaded ${messageList.size} messages for chat $chatId")
+        messageAdapter.notifyDataSetChanged()
+        if (messageList.isNotEmpty()) {
+            messagesRecyclerView.scrollToPosition(messageList.size - 1)
+        }
+    }
+
+    private fun parseReadStatus(messageObject: JSONObject): MutableMap<String, Boolean> {
+        val readStatus = mutableMapOf<String, Boolean>()
+
+        try {
+            // Try parsing as JSONObject first
+            val readStatusJsonObject = messageObject.getJSONObject("readStatus")
+            val keys = readStatusJsonObject.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                readStatus[key] = readStatusJsonObject.getBoolean(key)
+            }
+        } catch (e: Exception) {
+            try {
+                // Fall back to parsing as JSONArray
+                val readStatusArray = messageObject.getJSONArray("readStatus")
+                for (j in 0 until readStatusArray.length()) {
+                    val entry = readStatusArray.getString(j)
+                    if (entry.contains("=")) {
+                        val parts = entry.split("=")
+                        if (parts.size == 2) {
+                            readStatus[parts[0]] = parts[1].toBoolean()
+                        }
+                    }
+                }
+            } catch (e2: Exception) {
+                Log.e("ChatRoomActivity", "Error parsing readStatus: ${e2.message}")
+            }
+        }
+
+        return readStatus
+    }
+
+    //region Firebase Methods
 
     private fun saveMessageToFirebase(messageData: Message, messageId: String) {
         val messageMap = hashMapOf(
@@ -288,11 +400,6 @@ class ChatRoomActivity : AppCompatActivity() {
     }
 
     private fun setupRealtimeMessageListener() {
-        if (!resources.getBoolean(R.bool.firebaseOn)) {
-            Log.d("ChatRoomActivity", "Firebase is disabled, not setting up realtime listener")
-            return
-        }
-
         val messagesRef = database.child("messages").child(chatId)
 
         messagesListener = messagesRef.addChildEventListener(object : ChildEventListener {
@@ -351,7 +458,6 @@ class ChatRoomActivity : AppCompatActivity() {
             // Update existing message
             messageList[existingIndex] = message
             messageAdapter.notifyItemChanged(existingIndex)
-            messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
         } else {
             // Add new message
             messageList.add(message)
@@ -393,135 +499,10 @@ class ChatRoomActivity : AppCompatActivity() {
     }
 
     private fun removeRealtimeMessageListener() {
-        messagesListener?.let {
-            database.child("messages").child(chatId).removeEventListener(it)
-        }
-    }
-
-    //region Local Storage
-
-    private fun saveMessagesToLocalStorage() {
-        val jsonArray = JSONArray()
-
-        for (message in messageList) {
-            val messageObject = JSONObject().apply {
-                put("id", message.id)
-                put("chatId", message.chatId)
-                put("senderId", message.senderId)
-                put("content", message.content)
-                put("timestamp", message.timestamp)
-
-                // Create a JSONObject for readStatus
-                val readStatusObject = JSONObject()
-                for ((userId, status) in message.readStatus) {
-                    readStatusObject.put(userId, status)
-                }
-                put("readStatus", readStatusObject)
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            messagesListener?.let {
+                database.child("messages").child(chatId).removeEventListener(it)
             }
-            jsonArray.put(messageObject)
-        }
-
-        Log.d("ChatRoomActivity", "Saving ${messageList.size} messages to local storage")
-        val jsonString = jsonArray.toString()
-        writeMessagesToFile(jsonString)
-    }
-
-    private fun writeMessagesToFile(jsonString: String) {
-        try {
-            val file = File(filesDir, "messages.json")
-            file.writeText(jsonString)
-            Log.d("ChatRoomActivity", "messages saved to file: ${file.absolutePath}")
-        } catch (e: Exception) {
-            Log.e("ChatRoomActivity", "Error writing to file: ${e.message}")
-        }
-    }
-
-    private fun loadMessagesFromLocalStorage() {
-        Log.d("ChatRoomActivity", "Loading messages from local storage")
-        val file = File(filesDir, "messages.json")
-        val jsonString = readMessagesFromFile()
-
-        if (!file.exists() || jsonString.isEmpty()) {
-            Log.d("ChatRoomActivity", "No messages file found")
-            return
-        }
-
-        try {
-            LoadMessages(jsonString)
-        } catch (e: Exception) {
-            Log.e("ChatRoomActivity", "Error loading messages: ${e.message}")
-            Toast.makeText(this, "Error loading messages: ${e.message}", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun LoadMessages(jsonString: String) {
-        val jsonArray = JSONArray(jsonString)
-        messageList.clear()
-        val tempMessages = mutableListOf<Message>()
-
-        for (i in 0 until jsonArray.length()) {
-            val messageObject = jsonArray.getJSONObject(i)
-
-            // Only process messages for this chat
-            if (messageObject.getString("chatId") == chatId) {
-                val readStatus = ReadStatus(messageObject)
-
-                val message = Message(
-                    id = messageObject.getString("id"),
-                    chatId = messageObject.getString("chatId"),
-                    senderId = messageObject.getString("senderId"),
-                    content = messageObject.getString("content"),
-                    timestamp = messageObject.getLong("timestamp"),
-                    readStatus = readStatus
-                )
-
-                tempMessages.add(message)
-            }
-        }
-
-        messageList.addAll(tempMessages)
-        messageAdapter.notifyDataSetChanged()
-        messagesRecyclerView.scrollToPosition(messageList.size - 1)
-    }
-
-    private fun ReadStatus(messageObject: JSONObject): MutableMap<String, Boolean> {
-        val readStatus = mutableMapOf<String, Boolean>()
-
-        try {
-            // Try parsing as JSONObject first
-            val readStatusJsonObject = messageObject.getJSONObject("readStatus")
-            val keys = readStatusJsonObject.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                readStatus[key] = readStatusJsonObject.getBoolean(key)
-            }
-        } catch (e: Exception) {
-            try {
-                // Fall back to parsing as JSONArray
-                val readStatusArray = messageObject.getJSONArray("readStatus")
-                for (j in 0 until readStatusArray.length()) {
-                    val entry = readStatusArray.getString(j)
-                    if (entry.contains("=")) {
-                        val parts = entry.split("=")
-                        if (parts.size == 2) {
-                            readStatus[parts[0]] = parts[1].toBoolean()
-                        }
-                    }
-                }
-            } catch (e2: Exception) {
-                Log.e("ChatRoomActivity", "Error parsing readStatus: ${e2.message}")
-            }
-        }
-
-        return readStatus
-    }
-
-    private fun readMessagesFromFile(): String {
-        val file = File(filesDir, "messages.json")
-        return if (file.exists()) {
-            file.readText()
-        } else {
-            ""
         }
     }
 }
