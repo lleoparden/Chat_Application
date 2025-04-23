@@ -1,7 +1,5 @@
 package com.example.chat_application
 
-
-
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -18,10 +16,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.chat_application.UserSettings.userId
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.database.*
-import com.google.firebase.firestore.FirebaseFirestore
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -29,7 +27,7 @@ import java.io.File
 private const val TAG = "MainActivity"
 private const val CHATS_FILE = "chats.json"
 
-class MainActivity :  AppCompatActivity(), ChatAdapter.OnChatClickListener {
+class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
     private lateinit var chatRecyclerView: RecyclerView
     private lateinit var searchButton: ImageView
@@ -51,14 +49,13 @@ class MainActivity :  AppCompatActivity(), ChatAdapter.OnChatClickListener {
         enableEdgeToEdge()
         setContentView(R.layout.mainpage)
 
+
         initViews()
         setupUI()
         setupRecyclerView()
+        setupFirebase()
         loadChats()
-
-
     }
-
 
     private fun initViews() {
         chatRecyclerView = findViewById(R.id.chatRecyclerView)
@@ -120,14 +117,63 @@ class MainActivity :  AppCompatActivity(), ChatAdapter.OnChatClickListener {
         chatRecyclerView.adapter = chatAdapter
     }
 
-    private fun loadChats() {
-        // Always load local chats first
-        loadChatsFromLocalStorage()
+    private fun setupFirebase() {
+        firebaseDatabase = FirebaseDatabase.getInstance()
+        chatsReference = firebaseDatabase.getReference("chats")
+    }
 
-        // Then add Firebase chats if enabled (but don't clear existing chats)
+    private fun loadChats() {
         if (resources.getBoolean(R.bool.firebaseOn)) {
-            mergeChatsFromFirebase()
+            // Load from Firebase first
+            loadChatsFromFirebase()
+        } else {
+            // If Firebase is disabled, load from local storage
+            loadChatsFromLocalStorage()
         }
+    }
+
+    private fun loadChatsFromFirebase() {
+        Log.d(TAG, "Loading chats from Firebase")
+        chatsReference.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                chatManager.clear()
+                val firebaseChats = mutableListOf<Chat>()
+
+                if (!snapshot.exists() || snapshot.childrenCount == 0.toLong()) {
+                    Log.d(TAG, "No chats found in Firebase, checking local storage")
+                    loadChatsFromLocalStorage()
+                    return
+                }
+
+                for (chatSnapshot in snapshot.children) {
+                    val chat = chatSnapshot.getValue(Chat::class.java)
+                    // Only add chats where the current user is a participant
+                    if (chat != null && chat.participantIds.contains(userId)) {
+                        firebaseChats.add(chat)
+                        Log.d(TAG, "Added chat ${chat.name} for user $userId")
+                    }
+                }
+
+                if (firebaseChats.isNotEmpty()) {
+                    chatManager.pushAll(firebaseChats)
+                    saveChatsToLocalStorage()
+                    chatAdapter.notifyDataSetChanged()
+                    Log.d(TAG, "Loaded ${firebaseChats.size} chats from Firebase for user $userId")
+                } else {
+                    loadChatsFromLocalStorage()
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Failed to load chats from Firebase: ${error.message}")
+                Toast.makeText(
+                    this@MainActivity,
+                    "Failed to load chats from Firebase. Loading local chats.",
+                    Toast.LENGTH_SHORT
+                ).show()
+                loadChatsFromLocalStorage()
+            }
+        })
     }
 
     private fun loadChatsFromLocalStorage() {
@@ -136,6 +182,7 @@ class MainActivity :  AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
         if (jsonString.isEmpty()) {
             Log.d(TAG, "No chats file found or empty file")
+            addDemoChat()
             return
         }
 
@@ -169,6 +216,11 @@ class MainActivity :  AppCompatActivity(), ChatAdapter.OnChatClickListener {
             // Add all chats to the manager at once
             chatManager.pushAll(tempChats)
             chatAdapter.notifyDataSetChanged()
+
+            // Save to Firebase if enabled
+            if (resources.getBoolean(R.bool.firebaseOn)) {
+                saveChatsToFirebase()
+            }
 
         } catch (e: Exception) {
             Log.e(TAG, "Error loading chats: ${e.message}")
@@ -223,6 +275,41 @@ class MainActivity :  AppCompatActivity(), ChatAdapter.OnChatClickListener {
         }
     }
 
+    private fun saveChatsToFirebase() {
+        if (!resources.getBoolean(R.bool.firebaseOn)) {
+            return
+        }
+
+        Log.d(TAG, "Saving chats to Firebase")
+        val allChats = chatManager.getAll()
+
+        // Clear existing chats in Firebase
+        chatsReference.removeValue().addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                // Add each chat individually with its ID as the key
+                for (chat in allChats) {
+                    chatsReference.child(chat.id).setValue(chat)
+                }
+                Log.d(TAG, "Successfully saved ${allChats.size} chats to Firebase")
+            } else {
+                Log.e(TAG, "Failed to clear Firebase before saving: ${task.exception?.message}")
+                Toast.makeText(
+                    this,
+                    "Failed to save chats to Firebase",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Save chats to Firebase when returning to this activity
+        if (resources.getBoolean(R.bool.firebaseOn) && ::chatsReference.isInitialized) {
+            saveChatsToFirebase()
+        }
+    }
+
     override fun onChatClick(chat: Chat) {
         val intent = Intent(this, ChatRoomActivity::class.java).apply {
             putExtra("CHAT_OBJECT", chat)
@@ -231,40 +318,55 @@ class MainActivity :  AppCompatActivity(), ChatAdapter.OnChatClickListener {
         finish()
     }
 
-    private fun mergeChatsFromFirebase() {
-        firebaseDatabase = FirebaseDatabase.getInstance()
-        chatsReference = firebaseDatabase.getReference("chats")
+    private fun addDemoChat() {
+        Log.d(TAG, "Adding demo chats")
+        chatManager.clear()
+        val currentTime = System.currentTimeMillis()
+        val demoChats = listOf(
+            Chat(
+                id = "demo1",
+                name = "Demo Group",
+                lastMessage = "Welcome to FireChat! This is a demo message.",
+                timestamp = currentTime - 6000,
+                unreadCount = 9,
+                participantIds = mutableListOf("demo_user_1", "demo_user_2"),
+                type = "group"
+            ),
+            Chat(
+                id = "demo2",
+                name = "John Doe",
+                lastMessage = "Hey there! How are you doing?",
+                timestamp = currentTime,
+                unreadCount = 0,
+                participantIds = mutableListOf("demo_user_1"),
+                type = "direct"
+            ),
+            Chat(
+                id = "demo3",
+                name = "mostafa",
+                lastMessage = "Hey there! How are you doing?",
+                timestamp = currentTime,
+                unreadCount = 0,
+                participantIds = mutableListOf("demo_user_1"),
+                type = "direct"
+            )
+        )
 
-        // Listen for changes in the chats
-        chatsReference.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val existingChatIds = chatManager.getAll().map { it.id }.toSet()
-                val firebaseChats = mutableListOf<Chat>()
+        // Add all demo chats to the stack
+        chatManager.pushAll(demoChats)
 
-                for (chatSnapshot in snapshot.children) {
-                    val chat = chatSnapshot.getValue(Chat::class.java)
-                    // Only add chats that don't already exist locally
-                    if (chat != null && chat.id !in existingChatIds) {
-                        firebaseChats.add(chat)
-                    }
-                }
+        // Save demo chats to local storage
+        saveChatsToLocalStorage()
 
-                // Add new Firebase chats to the stack without clearing existing ones
-                if (firebaseChats.isNotEmpty()) {
-                    chatManager.pushAll(firebaseChats)
-                    saveChatsToLocalStorage()
-                    chatAdapter.notifyDataSetChanged()
-                }
-            }
+        // Save to Firebase if enabled
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            saveChatsToFirebase()
+        }
 
-            override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(
-                    this@MainActivity,
-                    "Failed to load chats from Firebase: ${error.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        })
+        // Update UI
+        chatAdapter.notifyDataSetChanged()
+
+        Log.d(TAG, "Demo chats added: ${chatManager.size()}")
     }
 
     private fun toggleSearchBar() {
