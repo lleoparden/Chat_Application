@@ -33,7 +33,7 @@ class SettingsActivity : AppCompatActivity() {
         val signOutSettingItem = findViewById<LinearLayout>(R.id.signOutSettingItem)
         val accountSettingItem = findViewById<LinearLayout>(R.id.accountSettingItem)
         val chatBackgroundSettingItem = findViewById<LinearLayout>(R.id.chatBackgroundSettingItem)
-        val chatHistorySettingItem = findViewById<LinearLayout>(R.id.chatHistorySettingItem)
+        //val chatHistorySettingItem = findViewById<LinearLayout>(R.id.chatHistorySettingItem)
         val messageNotificationsItem = findViewById<LinearLayout>(R.id.messageNotificationsItem)
         val soundsSettingItem = findViewById<LinearLayout>(R.id.soundsSettingItem)
         val helpSettingItem = findViewById<LinearLayout>(R.id.helpSettingItem)
@@ -42,6 +42,8 @@ class SettingsActivity : AppCompatActivity() {
 
 
         val backButton = findViewById<Toolbar>(R.id.toolbar)
+
+
 
         backButton.setNavigationOnClickListener {
             val intent = Intent(this, MainActivity::class.java)
@@ -57,26 +59,56 @@ class SettingsActivity : AppCompatActivity() {
 
         accountSettingItem.setOnClickListener{
             setContentView(R.layout.account_settings)
+            val backButton = findViewById<Toolbar>(R.id.toolbar)
+            backButton.setNavigationOnClickListener {
+                val intent = Intent(this,SettingsActivity::class.java)
+                startActivity(intent)
+            }
         }
 
         chatBackgroundSettingItem.setOnClickListener{
             setContentView(R.layout.chat_wallpaper)
+            val backButton = findViewById<Toolbar>(R.id.toolbar)
+            backButton.setNavigationOnClickListener {
+                val intent = Intent(this,SettingsActivity::class.java)
+                startActivity(intent)
+            }
         }
 
-        chatHistorySettingItem.setOnClickListener{
-            setContentView(R.layout.chat_history)
-        }
+//        chatHistorySettingItem.setOnClickListener{
+//            setContentView(R.layout.chat_history)
+//            val backButton = findViewById<Toolbar>(R.id.toolbar)
+//            backButton.setNavigationOnClickListener {
+//                val intent = Intent(this,SettingsActivity::class.java)
+//                startActivity(intent)
+//            }
+//        }
 
         helpSettingItem.setOnClickListener{
             setContentView(R.layout.help)
+            val backButton = findViewById<Toolbar>(R.id.toolbar)
+            backButton.setNavigationOnClickListener {
+                val intent = Intent(this,SettingsActivity::class.java)
+                startActivity(intent)
+            }
         }
 
         inviteFriendsSettingItem.setOnClickListener{
             setContentView(R.layout.invite_friends)
+            val backButton = findViewById<Toolbar>(R.id.toolbar)
+            backButton.setNavigationOnClickListener {
+                val intent = Intent(this,SettingsActivity::class.java)
+                startActivity(intent)
+            }
         }
 
         aboutSettingItem.setOnClickListener{
             setContentView(R.layout.about)
+            val backButton = findViewById<Toolbar>(R.id.toolbar)
+            backButton.setNavigationOnClickListener {
+                val intent = Intent(this,SettingsActivity::class.java)
+                startActivity(intent)
+            }
         }
 
 

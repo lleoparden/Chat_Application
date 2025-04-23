@@ -17,7 +17,7 @@ class EditProfileActivity  : AppCompatActivity(){
         val backButton = findViewById<Toolbar>(R.id.toolbar)
 
         backButton.setNavigationOnClickListener {
-            val intent = Intent(this, MainActivity::class.java)
+            val intent = Intent(this, SettingsActivity::class.java)
             startActivity(intent)
         }
 
