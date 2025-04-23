@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.MenuItem
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -30,6 +31,14 @@ class SettingsActivity : AppCompatActivity() {
 
         val profileSettingItem = findViewById<LinearLayout>(R.id.profileSettingItem)
         val signOutSettingItem = findViewById<LinearLayout>(R.id.signOutSettingItem)
+        val accountSettingItem = findViewById<LinearLayout>(R.id.accountSettingItem)
+        val chatBackgroundSettingItem = findViewById<LinearLayout>(R.id.chatBackgroundSettingItem)
+        val chatHistorySettingItem = findViewById<LinearLayout>(R.id.chatHistorySettingItem)
+        val messageNotificationsItem = findViewById<LinearLayout>(R.id.messageNotificationsItem)
+        val soundsSettingItem = findViewById<LinearLayout>(R.id.soundsSettingItem)
+        val helpSettingItem = findViewById<LinearLayout>(R.id.helpSettingItem)
+        val inviteFriendsSettingItem = findViewById<LinearLayout>(R.id.inviteFriendsSettingItem)
+        val aboutSettingItem = findViewById<LinearLayout>(R.id.aboutSettingItem)
 
 
         val backButton = findViewById<Toolbar>(R.id.toolbar)
@@ -45,6 +54,31 @@ class SettingsActivity : AppCompatActivity() {
             val intent = Intent(this, EditProfileActivity::class.java)
             startActivity(intent)
         }
+
+        accountSettingItem.setOnClickListener{
+            setContentView(R.layout.account_settings)
+        }
+
+        chatBackgroundSettingItem.setOnClickListener{
+            setContentView(R.layout.chat_wallpaper)
+        }
+
+        chatHistorySettingItem.setOnClickListener{
+            setContentView(R.layout.chat_history)
+        }
+
+        helpSettingItem.setOnClickListener{
+            setContentView(R.layout.help)
+        }
+
+        inviteFriendsSettingItem.setOnClickListener{
+            setContentView(R.layout.invite_friends)
+        }
+
+        aboutSettingItem.setOnClickListener{
+            setContentView(R.layout.about)
+        }
+
 
         deleteChats.setOnClickListener {
             clearAllChatFiles()
