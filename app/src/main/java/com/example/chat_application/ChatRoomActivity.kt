@@ -70,11 +70,21 @@ class ChatRoomActivity : AppCompatActivity() {
         if (resources.getBoolean(R.bool.firebaseOn)) {
             setupRealtimeMessageListener()
         }
+
+
+        if ( resources.getBoolean(R.bool.firebaseOn)) {
+            val db = FirebaseFirestore.getInstance()
+            UserSettings.setUserOnline(UserSettings.userId, db)
+        }
+
     }
 
     override fun onDestroy() {
-        super.onDestroy()
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            UserSettings.setUserOffline(UserSettings.userId)
+        }
         removeRealtimeMessageListener()
+        super.onDestroy()
     }
 
     //region Setup Methods

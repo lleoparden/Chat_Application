@@ -21,6 +21,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.database.*
+import com.google.firebase.firestore.FirebaseFirestore
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -28,7 +29,7 @@ import java.io.File
 private const val TAG = "MainActivity"
 private const val CHATS_FILE = "chats.json"
 
-class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
+class MainActivity :  AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
     private lateinit var chatRecyclerView: RecyclerView
     private lateinit var searchButton: ImageView
@@ -54,7 +55,10 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         setupUI()
         setupRecyclerView()
         loadChats()
+
+
     }
+
 
     private fun initViews() {
         chatRecyclerView = findViewById(R.id.chatRecyclerView)
