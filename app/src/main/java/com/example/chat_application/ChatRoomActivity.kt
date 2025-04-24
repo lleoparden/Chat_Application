@@ -48,6 +48,7 @@ class ChatRoomActivity : AppCompatActivity() {
     // User & Chat Info
     private val currentUserId = UserSettings.userId
     private lateinit var chatId: String
+    private lateinit var otherParticipantId: String  // Added to track the other user's ID
 
     // Firebase
     private lateinit var db: FirebaseFirestore
@@ -106,6 +107,10 @@ class ChatRoomActivity : AppCompatActivity() {
             ?: Chat(id = "", name = "Chat", lastMessage = "", timestamp = 0, unreadCount = 0)
         chatId = chat.id
 
+        // Determine the other participant's ID
+        // Assuming chat.participantIds contains a list of all participant IDs
+        otherParticipantId = determineOtherParticipantId(chat)
+
         // Initialize UI elements
         initializeViews()
 
@@ -117,6 +122,22 @@ class ChatRoomActivity : AppCompatActivity() {
 
         // Initialize chat-specific messages file
         chatMessagesFile = File(filesDir, "messages_${chatId}.json")
+    }
+
+    private fun determineOtherParticipantId(chat: Chat): String {
+        // Check if the chat object has participantIds
+        if (chat.participantIds != null && chat.participantIds.isNotEmpty()) {
+            // Return the first ID that is not the current user
+            for (id in chat.participantIds) {
+                if (id != currentUserId) {
+                    return id
+                }
+            }
+        }
+
+        // If no other participant found or the chat doesn't have participant IDs,
+        // return an empty string or some default value
+        return ""
     }
 
     private fun initializeViews() {
@@ -221,6 +242,7 @@ class ChatRoomActivity : AppCompatActivity() {
         profilePic.setOnClickListener {
             val intent = Intent(this, UserProfileActivity::class.java).apply {
                 putExtra("came_from", "ChatRoom")
+                putExtra("USER_ID", otherParticipantId)
                 putExtra("CHAT_OBJECT", chat)
             }
             startActivity(intent)
@@ -231,6 +253,7 @@ class ChatRoomActivity : AppCompatActivity() {
             val intent = Intent(this, UserProfileActivity::class.java).apply {
                 putExtra("came_from", "ChatRoom")
                 putExtra("CHAT_OBJECT", chat)
+                putExtra("USER_ID", otherParticipantId)
             }
             startActivity(intent)
             finish()

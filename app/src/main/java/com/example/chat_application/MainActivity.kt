@@ -50,6 +50,8 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         setContentView(R.layout.mainpage)
 
 
+
+
         initViews()
         setupUI()
         setupRecyclerView()
@@ -347,7 +349,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 lastMessage = "Hey there! How are you doing?",
                 timestamp = currentTime,
                 unreadCount = 0,
-                participantIds = mutableListOf("demo_user_1"),
+                participantIds = mutableListOf("Eib1DWsEOfnZlBB5HpiZ","n7lC1M1DndFTaa0uXzf2"),
                 type = "direct"
             )
         )

@@ -42,15 +42,7 @@ class SettingsActivity : AppCompatActivity() {
         val aboutSettingItem = findViewById<LinearLayout>(R.id.aboutSettingItem)
 
 
-        val backButton = findViewById<Toolbar>(R.id.toolbar)
-
-
-
-        backButton.setNavigationOnClickListener {
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
-        }
-
+        initializeBackButton()
 
         profileSettingItem.setOnClickListener {
             // Navigate to ProfileActivity
@@ -60,20 +52,12 @@ class SettingsActivity : AppCompatActivity() {
 
         accountSettingItem.setOnClickListener{
             setContentView(R.layout.account_settings)
-            val backButton = findViewById<Toolbar>(R.id.toolbar)
-            backButton.setNavigationOnClickListener {
-                val intent = Intent(this,SettingsActivity::class.java)
-                startActivity(intent)
-            }
+            initializeBackButton()
         }
 
         chatBackgroundSettingItem.setOnClickListener{
             setContentView(R.layout.chat_wallpaper)
-            val backButton = findViewById<Toolbar>(R.id.toolbar)
-            backButton.setNavigationOnClickListener {
-                val intent = Intent(this,SettingsActivity::class.java)
-                startActivity(intent)
-            }
+            initializeBackButton()
         }
 
 //        chatHistorySettingItem.setOnClickListener{
@@ -87,29 +71,17 @@ class SettingsActivity : AppCompatActivity() {
 
         helpSettingItem.setOnClickListener{
             setContentView(R.layout.help)
-            val backButton = findViewById<Toolbar>(R.id.toolbar)
-            backButton.setNavigationOnClickListener {
-                val intent = Intent(this,SettingsActivity::class.java)
-                startActivity(intent)
-            }
+            initializeBackButton()
         }
 
         inviteFriendsSettingItem.setOnClickListener{
             setContentView(R.layout.invite_friends)
-            val backButton = findViewById<Toolbar>(R.id.toolbar)
-            backButton.setNavigationOnClickListener {
-                val intent = Intent(this,SettingsActivity::class.java)
-                startActivity(intent)
-            }
+            initializeBackButton()
         }
 
         aboutSettingItem.setOnClickListener{
             setContentView(R.layout.about)
-            val backButton = findViewById<Toolbar>(R.id.toolbar)
-            backButton.setNavigationOnClickListener {
-                val intent = Intent(this,SettingsActivity::class.java)
-                startActivity(intent)
-            }
+            initializeBackButton()
         }
 
 
@@ -123,12 +95,21 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    private fun initializeBackButton(){
+        val backButton = findViewById<Toolbar>(R.id.toolbar)
+        backButton.setNavigationOnClickListener {
+            val intent = Intent(this,MainActivity::class.java)
+            startActivity(intent)
+        }
+    }
+
     private fun clearAllChatFiles() {
         try {
             var deletedCount = 0
             var failedCount = 0
 
             File(filesDir, "local_users.json").delete()
+            File(filesDir, "chat.json").delete()
 
             // Find all message files in the app's internal storage
             val files = filesDir.listFiles { file ->
