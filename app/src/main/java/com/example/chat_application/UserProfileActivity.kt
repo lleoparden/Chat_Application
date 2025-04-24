@@ -304,13 +304,16 @@ class UserProfileActivity : AppCompatActivity() {
                     putExtra("CHAT_OBJECT", chatObject)
                 }
                 startActivity(intent)
+                overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
             } else {
                 // Fallback to main activity if chat object is missing
                 startActivity(Intent(this, MainActivity::class.java))
+                overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
             }
         } else {
             // Default to AddNewChatActivity or whatever the previous screen should be
             startActivity(Intent(this, AddNewChatActivity::class.java))
+            overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
         }
 
         finish()

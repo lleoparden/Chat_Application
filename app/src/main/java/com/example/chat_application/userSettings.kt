@@ -14,6 +14,7 @@ object UserSettings {
             .addOnFailureListener { e ->
                 Log.e("UserSettings", "Error updating online status", e)
             }
+
     }
 
     fun setUserOffline(userId: String) {
@@ -23,6 +24,11 @@ object UserSettings {
             .update("online", false)
             .addOnFailureListener { e ->
                 Log.e("UserSettings", "Error updating offline status", e)
+            }
+        db.collection("users").document(userId)
+            .update("lastSeen", System.currentTimeMillis().toInt())
+            .addOnFailureListener { e ->
+                Log.e("UserSettings", "Error updating online status", e)
             }
     }
 }

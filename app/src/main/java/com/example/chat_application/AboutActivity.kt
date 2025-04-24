@@ -15,11 +15,6 @@ class AboutActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.about)
 
-        // Setting up Toolbar
-        val toolbar: Toolbar = findViewById(R.id.toolbar)
-        setSupportActionBar(toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-
         // Developer website link
         val developerWebsite: TextView = findViewById(R.id.developerWebsite)
         developerWebsite.setOnClickListener {
@@ -58,6 +53,14 @@ class AboutActivity : AppCompatActivity() {
             val licensesUrl = "https://www.yourwebsite.com/licenses"
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(licensesUrl))
             startActivity(intent)
+        }
+
+        val backButton = findViewById<Toolbar>(R.id.toolbar)
+
+        backButton.setNavigationOnClickListener {
+            val intent = Intent(this, SettingsActivity::class.java)
+            startActivity(intent)
+            overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
         }
     }
 }

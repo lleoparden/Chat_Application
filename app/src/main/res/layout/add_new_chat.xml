@@ -33,7 +33,7 @@
         android:layout_margin="16dp"
         android:hint="Search by name or phone number"
         app:endIconMode="clear_text"
-        app:startIconDrawable="@drawable/ic_search"
+        app:startIconDrawable="@android:drawable/ic_menu_search"
         app:layout_constraintTop_toBottomOf="@+id/appBarLayout">
 
         <com.google.android.material.textfield.TextInputEditText

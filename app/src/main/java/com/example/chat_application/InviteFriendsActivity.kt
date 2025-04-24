@@ -24,13 +24,13 @@ class InviteFriendsActivity : AppCompatActivity() {
         setContentView(R.layout.invite_friends)
 
         // Toolbar setup
-        val toolbar = findViewById<Toolbar>(R.id.toolbar)
-        setSupportActionBar(toolbar)
-        supportActionBar?.apply {
-            setDisplayHomeAsUpEnabled(true)
-            title = "Invite Friends"
+        val backButton = findViewById<Toolbar>(R.id.toolbar)
+
+        backButton.setNavigationOnClickListener {
+            val intent = Intent(this, SettingsActivity::class.java)
+            startActivity(intent)
+            overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
         }
-        toolbar.setNavigationOnClickListener { onBackPressed() }
 
         // Views
         inviteLinkText = findViewById(R.id.inviteLinkText)

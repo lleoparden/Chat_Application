@@ -74,7 +74,9 @@ class AuthActivity : AppCompatActivity() {
         val password: String,
         val userDescription: String = "",
         val userStatus: String = "",
-        val online: Boolean
+        val online: Boolean,
+        val lastSeen: String = "", // Added last seen timestamp
+        val profilePictureUrl: String = "" // Added profile picture URL
     )
 
     @SuppressLint("MissingInflatedId")
@@ -187,7 +189,9 @@ class AuthActivity : AppCompatActivity() {
                         password = userData?.get("password") as? String ?: "",
                         userDescription = userData?.get("userDescription") as? String ?: "",
                         userStatus = userData?.get("userStatus") as? String ?: "",
-                        online = userData?.get("online") as? Boolean ?: false
+                        online = userData?.get("online") as? Boolean ?: false,
+                        lastSeen = userData?.get("lastSeen") as? String ?: "",
+                        profilePictureUrl = userData?.get("profilePictureUrl") as? String ?: ""
                     )
 
 
@@ -402,7 +406,7 @@ class AuthActivity : AppCompatActivity() {
 
         // If doesn't start with +, assume it's a local number and add country code
         if (!formattedNumber.startsWith("+")) {
-            formattedNumber = "+1$formattedNumber" // Assuming US (+1), change as needed
+            formattedNumber = "+2$formattedNumber" // Assuming US (+1), change as needed
         }
 
         return formattedNumber
@@ -441,7 +445,9 @@ class AuthActivity : AppCompatActivity() {
                     password = jsonUser.getString("password"),
                     userDescription = jsonUser.optString("userDescription", ""),
                     userStatus = jsonUser.optString("userStatus", ""),
-                    online = jsonUser.optBoolean("online", false)
+                    online = jsonUser.optBoolean("online", false),
+                    lastSeen = jsonUser.get("lastSeen") as? String ?: "",
+                    profilePictureUrl = jsonUser?.get("profilePictureUrl") as? String ?: ""
                 )
 
                 usersList.add(user)
@@ -467,7 +473,8 @@ class AuthActivity : AppCompatActivity() {
                     put("userDescription", userData.userDescription)
                     put("userStatus", userData.userStatus)
                     put("online", userData.online)
-
+                    put("lastSeen", userData.lastSeen)
+                    put("profilePictureUrl", userData.profilePictureUrl)
                 }
                 jsonArray.put(jsonUser)
             }
@@ -561,7 +568,9 @@ class AuthActivity : AppCompatActivity() {
             password = userPassword,
             userDescription = "",
             userStatus = "",
-            online = true
+            online = true,
+            lastSeen = "",
+            profilePictureUrl = ""
         )
 
 
@@ -589,7 +598,14 @@ class AuthActivity : AppCompatActivity() {
             "uid" to userId,
             "displayName" to userName,
             "phoneNumber" to userPhone,
-            "password" to userPassword
+            "password" to userPassword,
+            "userDescription" to "",
+            "userStatus" to "",
+            "online" to "false",
+            "lastSeen" to "",
+            "profilePictureUrl" to ""
+
+
         )
     }
 
@@ -616,7 +632,9 @@ class AuthActivity : AppCompatActivity() {
                 password = userData["password"] ?: "",
                 userDescription = userData["userDescription"] ?: "",
                 userStatus = userData["userStatus"] ?: "",
-                online = userData["online"]?.toBoolean() ?: false
+                online = userData["online"]?.toBoolean() ?: false,
+                lastSeen = userData["lastSeen"] ?: "",
+                profilePictureUrl = userData["profilePictureUrl"] ?: ""
             )
         )
 
@@ -684,7 +702,9 @@ class AuthActivity : AppCompatActivity() {
                 password = password,
                 userDescription = "",
                 userStatus = "",
-                online = true
+                online = true,
+                lastSeen = "",
+                profilePictureUrl = ""
             )
         )
 

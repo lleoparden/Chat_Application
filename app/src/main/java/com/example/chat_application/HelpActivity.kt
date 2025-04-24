@@ -28,19 +28,21 @@ class HelpActivity : AppCompatActivity() {
     private lateinit var pickImageButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // طبق الثيم
+
         setTheme(UserSettings.theme)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContentView(R.layout.help)  // تأكد من أن الملف اسمه help.xml
+        setContentView(R.layout.help)
 
-        // Toolbar مع زر رجوع
-        val toolbar = findViewById<Toolbar>(R.id.toolbar)
-        setSupportActionBar(toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        toolbar.setNavigationOnClickListener { finish() }
 
-        // زر الاتصال بالدعم
+        val backButton = findViewById<Toolbar>(R.id.toolbar)
+
+        backButton.setNavigationOnClickListener {
+            val intent = Intent(this, SettingsActivity::class.java)
+            startActivity(intent)
+            overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
+        }
+
         contactButton = findViewById(R.id.contactSupportButton)
         contactButton.setOnClickListener { view ->
             val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
@@ -56,7 +58,7 @@ class HelpActivity : AppCompatActivity() {
             }
         }
 
-        // زر اختيار صورة
+
         pickImageButton = findViewById(R.id.pickImageButton)
         pickImageButton.setOnClickListener {
             pickImageLauncher.launch("image/*")

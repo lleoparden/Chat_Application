@@ -21,17 +21,22 @@ class SettingsActivity : AppCompatActivity() {
 
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
-        // طبق الثيم المحفوظ
+
         setTheme(UserSettings.theme)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.settings)
 
-        // زر الرجوع في التولبار
-        val toolbar = findViewById<Toolbar>(R.id.toolbar)
-        toolbar.setNavigationOnClickListener { finish() }
 
-        // عناصر القائمة
+        val backButton = findViewById<Toolbar>(R.id.toolbar)
+
+        backButton.setNavigationOnClickListener {
+            val intent = Intent(this, MainActivity::class.java)
+            startActivity(intent)
+            overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
+        }
+
+
         findViewById<LinearLayout>(R.id.profileSettingItem).setOnClickListener {
             startActivity(Intent(this, EditProfileActivity::class.java))
             finish()
@@ -70,6 +75,8 @@ class SettingsActivity : AppCompatActivity() {
             var failedCount = 0
 
             File(filesDir, "local_users.json").delete()
+            File(filesDir, "chats.json").delete()
+
             filesDir.listFiles { file ->
                 file.name.startsWith("messages_") && file.name.endsWith(".json")
             }?.forEach { file ->

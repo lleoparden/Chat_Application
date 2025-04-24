@@ -229,6 +229,7 @@ class ChatRoomActivity : AppCompatActivity() {
         backBtn.setOnClickListener {
             startActivity(Intent(this, MainActivity::class.java))
             finish()
+            overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
         }
 
         sendBtn.setOnClickListener {

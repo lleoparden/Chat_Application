@@ -19,6 +19,7 @@ class EditProfileActivity  : AppCompatActivity(){
         backButton.setNavigationOnClickListener {
             val intent = Intent(this, SettingsActivity::class.java)
             startActivity(intent)
+            overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
         }
 
 

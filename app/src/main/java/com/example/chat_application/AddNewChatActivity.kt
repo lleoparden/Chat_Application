@@ -20,6 +20,7 @@ class AddNewChatActivity  : AppCompatActivity(){
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
             finish()
+            overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
         }
 
 //        val intent = Intent(this, UserProfileActivity::class.java).apply {

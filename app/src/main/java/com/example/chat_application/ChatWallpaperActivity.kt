@@ -33,7 +33,7 @@ class ChatWallpaperActivity : AppCompatActivity() {
         private const val THEME_SYSTEM = "system"
     }
 
-    private lateinit var toolbar: Toolbar
+
     private lateinit var themeRadioGroup: RadioGroup
     private lateinit var lightThemeRadio: RadioButton
     private lateinit var darkThemeRadio: RadioButton
@@ -46,8 +46,6 @@ class ChatWallpaperActivity : AppCompatActivity() {
     private var selectedWallpaperUri: Uri? = null
     private lateinit var auth: FirebaseAuth
     private lateinit var database: DatabaseReference
-    private lateinit var storage: FirebaseStorage
-    private lateinit var storageRef: StorageReference
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,8 +54,6 @@ class ChatWallpaperActivity : AppCompatActivity() {
         // Initialize Firebase
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().reference
-        storage = FirebaseStorage.getInstance()
-        storageRef = storage.reference
 
         // Initialize shared preferences
         sharedPreferences = getSharedPreferences(PREF_NAME, MODE_PRIVATE)
@@ -65,20 +61,24 @@ class ChatWallpaperActivity : AppCompatActivity() {
         // Initialize views
         initViews()
 
-        // Set up toolbar
-        setSupportActionBar(toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.setDisplayShowHomeEnabled(true)
+        val backButton = findViewById<Toolbar>(R.id.toolbar)
 
+        backButton.setNavigationOnClickListener {
+            val intent = Intent(this, SettingsActivity::class.java)
+            startActivity(intent)
+            overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
+        }
         // Load saved preferences
         loadSavedPreferences()
 
         // Set up click listeners
         setupClickListeners()
+
+
     }
 
     private fun initViews() {
-        toolbar = findViewById(R.id.toolbar)
+
         themeRadioGroup = findViewById(R.id.themeRadioGroup)
         lightThemeRadio = findViewById(R.id.lightThemeRadio)
         darkThemeRadio = findViewById(R.id.darkThemeRadio)
@@ -136,10 +136,6 @@ class ChatWallpaperActivity : AppCompatActivity() {
             }
         }
 
-        // Back button in toolbar
-        toolbar.setNavigationOnClickListener {
-            onBackPressed()
-        }
     }
 
     private fun applyTheme(theme: String) {
@@ -151,19 +147,35 @@ class ChatWallpaperActivity : AppCompatActivity() {
     }
 
     private fun checkStoragePermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        ) == PackageManager.PERMISSION_GRANTED
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_MEDIA_IMAGES
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
+        }
     }
 
     private fun requestStoragePermission() {
-        ActivityCompat.requestPermissions(
-            this,
-            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-            PERMISSION_REQUEST_READ_EXTERNAL_STORAGE
-        )
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.READ_MEDIA_IMAGES),
+                PERMISSION_REQUEST_READ_EXTERNAL_STORAGE
+            )
+        } else {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
+                PERMISSION_REQUEST_READ_EXTERNAL_STORAGE
+            )
+        }
     }
+
 
     private fun openGallery() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
@@ -189,32 +201,32 @@ class ChatWallpaperActivity : AppCompatActivity() {
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null) {
-            selectedWallpaperUri = data.data
-
-            // Upload the selected wallpaper to Firebase Storage
-            selectedWallpaperUri?.let { uri ->
-                val fileRef = storageRef.child("wallpapers/${auth.currentUser?.uid}/${System.currentTimeMillis()}.jpg")
-                fileRef.putFile(uri)
-                    .addOnSuccessListener {
-                        fileRef.downloadUrl.addOnSuccessListener { downloadUri ->
-                            // Save the URI of the uploaded image to Firebase Realtime Database
-                            saveWallpaperToDatabase(downloadUri.toString())
-
-                            // Display the selected image
-                            selectedWallpaperPreview.setImageURI(downloadUri)
-                            noWallpaperSelected.visibility = View.GONE
-                        }
-                    }
-                    .addOnFailureListener { e ->
-                        Toast.makeText(this, "Failed to upload image: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-            }
-        }
-    }
+//    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+//        super.onActivityResult(requestCode, resultCode, data)
+//
+//        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null) {
+//            selectedWallpaperUri = data.data
+//
+//            // Upload the selected wallpaper to Firebase Storage
+//            selectedWallpaperUri?.let { uri ->
+//                val fileRef = storageRef.child("wallpapers/${auth.currentUser?.uid}/${System.currentTimeMillis()}.jpg")
+//                fileRef.putFile(uri)
+//                    .addOnSuccessListener {
+//                        fileRef.downloadUrl.addOnSuccessListener { downloadUri ->
+//                            // Save the URI of the uploaded image to Firebase Realtime Database
+//                            saveWallpaperToDatabase(downloadUri.toString())
+//
+//                            // Display the selected image
+//                            selectedWallpaperPreview.setImageURI(downloadUri)
+//                            noWallpaperSelected.visibility = View.GONE
+//                        }
+//                    }
+//                    .addOnFailureListener { e ->
+//                        Toast.makeText(this, "Failed to upload image: ${e.message}", Toast.LENGTH_SHORT).show()
+//                    }
+//            }
+//        }
+//    }
 
     private fun saveWallpaperToDatabase(uri: String) {
         val userId = auth.currentUser?.uid
