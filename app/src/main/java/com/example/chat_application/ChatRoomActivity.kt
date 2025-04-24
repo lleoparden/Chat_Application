@@ -253,7 +253,7 @@ class ChatRoomActivity : AppCompatActivity() {
             val intent = Intent(this, UserProfileActivity::class.java).apply {
                 putExtra("came_from", "ChatRoom")
                 putExtra("CHAT_OBJECT", chat)
-                putExtra("USER_ID", otherParticipantId)
+                putExtra("USER_ID", otherParticipantId) 
             }
             startActivity(intent)
             finish()

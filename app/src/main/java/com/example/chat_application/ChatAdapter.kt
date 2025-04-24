@@ -12,14 +12,22 @@ import java.util.*
 
 @Parcelize
 data class Chat(
-    val id: String,
-    val name: String,
-    val lastMessage: String,
-    val timestamp: Long,
-    val unreadCount: Int,
-    val participantIds: List<String> = listOf(),
-    val type: String = "direct"
-) : Parcelable
+    var id: String = "",
+    var name: String = "",           // Original chat name (group name or fallback)
+    var displayName: String = "",    // Display name (other user's name for direct chats)
+    var lastMessage: String = "",
+    var timestamp: Long = 0,
+    var unreadCount: Int = 0,
+    var participantIds: MutableList<String> = mutableListOf(),
+    var type: String = ""
+) : Parcelable {
+    // Initialize displayName with name as fallback
+    init {
+        if (displayName.isEmpty()) {
+            displayName = name
+        }
+    }
+}
 
 // Binary Search Tree Node for name-based searching
 class ChatBSTNode(
@@ -48,7 +56,7 @@ class ChatManager {
         sortByTimestamp()
     }
 
-    // BST insertion
+    // BST insertion - now using displayName instead of name for searching
     private fun insertIntoBST(chat: Chat) {
         if (bstRoot == null) {
             bstRoot = ChatBSTNode(chat)
@@ -59,20 +67,20 @@ class ChatManager {
     }
 
     private fun insertNode(node: ChatBSTNode, chat: Chat): ChatBSTNode {
-        // Compare chat names lexicographically
-        val comparison = chat.name.compareTo(node.chat.name, ignoreCase = true)
+        // Compare chat displayNames lexicographically
+        val comparison = chat.displayName.compareTo(node.chat.displayName, ignoreCase = true)
 
         when {
             comparison < 0 -> {
-                // Insert to the left subtree if name comes before current node
+                // Insert to the left subtree if displayName comes before current node
                 node.left = node.left?.let { insertNode(it, chat) } ?: ChatBSTNode(chat)
             }
             comparison > 0 -> {
-                // Insert to the right subtree if name comes after current node
+                // Insert to the right subtree if displayName comes after current node
                 node.right = node.right?.let { insertNode(it, chat) } ?: ChatBSTNode(chat)
             }
             else -> {
-                // Names are equal, decide based on ID or other criterion
+                // Names are equal, decide based on ID
                 if (chat.id != node.chat.id) {
                     node.right = node.right?.let { insertNode(it, chat) } ?: ChatBSTNode(chat)
                 }
@@ -82,7 +90,7 @@ class ChatManager {
         return node
     }
 
-    // Find a chat by name using BST (O(log n) search)
+    // Find a chat by displayName using BST (O(log n) search)
     fun findByName(name: String): Chat? {
         return findNodeByName(bstRoot, name)?.chat
     }
@@ -90,7 +98,7 @@ class ChatManager {
     private fun findNodeByName(node: ChatBSTNode?, name: String): ChatBSTNode? {
         if (node == null) return null
 
-        val comparison = name.compareTo(node.chat.name, ignoreCase = true)
+        val comparison = name.compareTo(node.chat.displayName, ignoreCase = true)
 
         return when {
             comparison < 0 -> findNodeByName(node.left, name)
@@ -118,8 +126,8 @@ class ChatManager {
             val oldChat = chatStack[index]
             chatStack[index] = updatedChat
 
-            // If name changed, we need to rebuild the BST
-            if (oldChat.name != updatedChat.name) {
+            // If displayName changed, we need to rebuild the BST
+            if (oldChat.displayName != updatedChat.displayName) {
                 rebuildBST()
             }
 
@@ -159,6 +167,8 @@ class ChatManager {
 
     fun get(index: Int): Chat = chatStack[index]
 
+    fun getAt(index: Int): Chat = chatStack[index]
+
     fun getAll(): List<Chat> = chatStack.toList()
 
     // Sort chats by timestamp (newest first)
@@ -168,7 +178,7 @@ class ChatManager {
         chatStack.addAll(sortedList)
     }
 
-    // For finding partial matches using the BST (more efficient than checking every chat)
+    // For finding partial matches using the BST (using displayName)
     fun findPartialMatches(query: String): List<Chat> {
         val results = mutableListOf<Chat>()
         findPartialMatchesInSubtree(bstRoot, query.lowercase(), results)
@@ -182,7 +192,7 @@ class ChatManager {
         findPartialMatchesInSubtree(node.left, query, results)
 
         // Check current node
-        if (node.chat.name.lowercase().contains(query)) {
+        if (node.chat.displayName.lowercase().contains(query)) {
             results.add(node.chat)
         }
 
@@ -206,7 +216,8 @@ class ChatAdapter(private val chatManager: ChatManager, private val listener: On
         private val unreadCountTextView: TextView = itemView.findViewById(R.id.unreadCountTextView)
 
         fun bind(chat: Chat) {
-            nameTextView.text = chat.name
+            // Use displayName instead of name
+            nameTextView.text = chat.displayName
             lastMessageTextView.text = chat.lastMessage
 
             // Format timestamp
@@ -238,43 +249,4 @@ class ChatAdapter(private val chatManager: ChatManager, private val listener: On
     }
 
     override fun getItemCount(): Int = chatManager.size()
-}
-
-class ChatCreationManager(private val chatManager: ChatManager) {
-
-    // Create a new chat and return it without saving
-    fun createChat(name: String, participantIds: List<String>, type: String = "direct"): Chat {
-        return Chat(
-            id = generateUniqueId(),
-            name = name,
-            lastMessage = "",
-            timestamp = System.currentTimeMillis(),
-            unreadCount = 0,
-            participantIds = participantIds,
-            type = type
-        )
-    }
-
-    // Save a chat to both local storage and data structures
-    fun saveChat(chat: Chat) {
-        chatManager.push(chat)
-        saveChatsToLocalStorage()
-    }
-
-    // Save multiple chats at once
-    fun saveChats(chats: List<Chat>) {
-        chatManager.pushAll(chats)
-        saveChatsToLocalStorage()
-    }
-
-    // Save all chats to local storage - needs implementation
-    private fun saveChatsToLocalStorage() {
-        // Implementation needs to be added
-        // This should convert chats to JSON and save to file
-    }
-
-    // Generate a unique ID for new chats
-    private fun generateUniqueId(): String {
-        return "chat_${System.currentTimeMillis()}_${(0..999).random()}"
-    }
 }

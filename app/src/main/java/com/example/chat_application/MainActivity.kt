@@ -26,6 +26,7 @@ import java.io.File
 
 private const val TAG = "MainActivity"
 private const val CHATS_FILE = "chats.json"
+private const val USERS_FILE = "users.json"  // New file to store user display names
 
 class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
@@ -42,6 +43,10 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     private val chatManager = ChatManager()
     private lateinit var firebaseDatabase: FirebaseDatabase
     private lateinit var chatsReference: DatabaseReference
+    private lateinit var usersReference: DatabaseReference
+
+    // Store user display names
+    private val userDisplayNames = mutableMapOf<String, String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(UserSettings.theme)
@@ -49,14 +54,13 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         enableEdgeToEdge()
         setContentView(R.layout.mainpage)
 
-
-
-
         initViews()
         setupUI()
         setupRecyclerView()
         setupFirebase()
-        loadChats()
+
+        // First load users, then load chats
+        loadUsers()
     }
 
     private fun initViews() {
@@ -122,76 +126,153 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     private fun setupFirebase() {
         firebaseDatabase = FirebaseDatabase.getInstance()
         chatsReference = firebaseDatabase.getReference("chats")
+        usersReference = firebaseDatabase.getReference("users")
     }
 
-    private fun loadChats() {
+    // Load user display names from Firebase and local storage
+    private fun loadUsers() {
+        Log.d(TAG, "Loading users")
+
+        // First load from local storage
+        loadUsersFromLocalStorage()
+
+        // Then if Firebase is enabled, load from there
         if (resources.getBoolean(R.bool.firebaseOn)) {
-            // Load from Firebase first
-            loadChatsFromFirebase()
+            loadUsersFromFirebase()
         } else {
-            // If Firebase is disabled, load from local storage
-            loadChatsFromLocalStorage()
+            // If no users found, add demo users
+            if (userDisplayNames.isEmpty()) {
+                addDemoUsers()
+            }
+
+            // After loading users, proceed to load chats
+            loadChats()
         }
     }
 
-    private fun loadChatsFromFirebase() {
-        Log.d(TAG, "Loading chats from Firebase")
-        chatsReference.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                chatManager.clear()
-                val firebaseChats = mutableListOf<Chat>()
-
-                if (!snapshot.exists() || snapshot.childrenCount == 0.toLong()) {
-                    Log.d(TAG, "No chats found in Firebase, checking local storage")
-                    loadChatsFromLocalStorage()
-                    return
-                }
-
-                for (chatSnapshot in snapshot.children) {
-                    val chat = chatSnapshot.getValue(Chat::class.java)
-                    // Only add chats where the current user is a participant
-                    if (chat != null && chat.participantIds.contains(userId)) {
-                        firebaseChats.add(chat)
-                        Log.d(TAG, "Added chat ${chat.name} for user $userId")
-                    }
-                }
-
-                if (firebaseChats.isNotEmpty()) {
-                    chatManager.pushAll(firebaseChats)
-                    saveChatsToLocalStorage()
-                    chatAdapter.notifyDataSetChanged()
-                    Log.d(TAG, "Loaded ${firebaseChats.size} chats from Firebase for user $userId")
-                } else {
-                    loadChatsFromLocalStorage()
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e(TAG, "Failed to load chats from Firebase: ${error.message}")
-                Toast.makeText(
-                    this@MainActivity,
-                    "Failed to load chats from Firebase. Loading local chats.",
-                    Toast.LENGTH_SHORT
-                ).show()
-                loadChatsFromLocalStorage()
-            }
-        })
-    }
-
-    private fun loadChatsFromLocalStorage() {
-        Log.d(TAG, "Loading chats from local storage")
-        val jsonString = readChatsFromFile()
+    private fun loadUsersFromLocalStorage() {
+        Log.d(TAG, "Loading users from local storage")
+        val jsonString = readUsersFromFile()
 
         if (jsonString.isEmpty()) {
-            Log.d(TAG, "No chats file found or empty file")
-            addDemoChat()
+            Log.d(TAG, "No users file found or empty file")
             return
         }
 
         try {
+            val jsonObject = JSONObject(jsonString)
+            val userIds = jsonObject.keys()
+
+            while (userIds.hasNext()) {
+                val userId = userIds.next()
+                val displayName = jsonObject.getString(userId)
+                userDisplayNames[userId] = displayName
+            }
+
+            Log.d(TAG, "Loaded ${userDisplayNames.size} users from local storage")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading users from file: ${e.message}")
+        }
+    }
+
+    private fun loadUsersFromFirebase() {
+        Log.d(TAG, "Loading users from Firebase")
+
+        usersReference.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                try {
+                    for (userSnapshot in snapshot.children) {
+                        val userId = userSnapshot.key
+                        val displayName = userSnapshot.child("displayName").getValue(String::class.java)
+
+                        if (userId != null && displayName != null) {
+                            userDisplayNames[userId] = displayName
+                            Log.d(TAG, "Loaded user: $userId -> $displayName")
+                        }
+                    }
+
+                    // Save updated user data to local storage
+                    saveUsersToLocalStorage()
+
+                    // After loading users, proceed to load chats
+                    loadChats()
+
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error in users onDataChange: ${e.message}")
+                    e.printStackTrace()
+
+                    // If Firebase fails, still proceed to load chats
+                    loadChats()
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Failed to load users from Firebase: ${error.message}")
+
+                // If Firebase fails, still proceed to load chats
+                loadChats()
+            }
+        })
+    }
+
+    private fun addDemoUsers() {
+        Log.d(TAG, "Adding demo users")
+
+        userDisplayNames["demo_user_1"] = "John Doe"
+        userDisplayNames["demo_user_2"] = "Jane Smith"
+
+        // Save demo users to local storage
+        saveUsersToLocalStorage()
+    }
+
+    private fun saveUsersToLocalStorage() {
+        try {
+            val jsonObject = JSONObject()
+
+            for ((userId, displayName) in userDisplayNames) {
+                jsonObject.put(userId, displayName)
+            }
+
+            val jsonString = jsonObject.toString()
+            writeUsersToFile(jsonString)
+
+            Log.d(TAG, "Saved ${userDisplayNames.size} users to local storage")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving users to file: ${e.message}")
+        }
+    }
+
+    private fun readUsersFromFile(): String {
+        val file = File(filesDir, USERS_FILE)
+        return if (file.exists()) {
+            file.readText()
+        } else {
+            ""
+        }
+    }
+
+    private fun writeUsersToFile(jsonString: String) {
+        try {
+            val file = File(filesDir, USERS_FILE)
+            file.writeText(jsonString)
+            Log.d(TAG, "Users saved to file: ${file.absolutePath}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error writing users to file: ${e.message}")
+        }
+    }
+
+    private fun loadChatsFromLocalStorageWithoutSaving(): List<Chat> {
+        Log.d(TAG, "Loading chats from local storage")
+        val jsonString = readChatsFromFile()
+        val localChats = mutableListOf<Chat>()
+
+        if (jsonString.isEmpty()) {
+            Log.d(TAG, "No chats file found or empty file")
+            return localChats
+        }
+
+        try {
             val jsonArray = JSONArray(jsonString)
-            chatManager.clear()
-            val tempChats = mutableListOf<Chat>()
 
             for (i in 0 until jsonArray.length()) {
                 val chatObject = jsonArray.getJSONObject(i)
@@ -205,6 +286,8 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 val chat = Chat(
                     id = chatObject.getString("id"),
                     name = chatObject.getString("name"),
+                    // Default displayName to name, we'll update it later
+                    displayName = chatObject.optString("displayName", chatObject.getString("name")),
                     lastMessage = chatObject.getString("lastMessage"),
                     timestamp = chatObject.getLong("timestamp"),
                     unreadCount = chatObject.getInt("unreadCount"),
@@ -212,21 +295,303 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                     type = chatObject.getString("type")
                 )
 
-                tempChats.add(chat)
+                // Only add chats where current user is a participant
+                if (participantIds.contains(userId)) {
+                    localChats.add(chat)
+                }
             }
 
-            // Add all chats to the manager at once
-            chatManager.pushAll(tempChats)
+            Log.d(TAG, "Loaded ${localChats.size} chats from local storage")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading chats from file: ${e.message}")
+        }
+
+        return localChats
+    }
+
+    private fun loadChats() {
+        Log.d(TAG, "Loading chats")
+
+        // First load from local storage for immediate display
+        val localChats = loadChatsFromLocalStorageWithoutSaving()
+
+        // If no local chats, add demo chats for first-time users
+        if (localChats.isEmpty()) {
+            Log.d(TAG, "No local chats found, adding demo chats")
+            addDemoChat()
+            return // The addDemoChat function will handle everything else
+        }
+
+        // Then if Firebase is enabled, load from there and merge
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            loadChatsFromFirebaseAndMerge(localChats)
+        } else {
+            // If no Firebase, just use the local chats
+            chatManager.clear()
+            chatManager.pushAll(localChats)
+            updateChatDisplayNames() // Update display names
             chatAdapter.notifyDataSetChanged()
+        }
+    }
+
+    private fun loadChatsFromFirebaseAndMerge(localChats: List<Chat>) {
+        Log.d(TAG, "Loading chats from Firebase")
+
+        try {
+            chatsReference.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    try {
+                        val firebaseChats = mutableListOf<Chat>()
+                        val mergedChats = mutableMapOf<String, Chat>() // Using ID as key
+
+                        // First add all local chats to the merged map
+                        for (chat in localChats) {
+                            mergedChats[chat.id] = chat
+                        }
+
+                        // Process Firebase chats
+                        for (chatSnapshot in snapshot.children) {
+                            try {
+                                // Convert snapshot to Chat object
+                                val chatId = chatSnapshot.key ?: continue
+                                val name = chatSnapshot.child("name").getValue(String::class.java) ?: ""
+                                val displayName = chatSnapshot.child("displayName").getValue(String::class.java) ?: name
+                                val lastMessage = chatSnapshot.child("lastMessage").getValue(String::class.java) ?: ""
+                                val timestamp = chatSnapshot.child("timestamp").getValue(Long::class.java) ?: 0L
+                                val unreadCount = chatSnapshot.child("unreadCount").getValue(Int::class.java) ?: 0
+                                val type = chatSnapshot.child("type").getValue(String::class.java) ?: "direct"
+
+                                // Get participant IDs
+                                val participantIds = mutableListOf<String>()
+                                val participantsSnapshot = chatSnapshot.child("participantIds")
+                                for (participantSnapshot in participantsSnapshot.children) {
+                                    val participantId = participantSnapshot.getValue(String::class.java)
+                                    if (participantId != null) {
+                                        participantIds.add(participantId)
+                                    }
+                                }
+
+                                // Create chat object
+                                val chat = Chat(
+                                    id = chatId,
+                                    name = name,
+                                    displayName = displayName,
+                                    lastMessage = lastMessage,
+                                    timestamp = timestamp,
+                                    unreadCount = unreadCount,
+                                    participantIds = participantIds,
+                                    type = type
+                                )
+
+                                // Only process chats where the current user is a participant
+                                if (participantIds.contains(userId)) {
+                                    firebaseChats.add(chat)
+                                    // Firebase data overrides local data for the same chat ID
+                                    mergedChats[chat.id] = chat
+                                    Log.d(TAG, "Added Firebase chat: ${chat.name} (ID: ${chat.id})")
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error processing chat from Firebase: ${e.message}")
+                                e.printStackTrace()
+                            }
+                        }
+
+                        Log.d(TAG, "Loaded ${firebaseChats.size} chats from Firebase")
+
+                        // Update the chat manager with merged chats on the UI thread
+                        runOnUiThread {
+                            try {
+                                // Update the chat manager with merged chats
+                                chatManager.clear()
+                                chatManager.pushAll(mergedChats.values.toList())
+
+                                // Update displayNames based on user list
+                                updateChatDisplayNames()
+
+                                chatAdapter.notifyDataSetChanged()
+
+                                // Save the merged data back to local storage
+                                saveChatsToLocalStorage()
+
+                                Log.d(TAG, "Merged ${mergedChats.size} chats from local and Firebase")
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error updating UI with merged chats: ${e.message}")
+                                e.printStackTrace()
+
+                                // Fallback to local chats
+                                chatManager.clear()
+                                chatManager.pushAll(localChats)
+                                updateChatDisplayNames()
+                                chatAdapter.notifyDataSetChanged()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error in onDataChange: ${e.message}")
+                        e.printStackTrace()
+
+                        // Fallback to local chats on the UI thread
+                        runOnUiThread {
+                            chatManager.clear()
+                            chatManager.pushAll(localChats)
+                            updateChatDisplayNames()
+                            chatAdapter.notifyDataSetChanged()
+                        }
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(TAG, "Failed to load chats from Firebase: ${error.message}")
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Failed to load chats from Firebase. Using local chats.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    // Just use the local chats if Firebase failed
+                    runOnUiThread {
+                        chatManager.clear()
+                        chatManager.pushAll(localChats)
+                        updateChatDisplayNames()
+                        chatAdapter.notifyDataSetChanged()
+                    }
+                }
+            })
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception during Firebase chat loading: ${e.message}")
+            e.printStackTrace()
+
+            // Fallback to local chats
+            chatManager.clear()
+            chatManager.pushAll(localChats)
+            updateChatDisplayNames()
+            chatAdapter.notifyDataSetChanged()
+        }
+    }
+
+    // Update display names for direct chats
+    private fun updateChatDisplayNames() {
+        Log.d(TAG, "Updating chat display names")
+
+        val allChats = chatManager.getAll()
+        val updatedChats = mutableListOf<Chat>()
+
+        for (chat in allChats) {
+            // For direct chats, set displayName to the other user's name
+            if (chat.type == "direct" && chat.participantIds.size == 2) {
+                // Find the other user's ID (not current user)
+                val otherUserId = chat.participantIds.find { it != userId }
+
+                // If found, get their display name
+                if (otherUserId != null) {
+                    val otherUserName = userDisplayNames[otherUserId]
+
+                    if (otherUserName != null) {
+                        // Create a new chat with updated displayName
+                        val updatedChat = chat.copy(displayName = otherUserName)
+                        updatedChats.add(updatedChat)
+                        continue
+                    }
+                }
+            }
+
+            // For group chats or if other user not found, keep original
+            updatedChats.add(chat)
+        }
+
+        // Update chat manager with the updated chats
+        chatManager.clear()
+        chatManager.pushAll(updatedChats)
+
+        // Save the updated chats with display names
+        saveChatsToLocalStorage()
+    }
+
+    private fun saveChatsToFirebase() {
+        if (!resources.getBoolean(R.bool.firebaseOn)) {
+            return
+        }
+
+        try {
+            Log.d(TAG, "Saving chats to Firebase")
+            val allChats = chatManager.getAll()
+
+            // Only update the chats, don't delete anything
+            for (chat in allChats) {
+                try {
+                    // Only save if user is a participant (this prevents deleting other people's chats)
+                    if (chat.participantIds.contains(userId)) {
+                        chatsReference.child(chat.id).setValue(chat)
+                            .addOnSuccessListener {
+                                Log.d(TAG, "Successfully saved chat ${chat.id} to Firebase")
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e(TAG, "Failed to save chat ${chat.id}: ${e.message}")
+                            }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error saving chat ${chat.id} to Firebase: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+
+            Log.d(TAG, "Scheduled ${allChats.size} chats to be saved to Firebase")
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception during saveChatsToFirebase: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
+    private fun addDemoChat() {
+        Log.d(TAG, "Adding demo chats")
+        try {
+            chatManager.clear()
+            val currentTime = System.currentTimeMillis()
+
+            // Make sure userId is included in the participant IDs
+            val demoChats = listOf(
+                Chat(
+                    id = "demo1",
+                    name = "Demo Group",
+                    displayName = "Demo Group", // Same for group chats
+                    lastMessage = "Welcome to FireChat! This is a demo message.",
+                    timestamp = currentTime - 6000,
+                    unreadCount = 9,
+                    participantIds = mutableListOf(userId, "demo_user_1", "demo_user_2"),
+                    type = "group"
+                ),
+                Chat(
+                    id = "demo2",
+                    name = "John Doe", // Original name
+                    displayName = "John Doe", // Will be updated in updateChatDisplayNames()
+                    lastMessage = "Hey there! How are you doing?",
+                    timestamp = currentTime,
+                    unreadCount = 0,
+                    participantIds = mutableListOf(userId, "demo_user_1"),
+                    type = "direct"
+                )
+            )
+
+            // Add all demo chats to the stack
+            chatManager.pushAll(demoChats)
+
+            // Update display names
+            updateChatDisplayNames()
+
+            // Save demo chats to local storage
+            saveChatsToLocalStorage()
 
             // Save to Firebase if enabled
             if (resources.getBoolean(R.bool.firebaseOn)) {
                 saveChatsToFirebase()
             }
 
+            // Update UI
+            chatAdapter.notifyDataSetChanged()
+
+            Log.d(TAG, "Demo chats added: ${chatManager.size()}")
         } catch (e: Exception) {
-            Log.e(TAG, "Error loading chats: ${e.message}")
-            Toast.makeText(this, "Error loading chats: ${e.message}", Toast.LENGTH_SHORT).show()
+            Log.e(TAG, "Error adding demo chats: ${e.message}")
+            e.printStackTrace()
         }
     }
 
@@ -277,32 +642,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         }
     }
 
-    private fun saveChatsToFirebase() {
-        if (!resources.getBoolean(R.bool.firebaseOn)) {
-            return
-        }
-
-        Log.d(TAG, "Saving chats to Firebase")
-        val allChats = chatManager.getAll()
-
-        // Clear existing chats in Firebase
-        chatsReference.removeValue().addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                // Add each chat individually with its ID as the key
-                for (chat in allChats) {
-                    chatsReference.child(chat.id).setValue(chat)
-                }
-                Log.d(TAG, "Successfully saved ${allChats.size} chats to Firebase")
-            } else {
-                Log.e(TAG, "Failed to clear Firebase before saving: ${task.exception?.message}")
-                Toast.makeText(
-                    this,
-                    "Failed to save chats to Firebase",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-    }
 
     override fun onResume() {
         super.onResume()
@@ -318,57 +657,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         }
         startActivity(intent)
         finish()
-    }
-
-    private fun addDemoChat() {
-        Log.d(TAG, "Adding demo chats")
-        chatManager.clear()
-        val currentTime = System.currentTimeMillis()
-        val demoChats = listOf(
-            Chat(
-                id = "demo1",
-                name = "Demo Group",
-                lastMessage = "Welcome to FireChat! This is a demo message.",
-                timestamp = currentTime - 6000,
-                unreadCount = 9,
-                participantIds = mutableListOf("demo_user_1", "demo_user_2"),
-                type = "group"
-            ),
-            Chat(
-                id = "demo2",
-                name = "John Doe",
-                lastMessage = "Hey there! How are you doing?",
-                timestamp = currentTime,
-                unreadCount = 0,
-                participantIds = mutableListOf("demo_user_1"),
-                type = "direct"
-            ),
-            Chat(
-                id = "demo3",
-                name = "mostafa",
-                lastMessage = "Hey there! How are you doing?",
-                timestamp = currentTime,
-                unreadCount = 0,
-                participantIds = mutableListOf("Eib1DWsEOfnZlBB5HpiZ","n7lC1M1DndFTaa0uXzf2"),
-                type = "direct"
-            )
-        )
-
-        // Add all demo chats to the stack
-        chatManager.pushAll(demoChats)
-
-        // Save demo chats to local storage
-        saveChatsToLocalStorage()
-
-        // Save to Firebase if enabled
-        if (resources.getBoolean(R.bool.firebaseOn)) {
-            saveChatsToFirebase()
-        }
-
-        // Update UI
-        chatAdapter.notifyDataSetChanged()
-
-        Log.d(TAG, "Demo chats added: ${chatManager.size()}")
     }
 
     private fun toggleSearchBar() {
