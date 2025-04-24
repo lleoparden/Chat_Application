@@ -6,9 +6,20 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
+    android:background="?attr/BG"
     tools:context=".ChatRoomActivity">
 
+
     <!-- Top App Bar -->
+    <ImageView
+        android:id="@+id/imageView2"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        app:layout_anchor="@+id/messagesRecyclerView"
+        app:layout_anchorGravity="center"
+        app:srcCompat="@drawable/chatbg" />
+
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
@@ -19,7 +30,8 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorSecondary">
+            android:background="?attr/ChatroomTop"
+            >
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
@@ -99,7 +111,6 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="8dp"
-        android:background="?attr/colorSurface"
         android:elevation="4dp"
         android:layout_gravity="bottom">
 
@@ -107,22 +118,26 @@
             android:id="@+id/messageInput"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="3dp"
             android:layout_marginEnd="8dp"
             android:layout_weight="1"
+            android:background="@drawable/typechatbubble"
             android:hint="Type a message..."
+            android:textColorHint="@color/black"
             android:inputType="textMultiLine"
             android:maxLines="3"
             android:padding="12dp"
-            android:textColor="?attr/colorOnSecondary"
+            android:paddingStart="20dp"
+            android:textColor="@color/black"
             android:textSize="15sp" />
 
         <Button
             android:id="@+id/sendButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:backgroundTint="?attr/colorPrimary"
+            android:backgroundTint="@color/chatSendButton"
             android:text="Send"
             android:textColor="?attr/colorOnPrimary" />
     </LinearLayout>
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

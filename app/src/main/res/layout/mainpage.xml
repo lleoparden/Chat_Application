@@ -12,7 +12,7 @@
         android:id="@+id/topBar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorSecondary"
+        android:background="?attr/ChatroomTop"
         android:elevation="4dp"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -22,7 +22,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:text="Za3boot chat"
-            android:textColor="@color/primary_dark"
+            android:textColor="?attr/generalText"
             android:textSize="20sp"
             android:textStyle="bold"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -91,7 +91,7 @@
         android:id="@+id/chatRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:background="?attr/colorSecondary"
+        android:background="?attr/MainMenuBG"
         android:clipToPadding="false"
         android:padding="8dp"
         app:layout_constraintBottom_toTopOf="@+id/bottomNavigation"
@@ -107,7 +107,7 @@
         android:src="@android:drawable/ic_input_add"
         app:layout_constraintBottom_toTopOf="@+id/bottomNavigation"
         app:layout_constraintEnd_toEndOf="parent"
-        android:background="?attr/colorPrimary"
+        android:backgroundTint="?attr/AuthButton"
         />
 
     <!-- Bottom Navigation -->
@@ -117,7 +117,7 @@
         android:layout_height="wrap_content"
         app:layout_constraintBottom_toBottomOf="parent"
         app:menu="@menu/bottom_nav_menu"
-        android:background="?attr/colorSecondary"
+        android:background="?attr/ChatroomTop"
         app:itemIconTint="@color/bottom_nav_item_color"
         app:itemTextColor="@color/bottom_nav_item_color" />
 

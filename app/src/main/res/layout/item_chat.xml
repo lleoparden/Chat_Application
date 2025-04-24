@@ -4,20 +4,23 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="12dp"
+    android:layout_marginBottom="8dp"
+    android:background="@drawable/chatlistborder"
     android:clickable="true"
     android:focusable="true"
-    android:background="?attr/colorSecondary">
+    android:padding="12dp">
 
     <ImageView
         android:id="@+id/profileImageView"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:src="@drawable/ic_person"
+        android:layout_marginLeft="10dp"
+        android:background="@drawable/circle_background"
+        android:backgroundTint="?attr/AuthButton"
         android:contentDescription="Profile"
+        android:src="@drawable/ic_person"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:background="?attr/colorSecondary"/>
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/chatNameTextView"
@@ -25,9 +28,9 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
         android:layout_marginEnd="8dp"
+        android:textColor="?attr/colorOnSecondary"
         android:textSize="16sp"
         android:textStyle="bold"
-        android:textColor="?attr/colorOnSecondary"
         app:layout_constraintEnd_toStartOf="@+id/timeTextView"
         app:layout_constraintStart_toEndOf="@+id/profileImageView"
         app:layout_constraintTop_toTopOf="parent"
@@ -53,8 +56,8 @@
         android:id="@+id/timeTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textSize="12sp"
         android:textColor="@android:color/darker_gray"
+        android:textSize="12sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         tools:text="12:34" />

@@ -23,7 +23,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:maxWidth="280dp"
-        app:cardBackgroundColor="#FFFFFF"
+        app:cardBackgroundColor="?attr/ReceivedMessage"
         app:cardCornerRadius="12dp"
         app:cardElevation="2dp"
         app:cardUseCompatPadding="true"
@@ -52,7 +52,7 @@
                 android:layout_gravity="end"
                 android:layout_marginTop="4dp"
                 android:text="12:32 PM"
-                android:textColor="#78909C"
+                android:textColor="#49494F"
                 android:textSize="12sp" />
         </LinearLayout>
     </androidx.cardview.widget.CardView>

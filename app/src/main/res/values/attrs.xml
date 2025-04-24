@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <attr name="BG" format="reference|color"/>
+    <attr name="MainMenuBG" format="reference|color"/>
     <attr name="AuthText" format="reference|color"/>
     <attr name="AuthButton" format="reference|color"/>
+    <attr name="SentMessage" format="reference|color"/>
+    <attr name="ReceivedMessage" format="reference|color"/>
+    <attr name="ChatroomTop" format="reference|color"/>
+    <attr name="ChatList" format="reference|color"/>
+    <attr name="generalText" format="reference|color"/>
 </resources>

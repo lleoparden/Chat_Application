@@ -10,9 +10,23 @@
     <color name="primary_dark">#1cbf64</color>
     <color name="secondary_dark">#0b0f13</color>
     <color name="lightBG">#F2F2FF</color>
-    <color name="darkBG">#3D3D3d</color>
+    <color name="darkBG">#3D3D3D</color>
+    <color name="darkerBG">#333333</color>
     <color name="lightModeText">#665695</color>
     <color name="darkModeText">#E0E0FF</color>
     <color name="darkModeButton">#B6B6FF</color>
     <color name="lightModeButton">#9BA8DD</color>
+    <color name="chatTextBar">#9B93D6</color>
+    <color name="chatSendButton">#BEBBE8</color>
+    <color name="messageSentDark">#ABB5E8</color>
+    <color name="messageReceivedDark">#DCE0F4</color>
+    <color name="messageSentLight">#A0A6E8</color>
+    <color name="messageReceivedLight">#DBDEFF</color>
+    <color name="topChatRoomLight">#EDEDFF</color>
+    <color name="topChatRoomDark">#232323</color>
+    <color name="chatListDark">#212121</color>
+    <color name="chatListLight">#D2D2EF</color>
+
+
+
 </resources>

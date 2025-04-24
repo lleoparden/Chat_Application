@@ -3,7 +3,7 @@
     <style name="defaultTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Primary brand color. -->
         <item name="android:windowFullscreen">true</item>
-        <item name="colorPrimary">@color/primary_dark</item>
+        <item name="colorPrimary">@color/chatTextBar</item>
         <item name="colorPrimaryVariant">@color/primary_dark</item>
         <item name="colorOnPrimary">@color/black</item>
         <!-- Secondary brand color. -->
@@ -12,7 +12,13 @@
         <item name="colorOnSecondary">@color/white</item>
         <!-- Customize your theme here. -->
         <item name="BG">@color/darkBG</item>
+        <item name="MainMenuBG">@color/darkerBG</item>
         <item name="AuthText">@color/darkModeText</item>
         <item name="AuthButton">@color/darkModeButton</item>
+        <item name="SentMessage">@color/messageSentDark</item>
+        <item name="ReceivedMessage">@color/messageReceivedDark</item>
+        <item name="ChatroomTop">@color/topChatRoomDark</item>
+        <item name="generalText">@color/darkModeText</item>
+        <item name="ChatList">@color/chatListDark</item>
     </style>
 </resources>
