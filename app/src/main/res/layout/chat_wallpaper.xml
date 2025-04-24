@@ -1,128 +1,20 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
-
-    <com.google.android.material.appbar.AppBarLayout
-        android:id="@+id/appBarLayout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <androidx.appcompat.widget.Toolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            app:navigationIcon="@drawable/ic_back"
-            app:title="Chat Wallpaper"
-            app:titleTextColor="@color/white" />
-
+<LinearLayout xmlns:ns0="http://schemas.android.com/apk/res/android" xmlns:ns1="http://schemas.android.com/apk/res-auto" ns0:layout_width="match_parent" ns0:layout_height="match_parent" ns0:orientation="vertical">
+    <com.google.android.material.appbar.AppBarLayout ns0:id="@+id/appBarLayout" ns0:layout_width="match_parent" ns0:layout_height="wrap_content">
+        <androidx.appcompat.widget.Toolbar ns0:id="@+id/toolbar" ns0:layout_width="match_parent" ns0:layout_height="?attr/actionBarSize" ns1:navigationIcon="@drawable/ic_back" ns1:title="Chat Wallpaper" ns1:titleTextColor="@color/white"/>
     </com.google.android.material.appbar.AppBarLayout>
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
-
-            <!-- Theme selection section -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Theme"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="@color/purple_700"
-                android:layout_marginBottom="8dp"/>
-
-            <RadioGroup
-                android:id="@+id/themeRadioGroup"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginBottom="24dp">
-
-                <RadioButton
-                    android:id="@+id/lightThemeRadio"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Light"
-                    android:textSize="14sp"
-                    android:padding="8dp"/>
-
-                <RadioButton
-                    android:id="@+id/darkThemeRadio"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Dark"
-                    android:textSize="14sp"
-                    android:padding="8dp"/>
-
-                <RadioButton
-                    android:id="@+id/systemThemeRadio"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="System default"
-                    android:textSize="14sp"
-                    android:padding="8dp"
-                    android:checked="true"/>
+    <ScrollView ns0:layout_width="match_parent" ns0:layout_height="match_parent">
+        <LinearLayout ns0:layout_width="match_parent" ns0:layout_height="wrap_content" ns0:orientation="vertical" ns0:padding="16dp">
+            <TextView ns0:layout_width="match_parent" ns0:layout_height="wrap_content" ns0:text="Theme" ns0:textSize="16sp" ns0:textStyle="bold" ns0:textColor="@color/purple_700" ns0:layout_marginBottom="8dp"/>
+            <RadioGroup ns0:id="@+id/themeRadioGroup" ns0:layout_width="match_parent" ns0:layout_height="wrap_content" ns0:orientation="vertical" ns0:layout_marginBottom="24dp">
+                <RadioButton ns0:id="@+id/lightThemeRadio" ns0:layout_width="match_parent" ns0:layout_height="wrap_content" ns0:text="Light" ns0:textSize="14sp" ns0:padding="8dp"/>
+                <RadioButton ns0:id="@+id/darkThemeRadio" ns0:layout_width="match_parent" ns0:layout_height="wrap_content" ns0:text="Dark" ns0:textSize="14sp" ns0:padding="8dp"/>
+                <RadioButton ns0:id="@+id/systemThemeRadio" ns0:layout_width="match_parent" ns0:layout_height="wrap_content" ns0:text="System default" ns0:textSize="14sp" ns0:padding="8dp" ns0:checked="true"/>
             </RadioGroup>
-
-            <!-- Wallpaper selection section -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Wallpaper"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="@color/purple_700"
-                android:layout_marginBottom="16dp"/>
-
-            <!-- Gallery wallpaper option -->
-            <LinearLayout
-                android:id="@+id/galleryWallpaper"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:layout_marginBottom="24dp">
-
-                <ImageView
-                    android:id="@+id/selectedWallpaperPreview"
-                    android:layout_width="200dp"
-                    android:layout_height="300dp"
-                    android:src="@drawable/circle2"
-                    android:padding="40dp"
-                    android:background="#f0f0f0"
-                    android:scaleType="centerCrop"
-                    android:contentDescription="Selected Wallpaper Preview"/>
-
-                <Button
-                    android:id="@+id/selectFromGalleryButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Select from Gallery"
-                    android:drawableStart="@android:drawable/ic_menu_gallery"
-                    android:drawablePadding="8dp"
-                    android:layout_marginTop="16dp"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:backgroundTint="@color/purple_500"
-                    android:textColor="@color/white"/>
-
-                <TextView
-                    android:id="@+id/noWallpaperSelected"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="No wallpaper selected"
-                    android:textSize="14sp"
-                    android:layout_marginTop="8dp"
-                    android:textColor="@android:color/darker_gray"/>
+            <TextView ns0:layout_width="match_parent" ns0:layout_height="wrap_content" ns0:text="Wallpaper" ns0:textSize="16sp" ns0:textStyle="bold" ns0:textColor="@color/purple_700" ns0:layout_marginBottom="16dp"/>
+            <LinearLayout ns0:id="@+id/galleryWallpaper" ns0:layout_width="match_parent" ns0:layout_height="wrap_content" ns0:orientation="vertical" ns0:gravity="center" ns0:layout_marginBottom="24dp">
+                <ImageView ns0:id="@+id/selectedWallpaperPreview" ns0:layout_width="200dp" ns0:layout_height="300dp" ns0:src="@drawable/circle2" ns0:padding="40dp" ns0:background="#f0f0f0" ns0:scaleType="centerCrop" ns0:contentDescription="Selected Wallpaper Preview"/>
+                <Button ns0:id="@+id/selectFromGalleryButton" ns0:layout_width="wrap_content" ns0:layout_height="wrap_content" ns0:text="Select from Gallery" ns0:drawableStart="@android:drawable/ic_menu_gallery" ns0:drawablePadding="8dp" ns0:layout_marginTop="16dp" ns0:paddingStart="16dp" ns0:paddingEnd="16dp" ns0:backgroundTint="@color/purple_500" ns0:textColor="@color/white"/>
+                <TextView ns0:id="@+id/noWallpaperSelected" ns0:layout_width="wrap_content" ns0:layout_height="wrap_content" ns0:text="No wallpaper selected" ns0:textSize="14sp" ns0:layout_marginTop="8dp" ns0:textColor="@android:color/darker_gray"/>
             </LinearLayout>
         </LinearLayout>
     </ScrollView>

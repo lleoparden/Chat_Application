@@ -1,105 +1,66 @@
 package com.example.chat_application
 
+import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import android.view.MenuItem
-import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import com.example.chat_application.AuthActivity
+import com.example.chat_application.ChatWallpaperActivity
+import com.example.chat_application.EditProfileActivity
+import com.example.chat_application.HelpActivity
+import com.example.chat_application.UserSettings
 import java.io.File
 
 class SettingsActivity : AppCompatActivity() {
 
-    private lateinit var deleteChats : LinearLayout
-
-
-
-
+    @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
+        // طبق الثيم المحفوظ
         setTheme(UserSettings.theme)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.settings)
 
-        deleteChats = findViewById(R.id.chatHistorySettingItem)
+        // زر الرجوع في التولبار
+        val toolbar = findViewById<Toolbar>(R.id.toolbar)
+        toolbar.setNavigationOnClickListener { finish() }
 
-
-
-
-        val profileSettingItem = findViewById<LinearLayout>(R.id.profileSettingItem)
-        val signOutSettingItem = findViewById<LinearLayout>(R.id.signOutSettingItem)
-        val accountSettingItem = findViewById<LinearLayout>(R.id.accountSettingItem)
-        val chatBackgroundSettingItem = findViewById<LinearLayout>(R.id.chatBackgroundSettingItem)
-        //val chatHistorySettingItem = findViewById<LinearLayout>(R.id.chatHistorySettingItem)
-        val messageNotificationsItem = findViewById<LinearLayout>(R.id.messageNotificationsItem)
-        val soundsSettingItem = findViewById<LinearLayout>(R.id.soundsSettingItem)
-        val helpSettingItem = findViewById<LinearLayout>(R.id.helpSettingItem)
-        val inviteFriendsSettingItem = findViewById<LinearLayout>(R.id.inviteFriendsSettingItem)
-        val aboutSettingItem = findViewById<LinearLayout>(R.id.aboutSettingItem)
-
-
-        initializeBackButton()
-
-        profileSettingItem.setOnClickListener {
-            // Navigate to ProfileActivity
-            val intent = Intent(this, EditProfileActivity::class.java)
-            startActivity(intent)
+        // عناصر القائمة
+        findViewById<LinearLayout>(R.id.profileSettingItem).setOnClickListener {
+            startActivity(Intent(this, EditProfileActivity::class.java))
+            finish()
         }
-
-        accountSettingItem.setOnClickListener{
-            setContentView(R.layout.account_settings)
-            initializeBackButton()
+        findViewById<LinearLayout>(R.id.accountSettingItem).setOnClickListener {
+            startActivity(Intent(this, AccountSettingsActivity::class.java))
+            finish()
         }
-
-        chatBackgroundSettingItem.setOnClickListener{
-            setContentView(R.layout.chat_wallpaper)
-            initializeBackButton()
+        findViewById<LinearLayout>(R.id.chatBackgroundSettingItem).setOnClickListener {
+            startActivity(Intent(this, ChatWallpaperActivity::class.java))
+            finish()
         }
-
-//        chatHistorySettingItem.setOnClickListener{
-//            setContentView(R.layout.chat_history)
-//            val backButton = findViewById<Toolbar>(R.id.toolbar)
-//            backButton.setNavigationOnClickListener {
-//                val intent = Intent(this,SettingsActivity::class.java)
-//                startActivity(intent)
-//            }
-//        }
-
-        helpSettingItem.setOnClickListener{
-            setContentView(R.layout.help)
-            initializeBackButton()
+        findViewById<LinearLayout>(R.id.helpSettingItem).setOnClickListener {
+            startActivity(Intent(this, HelpActivity::class.java))
+            finish()
         }
-
-        inviteFriendsSettingItem.setOnClickListener{
-            setContentView(R.layout.invite_friends)
-            initializeBackButton()
+        findViewById<LinearLayout>(R.id.aboutSettingItem).setOnClickListener {
+            startActivity(Intent(this, AboutActivity::class.java))
+            finish()
         }
-
-        aboutSettingItem.setOnClickListener{
-            setContentView(R.layout.about)
-            initializeBackButton()
+        findViewById<LinearLayout>(R.id.inviteFriendsSettingItem).setOnClickListener {
+            startActivity(Intent(this, InviteFriendsActivity::class.java))
+            finish()
         }
-
-
-        deleteChats.setOnClickListener {
+        findViewById<LinearLayout>(R.id.chatHistorySettingItem).setOnClickListener {
             clearAllChatFiles()
         }
-
-
-        signOutSettingItem.setOnClickListener {
+        findViewById<LinearLayout>(R.id.signOutSettingItem).setOnClickListener {
             logout()
-        }
-    }
-
-    private fun initializeBackButton(){
-        val backButton = findViewById<Toolbar>(R.id.toolbar)
-        backButton.setNavigationOnClickListener {
-            val intent = Intent(this,MainActivity::class.java)
-            startActivity(intent)
         }
     }
 
@@ -109,52 +70,38 @@ class SettingsActivity : AppCompatActivity() {
             var failedCount = 0
 
             File(filesDir, "local_users.json").delete()
-            File(filesDir, "chat.json").delete()
-
-            // Find all message files in the app's internal storage
-            val files = filesDir.listFiles { file ->
+            filesDir.listFiles { file ->
                 file.name.startsWith("messages_") && file.name.endsWith(".json")
+            }?.forEach { file ->
+                if (file.delete()) deletedCount++ else failedCount++
             }
-
-            files?.forEach { file ->
-                if (file.delete()) {
-                    deletedCount++
-                } else {
-                    failedCount++
-                }
-            }
-
-            // Clear the current messages in memory and update UI
 
             val message = when {
-                deletedCount > 0 && failedCount == 0 -> "Cleared $deletedCount chats"
-                deletedCount > 0 && failedCount > 0 -> "Cleared $deletedCount chats, $failedCount failed"
-                else -> "No chats cleared"
+                deletedCount > 0 && failedCount == 0 ->
+                    "Cleared $deletedCount chats"
+                deletedCount > 0 && failedCount > 0 ->
+                    "Cleared $deletedCount chats, $failedCount failed"
+                else ->
+                    "No chats cleared"
             }
-
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
 
         } catch (e: Exception) {
-            Log.e("ChatRoomActivity", "Error clearing all chats: ${e.message}")
+            Log.e("SettingsActivity", "Error clearing chats: ${e.message}")
             Toast.makeText(this, "Error clearing chats: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // Handle back button in toolbar
-
     private fun logout() {
-        // Clear user session from SharedPreferences
-        val prefs = getSharedPreferences("ChatAppPrefs", MODE_PRIVATE)
-        prefs.edit().remove("userId").apply()
+        getSharedPreferences("ChatAppPrefs", Context.MODE_PRIVATE)
+            .edit().remove("userId").apply()
 
-        // Reset UserSettings
         UserSettings.userId = ""
 
-        // Navigate back to AuthActivity
-        val intent = Intent(this, AuthActivity::class.java)
-        // Clear back stack so user can't go back to MainActivity after logout
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
+        Intent(this, AuthActivity::class.java).also { intent ->
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+        }
         finish()
     }
 }

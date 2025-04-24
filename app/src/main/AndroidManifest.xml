@@ -1,18 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.example.chat_application">
 
-    <uses-feature
-        android:name="android.hardware.camera"
-        android:required="false" />
-
+    <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.GET_ACCOUNTS" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" /> <!-- Deprecated in API 29+ -->
 
+    <!-- Features -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <!-- Application Block -->
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -22,8 +27,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/defaultTheme"
-        tools:targetApi="31" >
+        tools:targetApi="31">
 
+        <!-- Launcher Activity -->
         <activity
             android:name=".AuthActivity"
             android:exported="true">
@@ -33,32 +39,24 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".MainActivity"
-            android:exported="true" />
-        <activity
-            android:name=".ChatRoomActivity"
+        <!-- Main Activities -->
+        <activity android:name=".MainActivity" android:exported="true" />
+        <activity android:name=".ChatRoomActivity"
+            android:exported="true"
             android:windowSoftInputMode="adjustResize"
-            android:configChanges="orientation|screenSize|keyboardHidden"
-            android:exported="true" />
-        <activity
-            android:name=".NotificationActivity"
-            android:exported="true" />
-        <activity
-            android:name=".EditProfileActivity"
-            android:exported="true" />
-        <activity
-            android:name=".SettingsActivity"
-            android:exported="true" />
-        <activity
-            android:name=".StoryActivity"
-            android:exported="true" />
-        <activity
-            android:name=".AddNewChatActivity"
-            android:exported="true" />
-        <activity
-            android:name=".UserProfileActivity"
-            android:exported="true" />
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+        <activity android:name=".NotificationActivity" android:exported="true" />
+        <activity android:name=".EditProfileActivity" android:exported="true" />
+        <activity android:name=".SettingsActivity" android:exported="true" />
+        <activity android:name=".StoryActivity" android:exported="true" />
+        <activity android:name=".AddNewChatActivity" android:exported="true" />
+        <activity android:name=".UserProfileActivity" android:exported="true" />
+        <activity android:name=".ChatWallpaperActivity" android:exported="true" />
+        <activity android:name=".HelpActivity" android:exported="true" />
+        <activity android:name=".InviteFriendsActivity" android:exported="true" />
+        <activity android:name=".AboutActivity" android:exported="true" />
+        <!-- Account Settings Activity -->
+        <activity android:name=".AccountSettingsActivity" android:exported="true" />
 
     </application>
 

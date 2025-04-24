@@ -67,6 +67,7 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.filament.android)
     implementation(libs.firebase.database)
+    implementation(libs.google.firebase.inappmessaging)
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
     // UI components
