@@ -5,6 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="?attr/generalBG"
     tools:context=".AddNewChatActivity">
 
     <com.google.android.material.appbar.AppBarLayout
@@ -17,9 +18,10 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
+            android:background="?attr/generalTitleBar"
             app:navigationIcon="@drawable/ic_back"
             app:title="New Chat"
-            app:titleTextColor="@color/white" />
+            app:titleTextColor="?attr/generalText" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -38,6 +40,7 @@
             android:id="@+id/searchEditText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@drawable/border"
             android:inputType="text"
             android:maxLines="1" />
     </com.google.android.material.textfield.TextInputLayout>
@@ -49,6 +52,7 @@
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
         android:contentDescription="New Chat"
+        android:backgroundTint="?attr/generalButton"
         android:src="@drawable/ic_person"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -62,6 +66,7 @@
         android:layout_marginTop="8dp"
         android:clipToPadding="false"
         android:paddingBottom="16dp"
+        android:background="?attr/generalBG"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/searchInputLayout"
         tools:listitem="@layout/item_user" />

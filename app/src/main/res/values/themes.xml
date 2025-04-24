@@ -20,6 +20,10 @@
         <item name="ChatroomTop">@color/topChatRoomLight</item>
         <item name="generalText">@color/lightModeText</item>
         <item name="ChatList">@color/chatListLight</item>
+        <item name="settingsBar">@color/settingsBarLight</item>
+        <item name="generalBG">@color/generalBGLight</item>
+        <item name="generalTitleBar">@color/generalTitleBarLight</item>
+        <item name="generalButton">@color/generalButtonLight</item>
     </style>
 
 </resources>

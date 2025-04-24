@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="?attr/generalBG"
     android:orientation="vertical">
 
     <com.google.android.material.appbar.AppBarLayout
@@ -14,30 +15,34 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
+            android:background="?attr/generalTitleBar"
             app:navigationIcon="@drawable/ic_back"
             app:title="About"
-            app:titleTextColor="@color/white" />
+            app:titleTextColor="?attr/generalText" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:background="?attr/generalBG">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="16dp"
+            android:background="?attr/generalBG"
             android:gravity="center_horizontal">
 
             <!-- App Logo -->
             <ImageView
                 android:layout_width="100dp"
                 android:layout_height="100dp"
-                android:src="@mipmap/ic_launcher"
-                android:layout_marginBottom="16dp"
-                android:contentDescription="App Logo"/>
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="22dp"
+                android:contentDescription="App Logo"
+                android:src="@mipmap/ic_launcher" />
 
             <!-- App Name -->
             <TextView
@@ -46,7 +51,7 @@
                 android:text="@string/app_name"
                 android:textSize="24sp"
                 android:textStyle="bold"
-                android:textColor="@color/purple_700"
+                android:textColor="?attr/generalText"
                 android:layout_marginBottom="8dp"/>
 
             <!-- App Version -->
@@ -54,65 +59,68 @@
                 android:id="@+id/versionText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="28dp"
                 android:text="Version 1.0.0"
-                android:textSize="16sp"
-                android:layout_marginBottom="24dp"/>
+                android:textSize="16sp" />
 
             <!-- About Description -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="30dp"
                 android:text="A modern messaging app that allows you to stay connected with friends and family securely."
                 android:textAlignment="center"
-                android:textSize="16sp"
-                android:layout_marginBottom="24dp"/>
+                android:textSize="16sp" />
 
             <!-- Developer Info Section -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
+                android:backgroundTint="?attr/settingsBar"
                 app:cardCornerRadius="8dp"
                 app:cardElevation="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_marginBottom="15dp"
+                    android:background="?attr/settingsBar"
                     android:orientation="vertical"
                     android:padding="16dp">
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
                         android:text="Developer"
+                        android:textColor="?attr/generalText"
                         android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/purple_700"
-                        android:layout_marginBottom="8dp"/>
+                        android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
                         android:text="Your Company Name\nLocation, Country"
-                        android:textSize="14sp"
-                        android:layout_marginBottom="8dp"/>
+                        android:textSize="14sp" />
 
                     <TextView
                         android:id="@+id/developerWebsite"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
                         android:text="www.yourwebsite.com"
-                        android:textSize="14sp"
-                        android:textColor="@color/purple_700"
-                        android:layout_marginBottom="8dp"/>
+                        android:textColor="?attr/generalText"
+                        android:textSize="14sp" />
 
                     <TextView
                         android:id="@+id/developerEmail"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="contact@yourwebsite.com"
-                        android:textSize="14sp"
-                        android:textColor="@color/purple_700"/>
+                        android:textColor="?attr/generalText"
+                        android:textSize="14sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -121,50 +129,52 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
+                android:backgroundTint="?attr/settingsBar"
                 app:cardCornerRadius="8dp"
                 app:cardElevation="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:background="?attr/settingsBar"
                     android:orientation="vertical"
                     android:padding="16dp">
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
                         android:text="Legal"
+                        android:textColor="?attr/generalText"
                         android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/purple_700"
-                        android:layout_marginBottom="8dp"/>
+                        android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/privacyPolicy"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:padding="8dp"
                         android:text="Privacy Policy"
-                        android:textSize="14sp"
-                        android:textColor="@color/purple_700"
-                        android:padding="8dp"/>
+                        android:textColor="?attr/generalText"
+                        android:textSize="14sp" />
 
                     <TextView
                         android:id="@+id/termsOfService"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:padding="8dp"
                         android:text="Terms of Service"
-                        android:textSize="14sp"
-                        android:textColor="@color/purple_700"
-                        android:padding="8dp"/>
+                        android:textColor="?attr/generalText"
+                        android:textSize="14sp" />
 
                     <TextView
                         android:id="@+id/licenses"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:padding="8dp"
                         android:text="Open Source Licenses"
-                        android:textSize="14sp"
-                        android:textColor="@color/purple_700"
-                        android:padding="8dp"/>
+                        android:textColor="?attr/generalText"
+                        android:textSize="14sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

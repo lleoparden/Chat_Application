@@ -8,5 +8,10 @@
     <attr name="ReceivedMessage" format="reference|color"/>
     <attr name="ChatroomTop" format="reference|color"/>
     <attr name="ChatList" format="reference|color"/>
+    <attr name="settingsBar" format="reference|color"/>
     <attr name="generalText" format="reference|color"/>
+    <attr name="generalBG" format="reference|color"/>
+    <attr name="generalButton" format="reference|color"/>
+    <attr name="generalTitleBar" format="reference|color"/>
+
 </resources>

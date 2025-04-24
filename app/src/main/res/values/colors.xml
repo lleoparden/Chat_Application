@@ -26,7 +26,14 @@
     <color name="topChatRoomDark">#232323</color>
     <color name="chatListDark">#212121</color>
     <color name="chatListLight">#D2D2EF</color>
-
+    <color name="settingsBarDark">#222222</color>
+    <color name="settingsBarLight">#F9F9FF</color>
+    <color name="generalBGDark">#2B2B2B</color>
+    <color name="generalBGLight">#F2F2FF</color>
+    <color name="generalTitleBarDark">#212121</color>
+    <color name="generalTitleBarLight">#D2D2EF</color>
+    <color name="generalButtonDark">#B6B6FF</color>
+    <color name="generalButtonLight">#9BA8DD</color>
 
 
 </resources>

@@ -20,5 +20,9 @@
         <item name="ChatroomTop">@color/topChatRoomDark</item>
         <item name="generalText">@color/darkModeText</item>
         <item name="ChatList">@color/chatListDark</item>
+        <item name="settingsBar">@color/settingsBarDark</item>
+        <item name="generalBG">@color/generalBGDark</item>
+        <item name="generalTitleBar">@color/generalTitleBarDark</item>
+        <item name="generalButton">@color/generalButtonDark</item>
     </style>
 </resources>

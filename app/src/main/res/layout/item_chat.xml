@@ -8,13 +8,13 @@
     android:background="@drawable/chatlistborder"
     android:clickable="true"
     android:focusable="true"
-    android:padding="12dp">
+    android:padding="12dp"  >
 
     <ImageView
         android:id="@+id/profileImageView"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:layout_marginLeft="10dp"
+        android:layout_marginLeft="7dp"
         android:background="@drawable/circle_background"
         android:backgroundTint="?attr/AuthButton"
         android:contentDescription="Profile"

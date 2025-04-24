@@ -5,7 +5,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="?attr/generalBG"
     tools:context=".SettingsActivity">
+
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
@@ -16,9 +18,10 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
+            android:background="?attr/generalTitleBar"
             app:navigationIcon="@drawable/ic_back"
             app:title="Settings"
-            app:titleTextColor="@color/white" />
+            app:titleTextColor="?attr/generalText" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -40,8 +43,8 @@
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="8dp"
                 android:text="Account"
-                android:textColor="@color/purple_700"
-                android:textSize="14sp"
+                android:textColor="?attr/generalText"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <!-- Profile Option -->
@@ -56,7 +59,9 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:background="?attr/settingsBar"
                     android:orientation="vertical">
+
 
                     <LinearLayout
                         android:id="@+id/profileSettingItem"
@@ -73,7 +78,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_person"
-                            app:tint="@color/purple_700"
+                            app:tint="?attr/generalText"
                             android:contentDescription="Profile" />
 
                         <TextView
@@ -88,7 +93,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_back"
-                            app:tint="@color/purple_700"
+                            app:tint="?attr/generalText"
                             android:contentDescription="Chevron" />
                     </LinearLayout>
 
@@ -96,7 +101,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginStart="56dp"
-                        android:background="@color/purple_700" />
+                        android:background="?attr/generalText" />
 
                     <LinearLayout
                         android:id="@+id/accountSettingItem"
@@ -113,7 +118,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_back"
-                            app:tint="@color/purple_700"
+                            app:tint="?attr/generalText"
                             android:contentDescription="Account" />
 
                         <TextView
@@ -128,7 +133,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_back"
-                            app:tint="@color/purple_700"
+                            app:tint="?attr/generalText"
                             android:contentDescription="Chevron" />
                     </LinearLayout>
                 </LinearLayout>
@@ -142,8 +147,8 @@
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="8dp"
                 android:text="Chats"
-                android:textColor="@color/purple_700"
-                android:textSize="14sp"
+                android:textColor="?attr/generalText"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <com.google.android.material.card.MaterialCardView
@@ -157,6 +162,7 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:background="?attr/settingsBar"
                     android:orientation="vertical">
 
                     <LinearLayout
@@ -174,7 +180,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_back"
-                            app:tint="@color/purple_700"
+                            app:tint="?attr/generalText"
                             android:contentDescription="Chat Background" />
 
                         <TextView
@@ -189,7 +195,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_back"
-                            app:tint="@color/purple_700"
+                            app:tint="?attr/generalText"
                             android:contentDescription="Chevron" />
                     </LinearLayout>
 
@@ -197,7 +203,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginStart="56dp"
-                        android:background="@color/purple_700" />
+                        android:background="?attr/generalText" />
 
                     <LinearLayout
                         android:id="@+id/chatHistorySettingItem"
@@ -214,7 +220,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_back"
-                            app:tint="@color/purple_700"
+                            app:tint="?attr/generalText"
                             android:contentDescription="Chat History" />
 
                         <TextView
@@ -229,7 +235,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_back"
-                            app:tint="@color/purple_700"
+                            app:tint="?attr/generalText"
                             android:contentDescription="Chevron" />
                     </LinearLayout>
 
@@ -237,7 +243,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginStart="56dp"
-                        android:background="@color/purple_700" />
+                        android:background="?attr/generalText" />
 
 
                 </LinearLayout>
@@ -251,8 +257,8 @@
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="8dp"
                 android:text="Notifications"
-                android:textColor="@color/purple_700"
-                android:textSize="14sp"
+                android:textColor="?attr/generalText"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <com.google.android.material.card.MaterialCardView
@@ -266,6 +272,7 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:background="?attr/settingsBar"
                     android:orientation="vertical">
 
                     <LinearLayout
@@ -283,7 +290,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_back"
-                            app:tint="@color/purple_700"
+                            app:tint="?attr/generalText"
                             android:contentDescription="Notifications" />
 
                         <TextView
@@ -298,6 +305,8 @@
                             android:id="@+id/messageNotificationsSwitch"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            app:thumbTint="?attr/generalButton"
+                            app:trackTint="?attr/generalText"
                             android:checked="true" />
                     </LinearLayout>
 
@@ -305,7 +314,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginStart="56dp"
-                        android:background="@color/purple_700" />
+                        android:background="?attr/generalText" />
 
                     <LinearLayout
                         android:id="@+id/soundsSettingItem"
@@ -322,7 +331,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_back"
-                            app:tint="@color/purple_700"
+                            app:tint="?attr/generalText"
                             android:contentDescription="Sounds" />
 
                         <TextView
@@ -337,14 +346,16 @@
                             android:id="@+id/soundsSwitch"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:checked="true" />
+                            android:checked="true"
+                            app:thumbTint="?attr/generalButton"
+                            app:trackTint="?attr/generalText" />
                     </LinearLayout>
 
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginStart="56dp"
-                        android:background="@color/purple_700" />
+                        android:background="?attr/generalText" />
 
 
                 </LinearLayout>
@@ -359,8 +370,8 @@
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="8dp"
                 android:text="Help and About"
-                android:textColor="@color/purple_700"
-                android:textSize="14sp"
+                android:textColor="?attr/generalText"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <com.google.android.material.card.MaterialCardView
@@ -374,6 +385,7 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:background="?attr/settingsBar"
                     android:orientation="vertical">
 
                     <LinearLayout
@@ -391,7 +403,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_back"
-                            app:tint="@color/purple_700"
+                            app:tint="?attr/generalText"
                             android:contentDescription="Help" />
 
                         <TextView
@@ -406,7 +418,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_back"
-                            app:tint="@color/purple_700"
+                            app:tint="?attr/generalText"
                             android:contentDescription="Chevron" />
                     </LinearLayout>
 
@@ -414,7 +426,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginStart="56dp"
-                        android:background="@color/purple_700" />
+                        android:background="?attr/generalText" />
 
                     <LinearLayout
                         android:id="@+id/inviteFriendsSettingItem"
@@ -431,7 +443,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_back"
-                            app:tint="@color/purple_700"
+                            app:tint="?attr/generalText"
                             android:contentDescription="Invite Friends" />
 
                         <TextView
@@ -446,7 +458,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_back"
-                            app:tint="@color/purple_700"
+                            app:tint="?attr/generalText"
                             android:contentDescription="Chevron" />
                     </LinearLayout>
 
@@ -454,7 +466,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
                         android:layout_marginStart="56dp"
-                        android:background="@color/purple_700" />
+                        android:background="?attr/generalText" />
 
                     <LinearLayout
                         android:id="@+id/aboutSettingItem"
@@ -471,7 +483,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_back"
-                            app:tint="@color/purple_700"
+                            app:tint="?attr/generalText"
                             android:contentDescription="About" />
 
                         <TextView
@@ -486,7 +498,7 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:src="@drawable/ic_back"
-                            app:tint="@color/purple_700"
+                            app:tint="?attr/generalText"
                             android:contentDescription="Chevron" />
                     </LinearLayout>
                 </LinearLayout>
@@ -506,7 +518,7 @@
                     android:id="@+id/signOutSettingItem"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="?attr/selectableItemBackground"
+                    android:background="?attr/settingsBar"
                     android:clickable="true"
                     android:focusable="true"
                     android:gravity="center_vertical"
@@ -517,7 +529,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:src="@drawable/ic_back"
-                        app:tint="@color/purple_700"
+                        app:tint="?attr/generalText"
                         android:contentDescription="Sign Out" />
 
                     <TextView
@@ -526,7 +538,7 @@
                         android:layout_marginStart="16dp"
                         android:layout_weight="1"
                         android:text="Sign Out"
-                        android:textColor="@color/purple_700"
+                        android:textColor="?attr/generalText"
                         android:textSize="16sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -539,7 +551,7 @@
                 android:layout_marginBottom="24dp"
                 android:gravity="center"
                 android:text="Version 1.0.0"
-                android:textColor="@color/purple_700"
+                android:textColor="?attr/generalText"
                 android:textSize="14sp" />
 
         </LinearLayout>

@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
-    android:background="@android:color/white"
+    android:background="?attr/generalBG"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -16,83 +16,88 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
+            android:background="?attr/generalTitleBar"
             app:navigationIcon="@drawable/ic_back"
             app:title="Help"
-            app:titleTextColor="@android:color/white"/>
+            app:titleTextColor="?attr/generalText"/>
     </com.google.android.material.appbar.AppBarLayout>
 
-    <!-- محتوى قابل للتمرير -->
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:background="?attr/generalBG">
 
         <LinearLayout
-            android:orientation="vertical"
-            android:padding="16dp"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            android:background="?attr/generalBG"
+            android:orientation="vertical"
+            android:padding="16dp">
 
             <!-- FAQ Section -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="25dp"
                 android:text="Frequently Asked Questions"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:textColor="@color/purple_700"
-                android:layout_marginBottom="16dp"/>
+                android:textColor="?attr/generalText"
+                android:textSize="19sp"
+                android:textStyle="bold" />
 
-            <!-- هنا ضيف بطاقات الأسئلة الشائعة كما في نسخة XML السابقة -->
 
             <!-- Contact Support Section -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Contact Support"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:textColor="@color/purple_700"
                 android:layout_marginTop="16dp"
-                android:layout_marginBottom="16dp"/>
+                android:layout_marginBottom="10dp"
+                android:text="Contact Support"
+                android:textColor="?attr/generalText"
+                android:textSize="19sp"
+                android:textStyle="bold" />
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
+                android:backgroundTint="?attr/generalBG"
                 app:cardCornerRadius="8dp"
                 app:cardElevation="1dp">
 
                 <LinearLayout
-                    android:orientation="vertical"
-                    android:padding="16dp"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
+                    android:layout_height="match_parent"
+                    android:background="?attr/generalBG"
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginBottom="22dp"
                         android:text="If you can't find answers to your questions, you can contact our support team."
-                        android:textSize="14sp"
-                        android:layout_marginBottom="16dp"/>
+                        android:textSize="16sp" />
 
-                    <!-- زر الاتصال بالدعم -->
                     <Button
                         android:id="@+id/contactSupportButton"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="59dp"
+                        android:layout_marginTop="10dp"
+                        android:layout_marginBottom="10dp"
+                        android:backgroundTint="?attr/generalButton"
                         android:text="Contact Support"
-                        android:backgroundTint="@color/purple_700"
-                        android:textColor="@android:color/white"/>
+                        android:textColor="@android:color/black" />
 
-                    <!-- زر اختيار صورة من المعرض -->
                     <Button
                         android:id="@+id/pickImageButton"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Pick Image from Gallery"
+                        android:layout_height="60dp"
                         android:layout_marginTop="16dp"
-                        android:backgroundTint="@color/purple_700"
-                        android:textColor="@android:color/white"/>
+                        android:backgroundTint="?attr/generalButton"
+                        android:text="Pick Image from Gallery"
+                        android:textColor="@android:color/black" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>

@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="?attr/generalBG"
     android:orientation="vertical">
 
     <com.google.android.material.appbar.AppBarLayout
@@ -14,9 +15,10 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
+            android:background="?attr/generalTitleBar"
             app:navigationIcon="@drawable/ic_back"
             app:title="Chat History"
-            app:titleTextColor="@color/white" />
+            app:titleTextColor="?attr/generalText" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -29,6 +31,7 @@
             android:id="@+id/chatHistoryRecyclerView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:background="?attr/generalBG"
             android:padding="8dp"
             android:clipToPadding="false" />
 
@@ -76,10 +79,10 @@
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|end"
             android:layout_margin="16dp"
+            android:backgroundTint="?attr/generalButton"
             android:text="Clear All Chats"
             app:icon="@drawable/circle2"
-            app:iconTint="@color/white"
-            android:textColor="@color/white"
-            app:backgroundTint="@color/purple_500" />
+            app:iconTint="?attr/generalTitleBar"
+            android:textColor="@color/black" />
     </FrameLayout>
 </LinearLayout>
