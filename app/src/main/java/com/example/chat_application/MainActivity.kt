@@ -17,6 +17,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.chat_application.UserSettings.userId
+import com.facebook.shimmer.ShimmerFrameLayout  // Added import
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.database.*
@@ -38,6 +39,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     private lateinit var bottomNavigation: BottomNavigationView
     private lateinit var searchBar: EditText
     private lateinit var searchContainer: LinearLayout
+    private lateinit var shimmerLayout: ShimmerFrameLayout  // Added shimmer layout
     private var isSearchVisible = false
 
     // Data Components
@@ -61,8 +63,25 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         setupRecyclerView()
         setupFirebase()
 
+        // Show shimmer effect before loading data
+        showShimmerEffect()
+
         // Load data
         loadUsers()
+    }
+
+    // Method to show shimmer effect
+    private fun showShimmerEffect() {
+        shimmerLayout.visibility = View.VISIBLE
+        chatRecyclerView.visibility = View.GONE
+        shimmerLayout.startShimmer()
+    }
+
+    // Method to hide shimmer effect
+    private fun hideShimmerEffect() {
+        shimmerLayout.stopShimmer()
+        shimmerLayout.visibility = View.GONE
+        chatRecyclerView.visibility = View.VISIBLE
     }
 
     //region UI Setup
@@ -74,6 +93,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         bottomNavigation = findViewById(R.id.bottomNavigation)
         searchBar = findViewById(R.id.searchBar)
         searchContainer = findViewById(R.id.searchContainer)
+        shimmerLayout = findViewById(R.id.shimmerLayout)  // Initialize shimmer layout
 
         // Initially hide search bar
         searchContainer.visibility = View.GONE
@@ -126,6 +146,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         chatRecyclerView.adapter = chatAdapter
     }
 
+    // Update the toggleSearchBar method to handle shimmer
     private fun toggleSearchBar() {
         isSearchVisible = !isSearchVisible
 
@@ -141,9 +162,17 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.hideSoftInputFromWindow(searchBar.windowToken, 0)
 
+            // Show shimmer effect when refreshing the list
+            showShimmerEffect()
+
             // Reset RecyclerView to show all chats
             chatAdapter = ChatAdapter(chatManager, this)
             chatRecyclerView.adapter = chatAdapter
+
+            // Hide shimmer effect after data is loaded
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                hideShimmerEffect()
+            }, 500)
         }
     }
 
@@ -155,33 +184,42 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
             return
         }
 
+        // Show shimmer effect during search
+        showShimmerEffect()
+
         // Use binary search to find matching chats
         val matchingChat = chatManager.findByName(query)
 
-        if (matchingChat != null) {
-            // Show only the exact match
-            val singleChatManager = ChatManager()
-            singleChatManager.push(matchingChat)
-            chatAdapter = ChatAdapter(singleChatManager, this)
-            chatRecyclerView.adapter = chatAdapter
-        } else {
-            // If no exact match, try to find partial matches
-            val partialMatches = chatManager.findPartialMatches(query)
-
-            if (partialMatches.isNotEmpty()) {
-                val tempChatManager = ChatManager()
-                tempChatManager.pushAll(partialMatches)
-                chatAdapter = ChatAdapter(tempChatManager, this)
+        // Use a handler to simulate search delay and show shimmer effect
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            if (matchingChat != null) {
+                // Show only the exact match
+                val singleChatManager = ChatManager()
+                singleChatManager.push(matchingChat)
+                chatAdapter = ChatAdapter(singleChatManager, this)
                 chatRecyclerView.adapter = chatAdapter
             } else {
-                // Display a message for no results
-                Toast.makeText(this, "No chats found matching '$query'", Toast.LENGTH_SHORT).show()
-                // Show empty list
-                val emptyChatManager = ChatManager()
-                chatAdapter = ChatAdapter(emptyChatManager, this)
-                chatRecyclerView.adapter = chatAdapter
+                // If no exact match, try to find partial matches
+                val partialMatches = chatManager.findPartialMatches(query)
+
+                if (partialMatches.isNotEmpty()) {
+                    val tempChatManager = ChatManager()
+                    tempChatManager.pushAll(partialMatches)
+                    chatAdapter = ChatAdapter(tempChatManager, this)
+                    chatRecyclerView.adapter = chatAdapter
+                } else {
+                    // Display a message for no results
+                    Toast.makeText(this, "No chats found matching '$query'", Toast.LENGTH_SHORT).show()
+                    // Show empty list
+                    val emptyChatManager = ChatManager()
+                    chatAdapter = ChatAdapter(emptyChatManager, this)
+                    chatRecyclerView.adapter = chatAdapter
+                }
             }
-        }
+
+            // Hide shimmer effect after search is complete
+            hideShimmerEffect()
+        }, 500) // 500ms delay to show the shimmer effect
     }
     //endregion
 
@@ -209,6 +247,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     private fun loadChats() {
         Log.d(TAG, "Loading chats")
 
+        // Show shimmer effect while loading
+        showShimmerEffect()
+
         // First load from local storage for immediate display
         val localChats = loadChatsFromLocalStorageWithoutSaving()
 
@@ -224,6 +265,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         chatManager.pushAll(localChats)
         updateChatDisplayNames() // Update display names
         chatAdapter.notifyDataSetChanged()
+
+        // Hide shimmer effect after data is loaded
+        hideShimmerEffect()
 
         // Only attempt Firebase loading if explicitly enabled AND we're online
         if (resources.getBoolean(R.bool.firebaseOn)) {
@@ -288,10 +332,16 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
             // Update UI
             chatAdapter.notifyDataSetChanged()
 
+            // Hide shimmer effect after data is loaded
+            hideShimmerEffect()
+
             Log.d(TAG, "Demo chats added: ${chatManager.size()}")
         } catch (e: Exception) {
             Log.e(TAG, "Error adding demo chats: ${e.message}")
             e.printStackTrace()
+
+            // Hide shimmer effect even if there's an error
+            hideShimmerEffect()
         }
     }
 
@@ -448,6 +498,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     }
 
     private fun loadChatsFromLocalStorageAndDisplay() {
+        // Show shimmer effect while loading
+        showShimmerEffect()
+
         val localChats = loadChatsFromLocalStorageWithoutSaving()
         if (localChats.isEmpty()) {
             addDemoChat()
@@ -456,6 +509,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
             chatManager.pushAll(localChats)
             updateChatDisplayNames()
             chatAdapter.notifyDataSetChanged()
+
+            // Hide shimmer effect after data is loaded
+            hideShimmerEffect()
         }
     }
 
@@ -562,6 +618,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 Log.e(TAG, "Firebase connection listener cancelled")
                 // When connection is cancelled, fall back to local data
                 loadChatsFromLocalStorageAndDisplay()
+
+                // Hide shimmer effect in case of error
+                hideShimmerEffect()
             }
         })
     }
@@ -600,6 +659,8 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e(TAG, "Failed to check connection status for chat loading")
+                // Hide shimmer effect in case of error
+                hideShimmerEffect()
             }
         })
     }
@@ -654,6 +715,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     private fun loadChatsFromFirebaseAndMerge(localChats: List<Chat>) {
         Log.d(TAG, "Loading chats from Firebase")
 
+        // Show shimmer effect while loading from Firebase
+        showShimmerEffect()
+
         // Add a timeout handler
         val timeoutHandler = android.os.Handler(android.os.Looper.getMainLooper())
         val timeoutRunnable = Runnable {
@@ -663,6 +727,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 chatManager.pushAll(localChats)
                 updateChatDisplayNames()
                 chatAdapter.notifyDataSetChanged()
+
+                // Hide shimmer effect after timeout
+                hideShimmerEffect()
             }
         }
 
@@ -675,6 +742,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                     // Cancel the timeout since we got a response
                     timeoutHandler.removeCallbacks(timeoutRunnable)
 
+                    // Hide shimmer effect after data is loaded
+                    hideShimmerEffect()
+
                     // Rest of your code remains the same
                     // ...
                 }
@@ -682,6 +752,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 override fun onCancelled(error: DatabaseError) {
                     // Cancel the timeout since we got a response
                     timeoutHandler.removeCallbacks(timeoutRunnable)
+
+                    // Hide shimmer effect in case of error
+                    hideShimmerEffect()
 
                     // Rest of your code remains the same
                     // ...
@@ -699,6 +772,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
             chatManager.pushAll(localChats)
             updateChatDisplayNames()
             chatAdapter.notifyDataSetChanged()
+
+            // Hide shimmer effect after exception
+            hideShimmerEffect()
         }
     }
 

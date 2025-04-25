@@ -7,7 +7,6 @@
     tools:context=".MainActivity">
 
     <!-- Top Bar -->
-
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/topBar"
         android:layout_width="match_parent"
@@ -28,8 +27,6 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
-
-
 
         <ImageView
             android:id="@+id/searchButton"
@@ -61,8 +58,7 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!-- RecyclerView for chat messages -->
-
+    <!-- Search Container -->
     <LinearLayout
         android:id="@+id/searchContainer"
         android:layout_width="match_parent"
@@ -86,7 +82,37 @@
             android:imeOptions="actionSearch"/>
     </LinearLayout>
 
-    <!-- Floating Action Button -->
+    <!-- Shimmer Layout for Loading Effect -->
+    <com.facebook.shimmer.ShimmerFrameLayout
+        android:id="@+id/shimmerLayout"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:shimmer_duration="800"
+        app:shimmer_base_alpha="0.5"
+        app:shimmer_highlight_alpha="0.7"
+        app:shimmer_auto_start="false"
+        app:layout_constraintTop_toBottomOf="@+id/searchContainer"
+        app:layout_constraintBottom_toTopOf="@+id/bottomNavigation">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Repeat shimmer chat item placeholders -->
+            <include layout="@layout/shimmer_chat_item" />
+            <include layout="@layout/shimmer_chat_item" />
+            <include layout="@layout/shimmer_chat_item" />
+            <include layout="@layout/shimmer_chat_item" />
+            <include layout="@layout/shimmer_chat_item" />
+            <include layout="@layout/shimmer_chat_item" />
+            <include layout="@layout/shimmer_chat_item" />
+
+        </LinearLayout>
+    </com.facebook.shimmer.ShimmerFrameLayout>
+
+    <!-- RecyclerView for chat list -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/chatRecyclerView"
         android:layout_width="match_parent"
@@ -97,6 +123,7 @@
         app:layout_constraintBottom_toTopOf="@+id/bottomNavigation"
         app:layout_constraintTop_toBottomOf="@+id/searchContainer"/>
 
+    <!-- Floating Action Button -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/newChatFab"
         android:layout_width="wrap_content"
@@ -107,8 +134,7 @@
         android:src="@android:drawable/ic_input_add"
         app:layout_constraintBottom_toTopOf="@+id/bottomNavigation"
         app:layout_constraintEnd_toEndOf="parent"
-        android:backgroundTint="?attr/AuthButton"
-        />
+        android:backgroundTint="?attr/AuthButton" />
 
     <!-- Bottom Navigation -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
