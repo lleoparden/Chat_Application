@@ -5,35 +5,39 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class MessageAdapter (private val currentUserId: String , private val messageList :List<Message>): RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class MessageAdapter(
+    private val currentUserId: String,
+    private val messageList: List<Message>,
+    private val onMessageLongClick: (Int, Message) -> Unit,
+    private val onMessageClick: (Int, Message) -> Unit
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    private final val SENT = 1
-    private final val RECIEVED = 2
+    private val SENT = 1
+    private val RECEIVED = 2
+
     override fun getItemViewType(position: Int): Int {
         val message = messageList[position]
-        return if(message.senderId==currentUserId){
+        return if (message.senderId == currentUserId) {
             SENT
-        }
-        else{
-            RECIEVED
+        } else {
+            RECEIVED
         }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-
-        return if(viewType==SENT){
+        return if (viewType == SENT) {
             val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.message_sent,parent, false)
+                .inflate(R.layout.message_sent, parent, false)
             SentMessageHolder(view)
-        }
-        else{
+        } else {
             val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.message_recieved,parent, false)
+                .inflate(R.layout.message_recieved, parent, false)
             ReceivedMessageHolder(view)
         }
     }
@@ -43,13 +47,13 @@ class MessageAdapter (private val currentUserId: String , private val messageLis
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        val message =messageList[position]
+        val message = messageList[position]
+
         when (holder) {
-            is SentMessageHolder -> holder.bind(message)
-            is ReceivedMessageHolder -> holder.bind(message)
+            is SentMessageHolder -> holder.bind(message, position)
+            is ReceivedMessageHolder -> holder.bind(message, position)
         }
     }
-
 
     // View holders
     inner class SentMessageHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -57,7 +61,7 @@ class MessageAdapter (private val currentUserId: String , private val messageLis
         private val timeText: TextView = itemView.findViewById(R.id.timeTextView)
         private val statusImage: ImageView = itemView.findViewById(R.id.statusImageView)
 
-        fun bind(message: Message) {
+        fun bind(message: Message, position: Int) {
             messageText.text = message.content
             timeText.text = formatTime(message.timestamp)
 
@@ -70,11 +74,28 @@ class MessageAdapter (private val currentUserId: String , private val messageLis
                 if (isRead) android.R.drawable.ic_menu_view
                 else android.R.drawable.ic_menu_send
             )
+
+            // Apply selection highlighting
+            val isSelected = (itemView.context as? ChatRoomActivity)?.isMessageSelected(message.id) == true
+            itemView.setBackgroundResource(
+                if (isSelected) R.drawable.selected_message_background
+                else android.R.color.transparent
+            )
+
+            // Set click listeners
+            itemView.setOnLongClickListener {
+                onMessageLongClick(position, message)
+                true
+            }
+
+            itemView.setOnClickListener {
+                onMessageClick(position, message)
+            }
         }
     }
 
     private fun formatTime(timestamp: Long): String {
-        val sdf = SimpleDateFormat("h:mm a",Locale.getDefault())
+        val sdf = SimpleDateFormat("h:mm a", Locale.getDefault())
         return sdf.format(Date(timestamp))
     }
 
@@ -83,11 +104,26 @@ class MessageAdapter (private val currentUserId: String , private val messageLis
         private val timeText: TextView = itemView.findViewById(R.id.timeTextView)
         private val profileImage: ImageView = itemView.findViewById(R.id.profileImageView)
 
-        fun bind(message: Message) {
+        fun bind(message: Message, position: Int) {
             messageText.text = message.content
             timeText.text = formatTime(message.timestamp)
 
+            // Apply selection highlighting
+            val isSelected = (itemView.context as? ChatRoomActivity)?.isMessageSelected(message.id) == true
+            itemView.setBackgroundResource(
+                if (isSelected) R.drawable.selected_message_background
+                else android.R.color.transparent
+            )
 
+            // Set click listeners
+            itemView.setOnLongClickListener {
+                onMessageLongClick(position, message)
+                true
+            }
+
+            itemView.setOnClickListener {
+                onMessageClick(position, message)
+            }
         }
     }
 

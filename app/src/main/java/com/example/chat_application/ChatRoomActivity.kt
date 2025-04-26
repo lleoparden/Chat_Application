@@ -41,6 +41,17 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var nameView: TextView
     private lateinit var inputLayout: LinearLayout
 
+    private var isInSelectionMode = false
+    private val selectedMessageIds = mutableSetOf<String>()
+    private lateinit var normalToolbarContent: View
+    private lateinit var selectionToolbarContent: View
+    private lateinit var selectionCountTextView: TextView
+    private lateinit var closeSelectionButton: ImageButton
+    private lateinit var deleteSelectedButton: ImageButton
+    private lateinit var selectionActionPanel: LinearLayout
+    private lateinit var selectionCountText: TextView
+    private lateinit var deleteAction: ImageButton
+
     // Data & Adapters
     private lateinit var messageAdapter: MessageAdapter
     private val messageList = mutableListOf<Message>()
@@ -149,13 +160,123 @@ class ChatRoomActivity : AppCompatActivity() {
         messagesRecyclerView = findViewById(R.id.messagesRecyclerView)
         nameView = findViewById(R.id.contactNameTextView)
         inputLayout = findViewById(R.id.messageInputLayout)
+
+        // New views for selection mode
+        normalToolbarContent = findViewById(R.id.normalToolbarContent)
+        selectionToolbarContent = findViewById(R.id.selectionToolbarContent)
+        selectionCountTextView = findViewById(R.id.selectionCountTextView)
+        closeSelectionButton = findViewById(R.id.closeSelectionButton)
+        deleteSelectedButton = findViewById(R.id.deleteSelectedButton)
+        selectionActionPanel = findViewById(R.id.selectionActionPanel)
+        selectionCountText = findViewById(R.id.selectionCountText)
+        deleteAction = findViewById(R.id.deleteAction)
     }
 
+
     private fun setupRecyclerView() {
-        messageAdapter = MessageAdapter(currentUserId, messageList)
+        messageAdapter = MessageAdapter(
+            currentUserId = currentUserId,
+            messageList = messageList,
+            onMessageLongClick = { position, message ->
+                handleMessageLongClick(message)
+            },
+            onMessageClick = { position, message ->
+                if (isInSelectionMode) {
+                    toggleMessageSelection(message)
+                }
+            }
+        )
+
         val layoutManager = LinearLayoutManager(this)
         messagesRecyclerView.layoutManager = layoutManager
         messagesRecyclerView.adapter = messageAdapter
+    }
+
+    private fun handleMessageLongClick(message: Message) {
+        if (!isInSelectionMode) {
+            enterSelectionMode()
+        }
+        toggleMessageSelection(message)
+    }
+
+    private fun enterSelectionMode() {
+        isInSelectionMode = true
+        selectedMessageIds.clear()
+
+        // Show selection toolbar
+        normalToolbarContent.visibility = View.GONE
+        selectionToolbarContent.visibility = View.VISIBLE
+
+        // Show selection action panel (optional, depending on your design preference)
+        inputLayout.visibility = View.GONE
+        selectionActionPanel.visibility = View.VISIBLE
+
+        updateSelectionCount()
+    }
+
+    private fun exitSelectionMode() {
+        isInSelectionMode = false
+        selectedMessageIds.clear()
+
+        // Restore normal toolbar
+        selectionToolbarContent.visibility = View.GONE
+        normalToolbarContent.visibility = View.VISIBLE
+
+        // Restore input layout
+        selectionActionPanel.visibility = View.GONE
+        inputLayout.visibility = View.VISIBLE
+
+        // Reset UI
+        messageAdapter.notifyDataSetChanged()
+    }
+
+    private fun toggleMessageSelection(message: Message) {
+        if (selectedMessageIds.contains(message.id)) {
+            selectedMessageIds.remove(message.id)
+        } else {
+            selectedMessageIds.add(message.id)
+        }
+
+        // If no messages are selected, exit selection mode
+        if (selectedMessageIds.isEmpty()) {
+            exitSelectionMode()
+            return
+        }
+
+        updateSelectionCount()
+        messageAdapter.notifyDataSetChanged()
+    }
+
+    private fun updateSelectionCount() {
+        val count = selectedMessageIds.size
+        val text = "$count selected"
+        selectionCountTextView.text = text
+        selectionCountText.text = text
+    }
+
+    private fun deleteSelectedMessages() {
+        if (selectedMessageIds.isEmpty()) return
+
+        // Create a new list with unselected messages
+        val updatedList = messageList.filter { !selectedMessageIds.contains(it.id) }.toMutableList()
+
+        // Delete from Firebase if enabled
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            for (messageId in selectedMessageIds) {
+                database.child("messages").child(chatId).child(messageId).removeValue()
+            }
+        }
+
+        // Update local list
+        messageList.clear()
+        messageList.addAll(updatedList)
+
+        // Save to local storage
+        saveMessagesToLocalStorage()
+
+        // Exit selection mode and update UI
+        Toast.makeText(this, "${selectedMessageIds.size} message(s) deleted", Toast.LENGTH_SHORT).show()
+        exitSelectionMode()
     }
 
     private fun setupKeyboardBehavior() {
@@ -254,10 +375,25 @@ class ChatRoomActivity : AppCompatActivity() {
             val intent = Intent(this, UserProfileActivity::class.java).apply {
                 putExtra("came_from", "ChatRoom")
                 putExtra("CHAT_OBJECT", chat)
-                putExtra("USER_ID", otherParticipantId) 
+                putExtra("USER_ID", otherParticipantId)
             }
             startActivity(intent)
             finish()
+        }
+
+        // Existing click listeners...
+
+        // Add these new click listeners for selection mode
+        closeSelectionButton.setOnClickListener {
+            exitSelectionMode()
+        }
+
+        deleteSelectedButton.setOnClickListener {
+            deleteSelectedMessages()
+        }
+
+        deleteAction.setOnClickListener {
+            deleteSelectedMessages()
         }
     }
 
@@ -538,5 +674,8 @@ class ChatRoomActivity : AppCompatActivity() {
                 database.child("messages").child(chatId).removeEventListener(it)
             }
         }
+    }
+    fun isMessageSelected(messageId: String): Boolean {
+        return selectedMessageIds.contains(messageId)
     }
 }
