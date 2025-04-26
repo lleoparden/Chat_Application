@@ -273,7 +273,7 @@ class ChatAdapter(
             val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
             timeTextView.text = sdf.format(Date(chat.timestamp))
 
-            // Set avatar (would use image loading library like Glide in a real app)
+            // Set avatar
             if (chat.type == "group") {
                 avatarImageView.setImageResource(R.drawable.ic_person)
             } else {

@@ -347,6 +347,8 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
 
         hideShimmerEffect() // Ensure this runs even if Firebase fails
 
+        fetchUserDataAndUpdateDisplayNames()
+
         // Only attempt Firebase loading if explicitly enabled AND we're online
         if (resources.getBoolean(R.bool.firebaseOn)) {
             checkConnectionAndLoadChatsFromFirebase(localChats)
