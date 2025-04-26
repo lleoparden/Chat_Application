@@ -1,12 +1,12 @@
 package com.example.chat_application
 
-
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
 import android.view.View
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -32,6 +32,9 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
     private lateinit var userAdapter: UserAdapter
     private val usersList = mutableListOf<UserData>()
 
+    // Track users that already have chats - we'll use this set instead of modifying UserData
+    private val existingChatUserIds = mutableSetOf<String>()
+
     // Firebase Components
     private lateinit var firestore: FirebaseFirestore
     private lateinit var auth: FirebaseAuth
@@ -50,12 +53,14 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
 
         initViews()
         setupUI()
-        // We don't load all users initially - we'll wait for search
+        // Load existing chats to know which users already have conversations
+        loadExistingChats()
         showEmptyState("Enter a phone number to search for users")
         Log.i(TAG, "onCreate: Activity setup complete")
     }
 
     private fun initViews() {
+        // Same as your original code
         Log.d(TAG, "initViews: Finding view references")
         try {
             searchEditText = findViewById(R.id.searchEditText)
@@ -78,13 +83,11 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
     private fun setupUI() {
         Log.d(TAG, "setupUI: Configuring UI components")
         try {
-            // Setup RecyclerView
+            // Setup RecyclerView with our customized adapter that uses existingChatUserIds
             usersRecyclerView.layoutManager = LinearLayoutManager(this)
-            userAdapter = UserAdapter(usersList, this)
+            userAdapter = UserAdapter(usersList, existingChatUserIds, this)
             usersRecyclerView.adapter = userAdapter
             Log.d(TAG, "setupUI: RecyclerView configured")
-
-            // Setup search functionality - specifically for phone numbers
 
             searchEditText.addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -102,21 +105,58 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
                     } else {
                         // Search with any input, regardless of length
                         Log.d(TAG, "Initiating search for: '$query'")
-                        val formattedNumber = formatPhoneNumber(query)
-                        searchUsersByPhone(formattedNumber)
+                        searchUsersByPhone(query)
                     }
                 }
             })
             Log.d(TAG, "setupUI: Search functionality configured")
-
-            // Setup new user button - now for adding contacts directly
-
-            Log.d(TAG, "setupUI: Add contact button configured")
-
             Log.i(TAG, "setupUI: All UI components configured successfully")
         } catch (e: Exception) {
             Log.e(TAG, "setupUI: Error configuring UI components", e)
         }
+    }
+
+    // New method to load existing chats
+    private fun loadExistingChats() {
+        Log.d(TAG, "loadExistingChats: Loading existing chats")
+        val currentUserId = UserSettings.userId ?: return
+
+        progressIndicator.visibility = View.VISIBLE
+
+        // Query chats where the current user is a participant
+        firestore.collection("chats")
+            .whereArrayContains("participants", currentUserId)
+            .get()
+            .addOnSuccessListener { chatDocuments ->
+                Log.d(TAG, "loadExistingChats: Found ${chatDocuments.size()} existing chats")
+
+                for (chatDoc in chatDocuments) {
+                    try {
+                        // Get the participant list
+                        val participants = chatDoc.get("participants") as? List<*> ?: continue
+
+                        // Find the other user ID (not the current user)
+                        for (participantId in participants) {
+                            if (participantId != currentUserId) {
+                                existingChatUserIds.add(participantId.toString())
+                                Log.d(TAG, "Added existing chat user: $participantId")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error processing chat document: ${chatDoc.id}", e)
+                    }
+                }
+                progressIndicator.visibility = View.GONE
+
+                // Refresh adapter if there are already users in the list
+                if (usersList.isNotEmpty()) {
+                    userAdapter.notifyDataSetChanged()
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Error loading existing chats", e)
+                progressIndicator.visibility = View.GONE
+            }
     }
 
     private fun searchUsersByPhone(phoneQuery: String) {
@@ -137,85 +177,91 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
             }
             Log.d(TAG, "searchUsersByPhone: Current user ID: $currentUserId")
 
-            // Option 1: Simplified query - Get all matching phone numbers first,
-            // then filter out current user in memory
-            Log.d(TAG, "searchUsersByPhone: Querying Firestore for users with phone prefix")
-            firestore.collection("users")
-                .whereGreaterThanOrEqualTo("phoneNumber", phoneQuery)
-                .whereLessThanOrEqualTo("phoneNumber", phoneQuery + "\uf8ff")
-                .limit(10) // Increased limit to account for potential filtering
-                .get()
-                .addOnSuccessListener { documents ->
-                    Log.d(TAG, "searchUsersByPhone: Query successful, found ${documents.size()} documents")
-                    usersList.clear()
+            // Try multiple phone number formats to increase chances of finding a match
+            val phoneQueries = listOf(
+                phoneQuery,                     // Original input
+                "+$phoneQuery",                 // With + prefix
+                "+2$phoneQuery",                // With country code +2
+                "+20$phoneQuery",
+                phoneQuery.replace("+", "")     // Without + if it exists
+            )
 
-                    if (documents.isEmpty) {
-                        // No users found with this phone number
-                        Log.i(TAG, "searchUsersByPhone: No users found with phone: '$phoneQuery'")
-                        showEmptyState("No users found with this phone number")
-                    } else {
-                        var successCount = 0
+            var queriesCompleted = 0
+            var totalUsersFound = 0
 
-                        // Filter out current user in memory
-                        // In searchUsersByPhone method, replace the document.toObject() call with manual conversion
-                        for (document in documents) {
-                            try {
-                                Log.v(TAG, "Processing document: ${document.id}")
+            for (formattedQuery in phoneQueries) {
+                firestore.collection("users")
+                    .whereGreaterThanOrEqualTo("phoneNumber", formattedQuery)
+                    .whereLessThanOrEqualTo("phoneNumber", formattedQuery + "\uf8ff")
+                    .limit(10)
+                    .get()
+                    .addOnSuccessListener { documents ->
+                        queriesCompleted++
+                        Log.d(TAG, "Query for '$formattedQuery' found ${documents.size()} documents")
 
-                                // Instead of automatic conversion, manually create the UserData object
-                                val userData = UserData(
-                                    uid = document.getString("uid") ?: "",
-                                    displayName = document.getString("displayName") ?: "",
-                                    phoneNumber = document.getString("phoneNumber") ?: "",
-                                    password = document.getString("password") ?: "",
-                                    userDescription = document.getString("userDescription") ?: "",
-                                    userStatus = document.getString("userStatus") ?: "",
-                                    // Manual conversion of the online field from string to boolean
-                                    online = when (val onlineValue = document.get("online")) {
-                                        is Boolean -> onlineValue
-                                        is String -> onlineValue.equals("true", ignoreCase = true)
-                                        else -> false // Default value if field is missing or of unexpected type
-                                    },
-                                    lastSeen = document.getString("lastSeen") ?: "",
-                                    profilePictureUrl = document.getString("profilePictureUrl") ?: ""
-                                )
+                        if (!documents.isEmpty) {
+                            for (document in documents) {
+                                try {
+                                    // Create UserData object using the existing class definition
+                                    val userData = UserData(
+                                        uid = document.getString("uid") ?: "",
+                                        displayName = document.getString("displayName") ?: "",
+                                        phoneNumber = document.getString("phoneNumber") ?: "",
+                                        password = document.getString("password") ?: "",
+                                        userDescription = document.getString("userDescription") ?: "",
+                                        userStatus = document.getString("userStatus") ?: "",
+                                        online = when (val onlineValue = document.get("online")) {
+                                            is Boolean -> onlineValue
+                                            is String -> onlineValue.equals("true", ignoreCase = true)
+                                            else -> false
+                                        },
+                                        lastSeen = document.getString("lastSeen") ?: "",
+                                        profilePictureUrl = document.getString("profilePictureUrl") ?: ""
+                                    )
 
-                                // Skip if this is the current user
-                                if (userData.uid != currentUserId) {
-                                    usersList.add(userData)
-                                    Log.d(TAG, "Added user: ${userData.displayName}, phone: ${userData.phoneNumber}")
-                                } else {
-                                    Log.d(TAG, "Skipped current user: ${userData.displayName}")
+                                    // Add users that are not the current user and not already in the list
+                                    if (userData.uid != currentUserId &&
+                                        !usersList.any { it.uid == userData.uid }) {
+                                        usersList.add(userData)
+                                        totalUsersFound++
+
+                                        val hasChat = existingChatUserIds.contains(userData.uid)
+                                        Log.d(TAG, "Added user: ${userData.displayName}, has chat: $hasChat")
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Error parsing user document: ${document.id}", e)
                                 }
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Error parsing user document: ${document.id}", e)
-                                // Continue with next document
+                            }
+
+                            // Update adapter with newly found users
+                            userAdapter.notifyDataSetChanged()
+                        }
+
+                        // Check if all queries are complete
+                        if (queriesCompleted == phoneQueries.size) {
+                            progressIndicator.visibility = View.GONE
+
+                            if (totalUsersFound == 0) {
+                                showEmptyState("No users found with this phone number")
+                            } else {
+                                emptyResultsTextView.visibility = View.GONE
                             }
                         }
+                    }
+                    .addOnFailureListener { exception ->
+                        queriesCompleted++
+                        Log.e(TAG, "Error searching for '$formattedQuery'", exception)
 
-                        Log.i(TAG, "searchUsersByPhone: Successfully processed $successCount users")
+                        // Check if all queries are complete
+                        if (queriesCompleted == phoneQueries.size) {
+                            progressIndicator.visibility = View.GONE
 
-                        if (usersList.isEmpty()) {
-                            showEmptyState("No users found with this phone number")
-                        } else {
-                            // Show results
-                            userAdapter.notifyDataSetChanged()
-                            emptyResultsTextView.visibility = View.GONE
+                            if (totalUsersFound == 0) {
+                                showEmptyState("No users found with this phone number")
+                            }
                         }
                     }
-
-                    // Hide loading indicator
-                    progressIndicator.visibility = View.GONE
-                }
-                .addOnFailureListener { exception ->
-                    // Hide loading indicator
-                    progressIndicator.visibility = View.GONE
-
-                    // Show error message
-                    Log.e(TAG, "searchUsersByPhone: Error searching users", exception)
-                    showEmptyState("Error searching users: ${exception.message}")
-                }
-
+            }
         } catch (e: Exception) {
             Log.e(TAG, "searchUsersByPhone: Unexpected error", e)
             progressIndicator.visibility = View.GONE
@@ -236,6 +282,7 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
             val intent = Intent(this, UserProfileActivity::class.java).apply {
                 putExtra("USER_ID", user.uid)
                 putExtra("came_from", "AddNewChat")
+                putExtra("HAS_EXISTING_CHAT", existingChatUserIds.contains(user.uid))
             }
             startActivity(intent)
         } catch (e: Exception) {
@@ -255,17 +302,7 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
             Log.e(TAG, "navigateToMainActivity: Error navigating to main activity", e)
         }
     }
-    private fun formatPhoneNumber(phoneNumber: String): String {
-        // This is just a simple example - adjust to your requirements
-        var formattedNumber = phoneNumber
 
-        // If doesn't start with +, assume it's a local number and add country code
-        if (!formattedNumber.startsWith("+")) {
-            formattedNumber = "+2$formattedNumber" // Assuming US (+1), change as needed
-        }
-
-        return formattedNumber
-    }
     override fun onDestroy() {
         Log.d(TAG, "onDestroy: Activity being destroyed")
         super.onDestroy()

@@ -61,6 +61,18 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:text="+20-100-1234-231" />
 
+    <TextView
+        android:id="@+id/chatStatusTextView"
+        android:layout_width="55dp"
+        android:layout_height="55dp"
+        android:text="Existing Chat"
+        android:textColor="#4CAF50"
+        android:textStyle="italic"
+        android:visibility="gone"
+        tools:ignore="MissingConstraints"
+        tools:layout_editor_absoluteX="12dp"
+        tools:layout_editor_absoluteY="12dp" />
+
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

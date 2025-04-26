@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 
 class UserAdapter(
     private val users: List<UserData>,
+    private val existingChatUserIds: Set<String>,  // Pass existing chat IDs as a parameter
     private val listener: OnUserClickListener
 ) : RecyclerView.Adapter<UserAdapter.UserViewHolder>() {
 
@@ -25,7 +26,8 @@ class UserAdapter(
     inner class UserViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val nameTextView: TextView = itemView.findViewById(R.id.nameTextView)
         private val phoneTextView: TextView = itemView.findViewById(R.id.phoneTextView)
-        private val statustextView: TextView = itemView.findViewById(R.id.statusTextView)
+        private val statusTextView: TextView = itemView.findViewById(R.id.statusTextView)
+        private val chatStatusView: TextView = itemView.findViewById(R.id.chatStatusTextView)
 
         init {
             Log.v(TAG, "ViewHolder initialized")
@@ -37,7 +39,16 @@ class UserAdapter(
             try {
                 nameTextView.text = user.displayName
                 phoneTextView.text = user.phoneNumber
-                statustextView.text=user.userStatus
+                statusTextView.text = user.userStatus
+
+                // Show chat status by checking the set instead of a property on UserData
+                val hasExistingChat = existingChatUserIds.contains(user.uid)
+                if (hasExistingChat) {
+                    chatStatusView.visibility = View.VISIBLE
+                    chatStatusView.text = "Existing Chat"
+                } else {
+                    chatStatusView.visibility = View.GONE
+                }
 
                 // Set click listener
                 itemView.setOnClickListener {
