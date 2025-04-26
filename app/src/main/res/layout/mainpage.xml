@@ -15,47 +15,108 @@
         android:elevation="4dp"
         app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
-            android:id="@+id/titleTextView"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:text="Za3boot chat"
-            android:textColor="?attr/generalText"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <ImageView
-            android:id="@+id/searchButton"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:layout_marginEnd="16dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:clickable="true"
-            android:contentDescription="Search"
-            android:focusable="true"
-            android:src="@android:drawable/ic_menu_search"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/settingsButton"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <ImageView
-            android:id="@+id/settingsButton"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:layout_marginEnd="16dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:clickable="true"
-            android:contentDescription="Settings"
-            android:focusable="true"
-            android:src="@android:drawable/ic_menu_manage"
+        <!-- Normal Top Bar Content -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/normalToolbarContent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
 
+            <TextView
+                android:id="@+id/titleTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:text="Za3boot chat"
+                android:textColor="?attr/generalText"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <ImageView
+                android:id="@+id/searchButton"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginEnd="16dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="Search"
+                android:focusable="true"
+                android:src="@android:drawable/ic_menu_search"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@+id/settingsButton"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <ImageView
+                android:id="@+id/settingsButton"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginEnd="16dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="Settings"
+                android:focusable="true"
+                android:src="@android:drawable/ic_menu_manage"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- Selection Mode Toolbar Content (Initially Hidden) -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/selectionToolbarContent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <!-- Close selection mode button -->
+            <ImageButton
+                android:id="@+id/closeSelectionButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                android:contentDescription="Close Selection"
+                android:src="@drawable/ic_back"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <!-- Selection count -->
+            <TextView
+                android:id="@+id/selectionCountTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:text="0 selected"
+                android:textColor="?attr/colorOnSecondary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toEndOf="@id/closeSelectionButton"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <!-- Delete button -->
+            <ImageButton
+                android:id="@+id/deleteSelectedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:background="@null"
+                android:contentDescription="Delete Selected"
+                android:src="@android:drawable/ic_menu_delete"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <!-- Search Container -->
@@ -120,7 +181,7 @@
         android:background="?attr/MainMenuBG"
         android:clipToPadding="false"
         android:padding="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/bottomNavigation"
+        app:layout_constraintBottom_toTopOf="@+id/selectionActionPanel"
         app:layout_constraintTop_toBottomOf="@+id/searchContainer"/>
 
     <!-- Floating Action Button -->
@@ -135,6 +196,40 @@
         app:layout_constraintBottom_toTopOf="@+id/bottomNavigation"
         app:layout_constraintEnd_toEndOf="parent"
         android:backgroundTint="?attr/AuthButton" />
+
+    <!-- Selection action panel (initially hidden) -->
+    <LinearLayout
+        android:id="@+id/selectionActionPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:background="?attr/ChatroomTop"
+        android:visibility="gone"
+        android:elevation="4dp"
+        app:layout_constraintBottom_toTopOf="@+id/bottomNavigation">
+
+        <TextView
+            android:id="@+id/selectionCountText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="0 selected"
+            android:textColor="?attr/colorOnSecondary"
+            android:textSize="16sp"
+            android:layout_gravity="center_vertical"
+            android:paddingStart="16dp" />
+
+        <ImageButton
+            android:id="@+id/deleteAction"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Delete Selected Messages"
+            android:src="@android:drawable/ic_menu_delete"
+            android:tint="?attr/colorOnSecondary" />
+    </LinearLayout>
 
     <!-- Bottom Navigation -->
     <com.google.android.material.bottomnavigation.BottomNavigationView

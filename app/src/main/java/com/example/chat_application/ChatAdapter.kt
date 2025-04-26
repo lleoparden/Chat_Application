@@ -7,6 +7,12 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import android.os.Parcelable
+import android.util.Log
+import android.widget.CheckBox
+import android.widget.ImageView
+import androidx.cardview.widget.CardView
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat
 import kotlinx.parcelize.Parcelize
 import java.util.*
 @Parcelize
@@ -232,28 +238,47 @@ class ChatManager {
 }
 
 // Chat adapter for RecyclerView
-class ChatAdapter(private val chatManager: ChatManager, private val listener: OnChatClickListener) :
-    RecyclerView.Adapter<ChatAdapter.ChatViewHolder>() {
+class ChatAdapter(
+    private var chats: List<Chat>,
+    private val onChatClickListener: OnChatClickListener,
+    private val onChatLongClickListener: OnChatLongClickListener
+) : RecyclerView.Adapter<ChatAdapter.ChatViewHolder>() {
 
+    private var selectedItems = mutableSetOf<String>()
+    private var inSelectionMode = false
 
     interface OnChatClickListener {
         fun onChatClick(chat: Chat)
     }
 
+    interface OnChatLongClickListener {
+        fun onChatLongClick(chat: Chat): Boolean
+    }
+
     inner class ChatViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val chatCardView: ConstraintLayout = itemView.findViewById(R.id.item_chat)
         private val nameTextView: TextView = itemView.findViewById(R.id.chatNameTextView)
         private val lastMessageTextView: TextView = itemView.findViewById(R.id.lastMessageTextView)
         private val timeTextView: TextView = itemView.findViewById(R.id.timeTextView)
         private val unreadCountTextView: TextView = itemView.findViewById(R.id.unreadCountTextView)
+        private val avatarImageView: ImageView = itemView.findViewById(R.id.profileImageView)
+        private val selectionCheckbox: CheckBox = itemView.findViewById(R.id.selectionCheckbox)
 
         fun bind(chat: Chat) {
-
+            // Basic chat info
             nameTextView.text = chat.getEffectiveDisplayName()
             lastMessageTextView.text = chat.lastMessage
 
             // Format timestamp
             val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
             timeTextView.text = sdf.format(Date(chat.timestamp))
+
+            // Set avatar (would use image loading library like Glide in a real app)
+            if (chat.type == "group") {
+                avatarImageView.setImageResource(R.drawable.ic_person)
+            } else {
+                avatarImageView.setImageResource(R.drawable.ic_person)
+            }
 
             // Show unread count if any
             if (chat.unreadCount > 0) {
@@ -263,9 +288,59 @@ class ChatAdapter(private val chatManager: ChatManager, private val listener: On
                 unreadCountTextView.visibility = View.GONE
             }
 
-            // Set click listener
+            // Handle selection state
+            handleSelectionState(chat)
+
+            // Set click listeners
             itemView.setOnClickListener {
-                listener.onChatClick(chat)
+                try {
+                    onChatClickListener.onChatClick(chat)
+                } catch (e: Exception) {
+                    Log.e("ChatAdapter", "Error in click listener: ${e.message}")
+                }
+            }
+
+            itemView.setOnLongClickListener {
+                try {
+                    onChatLongClickListener.onChatLongClick(chat)
+                } catch (e: Exception) {
+                    Log.e("ChatAdapter", "Error in long click listener: ${e.message}")
+                    false
+                }
+            }
+        }
+
+        private fun handleSelectionState(chat: Chat) {
+            try {
+                // First ensure the checkbox exists
+                if (selectionCheckbox == null) {
+                    Log.e("ChatAdapter", "Selection checkbox is null")
+                    return
+                }
+
+                // Set visibility BEFORE changing checked state
+                selectionCheckbox.visibility = if (inSelectionMode) View.VISIBLE else View.GONE
+
+                // Only set checked state if visible
+                if (inSelectionMode) {
+                    selectionCheckbox.isChecked = selectedItems.contains(chat.id)
+
+                    // Apply background changes
+                    if (selectedItems.contains(chat.id)) {
+                        chatCardView.setBackgroundColor(
+                            ContextCompat.getColor(itemView.context, R.color.black)
+                        )
+                    } else {
+                        chatCardView.background =
+                            ContextCompat.getDrawable(itemView.context, R.drawable.chatlistborder)
+                    }
+                } else {
+                    // Reset background when not in selection mode
+                    chatCardView.background =
+                        ContextCompat.getDrawable(itemView.context, R.drawable.chatlistborder)
+                }
+            } catch (e: Exception) {
+                Log.e("ChatAdapter", "Error handling selection state: ${e.message}")
             }
         }
     }
@@ -276,9 +351,32 @@ class ChatAdapter(private val chatManager: ChatManager, private val listener: On
     }
 
     override fun onBindViewHolder(holder: ChatViewHolder, position: Int) {
-        val chat = chatManager.get(position)
+        val chat = chats[position]
         holder.bind(chat)
     }
 
-    override fun getItemCount(): Int = chatManager.size()
+    override fun getItemCount(): Int = chats.size
+
+    fun updateData(newChats: List<Chat>) {
+        this.chats = newChats
+        notifyDataSetChanged()
+    }
+
+    fun updateSelectionMode(inSelectionMode: Boolean) {
+        this.inSelectionMode = inSelectionMode
+        if (!inSelectionMode) {
+            selectedItems.clear()
+        }
+        notifyDataSetChanged()
+    }
+
+    fun updateSelectedItems(selectedIds: Set<String>) {
+        this.selectedItems = selectedIds.toMutableSet()
+        notifyDataSetChanged()
+    }
+
+    fun clearSelections() {
+        selectedItems.clear()
+        notifyDataSetChanged()
+    }
 }

@@ -11,6 +11,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -32,7 +33,7 @@ private const val TAG = "MainActivity"
 private const val CHATS_FILE = "chats.json"
 private const val USERS_FILE = "users.json"
 
-class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
+class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatAdapter.OnChatLongClickListener{
 
     // UI Components
     private lateinit var chatRecyclerView: RecyclerView
@@ -42,8 +43,17 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     private lateinit var bottomNavigation: BottomNavigationView
     private lateinit var searchBar: EditText
     private lateinit var searchContainer: LinearLayout
-    private lateinit var shimmerLayout: ShimmerFrameLayout  // Added shimmer layout
+    private lateinit var shimmerLayout: ShimmerFrameLayout
     private var isSearchVisible = false
+
+    // Selection mode components
+    private lateinit var normalToolbarView: View
+    private lateinit var selectionToolbarView: View
+    private lateinit var selectionCountTextView: TextView
+    private lateinit var closeSelectionButton: ImageView
+    private lateinit var deleteSelectedButton: ImageView
+    private var isInSelectionMode = false
+    private val selectedChatIds = mutableSetOf<String>()
 
     // Data Components
     private lateinit var chatAdapter: ChatAdapter
@@ -100,6 +110,17 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
         // Initially hide search bar
         searchContainer.visibility = View.GONE
+
+        // Initialize selection mode views
+        normalToolbarView = findViewById(R.id.normalToolbarContent)
+        selectionToolbarView = findViewById(R.id.selectionToolbarContent)
+        selectionCountTextView = findViewById(R.id.selectionCountTextView)
+        closeSelectionButton = findViewById(R.id.closeSelectionButton)
+        deleteSelectedButton = findViewById(R.id.deleteSelectedButton)
+
+        // Initially hide search bar and selection toolbar
+        searchContainer.visibility = View.GONE
+        selectionToolbarView.visibility = View.GONE
     }
 
     private fun setupUI() {
@@ -141,12 +162,107 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 else -> false
             }
         }
+
+        closeSelectionButton.setOnClickListener {
+            exitSelectionMode()
+        }
+
+        deleteSelectedButton.setOnClickListener {
+            deleteSelectedChats()
+        }
     }
 
     private fun setupRecyclerView() {
         chatRecyclerView.layoutManager = LinearLayoutManager(this)
-        chatAdapter = ChatAdapter(chatManager, this)
+        chatAdapter = ChatAdapter(chatManager.getAll(), this, this)
         chatRecyclerView.adapter = chatAdapter
+    }
+
+    // Update the toggleSearchBar method to handle shimmer
+    private fun enterSelectionMode() {
+        if (isInSelectionMode) return
+
+        isInSelectionMode = true
+        selectedChatIds.clear()
+
+        // Show selection toolbar
+        normalToolbarView.visibility = View.GONE
+        selectionToolbarView.visibility = View.VISIBLE
+
+        // Hide FAB during selection
+        newChatFab.visibility = View.GONE
+
+        updateSelectionCount()
+    }
+
+    private fun exitSelectionMode() {
+        if (!isInSelectionMode) return
+
+        isInSelectionMode = false
+        selectedChatIds.clear()
+
+        // Restore normal toolbar
+        selectionToolbarView.visibility = View.GONE
+        normalToolbarView.visibility = View.VISIBLE
+
+        // Show FAB again
+        newChatFab.visibility = View.VISIBLE
+
+        // Update adapter to reset selection visual states
+        chatAdapter.updateSelectionMode(false)
+        chatAdapter.clearSelections() // Make sure to clear adapter's internal state too
+    }
+
+    private fun toggleChatSelection(chat: Chat) {
+        if (selectedChatIds.contains(chat.id)) {
+            selectedChatIds.remove(chat.id)
+        } else {
+            selectedChatIds.add(chat.id)
+        }
+
+        // Update adapter with the new selection state
+        chatAdapter.updateSelectedItems(selectedChatIds)
+
+        // If no chats are selected, exit selection mode
+        if (selectedChatIds.isEmpty()) {
+            exitSelectionMode()
+            return
+        }
+
+        updateSelectionCount()
+    }
+
+    private fun updateSelectionCount() {
+        val count = selectedChatIds.size
+        selectionCountTextView.text = "$count selected"
+    }
+
+    private fun deleteSelectedChats() {
+        if (selectedChatIds.isEmpty()) return
+
+        // Remove selected chats from the chat manager
+        val updatedChats = chatManager.getAll().filter { !selectedChatIds.contains(it.id) }
+
+        // Remove from Firebase if enabled
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            for (chatId in selectedChatIds) {
+                chatsReference.child(chatId).removeValue()
+            }
+        }
+
+        // Update local list
+        chatManager.clear()
+        chatManager.pushAll(updatedChats)
+
+        // Save to local storage
+        saveChatsToLocalStorage()
+
+        // Show confirmation
+        Toast.makeText(this, "${selectedChatIds.size} chat(s) deleted", Toast.LENGTH_SHORT).show()
+
+        // Exit selection mode and update UI
+        exitSelectionMode()
+        chatAdapter.updateData(chatManager.getAll())
     }
 
     // Update the toggleSearchBar method to handle shimmer
@@ -169,8 +285,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
             showShimmerEffect()
 
             // Reset RecyclerView to show all chats
-            chatAdapter = ChatAdapter(chatManager, this)
-            chatRecyclerView.adapter = chatAdapter
+            chatAdapter.updateData(chatManager.getAll())
 
             // Hide shimmer effect after data is loaded
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
@@ -182,8 +297,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     private fun performSearch(query: String) {
         if (query.isEmpty()) {
             // Show all chats when query is empty
-            chatAdapter = ChatAdapter(chatManager, this)
-            chatRecyclerView.adapter = chatAdapter
+            chatAdapter.updateData(chatManager.getAll())
             return
         }
 
@@ -197,26 +311,18 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             if (matchingChat != null) {
                 // Show only the exact match
-                val singleChatManager = ChatManager()
-                singleChatManager.push(matchingChat)
-                chatAdapter = ChatAdapter(singleChatManager, this)
-                chatRecyclerView.adapter = chatAdapter
+                chatAdapter.updateData(listOf(matchingChat))
             } else {
                 // If no exact match, try to find partial matches
                 val partialMatches = chatManager.findPartialMatches(query)
 
                 if (partialMatches.isNotEmpty()) {
-                    val tempChatManager = ChatManager()
-                    tempChatManager.pushAll(partialMatches)
-                    chatAdapter = ChatAdapter(tempChatManager, this)
-                    chatRecyclerView.adapter = chatAdapter
+                    chatAdapter.updateData(partialMatches)
                 } else {
                     // Display a message for no results
                     Toast.makeText(this, "No chats found matching '$query'", Toast.LENGTH_SHORT).show()
                     // Show empty list
-                    val emptyChatManager = ChatManager()
-                    chatAdapter = ChatAdapter(emptyChatManager, this)
-                    chatRecyclerView.adapter = chatAdapter
+                    chatAdapter.updateData(emptyList())
                 }
             }
 
@@ -229,30 +335,17 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     //region Chat Management
 
     private fun loadChats() {
-        Log.d(TAG, "Loading chats")
-
-        // Show shimmer effect while loading
         showShimmerEffect()
 
-        // First load from local storage for immediate display
+        // Load local chats first
         val localChats = loadChatsFromLocalStorageWithoutSaving()
-
-        // If no local chats, add demo chats for first-time users
-        if (localChats.isEmpty()) {
-            Log.d(TAG, "No local chats found, adding demo chats")
-            addDemoChat()
-            return // The addDemoChat function will handle everything else
-        }
 
         // Update UI with local chats immediately
         chatManager.clear()
         chatManager.pushAll(localChats)
-        chatAdapter.notifyDataSetChanged()
+        chatAdapter.updateData(chatManager.getAll()) // Add this line to update adapter
 
-        fetchUserDataAndUpdateDisplayNames()
-
-        // Hide shimmer effect after data is loaded
-        hideShimmerEffect()
+        hideShimmerEffect() // Ensure this runs even if Firebase fails
 
         // Only attempt Firebase loading if explicitly enabled AND we're online
         if (resources.getBoolean(R.bool.firebaseOn)) {
@@ -551,64 +644,124 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     }
 
     override fun onChatClick(chat: Chat) {
-        val intent = Intent(this, ChatRoomActivity::class.java).apply {
-            putExtra("CHAT_OBJECT", chat)
+        if (isInSelectionMode) {
+            toggleChatSelection(chat)
+        } else {
+            val intent = Intent(this, ChatRoomActivity::class.java).apply {
+                putExtra("CHAT_OBJECT", chat)
+            }
+            if (resources.getBoolean(R.bool.firebaseOn) && ::chatsReference.isInitialized) {
+                saveChatsToFirebase()
+            }
+            startActivity(intent)
+            finish()
         }
-        if (resources.getBoolean(R.bool.firebaseOn) && ::chatsReference.isInitialized) {
-            saveChatsToFirebase()
+    }
+
+
+    override fun onChatLongClick(chat: Chat): Boolean {
+        if (!isInSelectionMode) {
+            // Enter selection mode first
+            isInSelectionMode = true
+            selectedChatIds.clear()
+
+            // Show selection toolbar
+            normalToolbarView.visibility = View.GONE
+            selectionToolbarView.visibility = View.VISIBLE
+
+            // Hide FAB during selection
+            newChatFab.visibility = View.GONE
+
+            // Update adapter BEFORE adding the first selection
+            chatAdapter.updateSelectionMode(isInSelectionMode)
         }
-        startActivity(intent)
-        finish()
+
+        // Now toggle the selection after mode is updated
+        toggleChatSelection(chat)
+        return true
     }
     //endregion
 
     //region Firebase
     private fun setupFirebase() {
-        firebaseDatabase = FirebaseDatabase.getInstance()
-        chatsReference = firebaseDatabase.getReference("chats")
-        usersReference = firebaseDatabase.getReference("users")
-        firestore = Firebase.firestore
+        try {
+            firebaseDatabase = FirebaseDatabase.getInstance()
+            chatsReference = firebaseDatabase.getReference("chats")
+            usersReference = firebaseDatabase.getReference("users")
+            firestore = Firebase.firestore
 
-        // Add connection status listener
-        val connectedRef = firebaseDatabase.getReference(".info/connected")
-        connectedRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val connected = snapshot.getValue(Boolean::class.java) ?: false
-                if (!connected) {
-                    Log.w(TAG, "Device is offline, using local data")
-                    loadChatsFromLocalStorageAndDisplay()
+            // Add connection status listener with improved error handling
+            val connectedRef = firebaseDatabase.getReference(".info/connected")
+            connectedRef.addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val connected = snapshot.getValue(Boolean::class.java) ?: false
+                    if (!connected) {
+                        Log.w(TAG, "Device is offline, using local data")
+                        loadChatsFromLocalStorageAndDisplay()
+                        hideShimmerEffect() // Ensure shimmer is hidden when offline
+                    }
                 }
-            }
 
-            override fun onCancelled(error: DatabaseError) {
-                Log.e(TAG, "Firebase connection listener cancelled")
-                // When connection is cancelled, fall back to local data
-                loadChatsFromLocalStorageAndDisplay()
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(TAG, "Firebase connection listener cancelled: ${error.message}")
+                    // When connection is cancelled, fall back to local data
+                    loadChatsFromLocalStorageAndDisplay()
+                    hideShimmerEffect() // Hide shimmer effect in case of error
 
-                // Hide shimmer effect in case of error
-                hideShimmerEffect()
-            }
-        })
+                    // Show a user-friendly message
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Could not connect to the server. Using offline mode.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            })
+        } catch (e : Exception) {
+            Log.e(TAG, "Failed to initialize Firebase: ${e.message}")
+            e.printStackTrace()
+
+            // Fall back to local storage
+            loadChatsFromLocalStorageAndDisplay()
+            hideShimmerEffect()
+
+            // Disable Firebase functionality
+            val editor = getSharedPreferences("AppSettings", Context.MODE_PRIVATE).edit()
+            editor.putBoolean("firebaseEnabled", false)
+            editor.apply()
+        }
     }
 
 
 
     private fun checkConnectionAndLoadChatsFromFirebase(localChats: List<Chat>) {
-        val connectedRef = firebaseDatabase.getReference(".info/connected")
-        connectedRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val connected = snapshot.getValue(Boolean::class.java) ?: false
-                if (connected) {
-                    loadChatsFromFirebaseAndMerge(localChats)
+        try {
+            val connectedRef = firebaseDatabase.getReference(".info/connected")
+            connectedRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    try {
+                        val connected = snapshot.getValue(Boolean::class.java) ?: false
+                        if (connected) {
+                            loadChatsFromFirebaseAndMerge(localChats)
+                        } else {
+                            // Explicitly handle the offline case
+                            Log.d(TAG, "Device is offline, using local data only")
+                            hideShimmerEffect()
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error processing connection status: ${e.message}")
+                        hideShimmerEffect()
+                    }
                 }
-            }
 
-            override fun onCancelled(error: DatabaseError) {
-                Log.e(TAG, "Failed to check connection status for chat loading")
-                // Hide shimmer effect in case of error
-                hideShimmerEffect()
-            }
-        })
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(TAG, "Failed to check connection status: ${error.message}")
+                    hideShimmerEffect() // Ensure shimmer is hidden
+                }
+            })
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception checking Firebase connection: ${e.message}")
+            hideShimmerEffect()
+        }
     }
 
     private fun loadChatsFromFirebaseAndMerge(localChats: List<Chat>) {

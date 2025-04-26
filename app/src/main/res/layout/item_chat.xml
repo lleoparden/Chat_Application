@@ -1,77 +1,103 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
-    android:background="@drawable/chatlistborder"
-    android:clickable="true"
-    android:focusable="true"
-    android:padding="12dp"  >
 
-    <ImageView
-        android:id="@+id/profileImageView"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginLeft="7dp"
-        android:background="@drawable/circle_background"
-        android:backgroundTint="?attr/AuthButton"
-        android:contentDescription="Profile"
-        android:src="@drawable/ic_person"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
-        android:id="@+id/chatNameTextView"
-        android:layout_width="0dp"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:id = "@+id/item_chat"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
-        android:layout_marginEnd="8dp"
-        android:textColor="?attr/colorOnSecondary"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toStartOf="@+id/timeTextView"
-        app:layout_constraintStart_toEndOf="@+id/profileImageView"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:text="Chat Name" />
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/chatlistborder"
+        android:clickable="true"
+        android:focusable="true"
+        android:padding="12dp"
+    >
 
-    <TextView
-        android:id="@+id/lastMessageTextView"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
-        android:layout_marginTop="4dp"
-        android:layout_marginEnd="8dp"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:textColor="?attr/colorOnSecondary"
-        android:textSize="14sp"
-        app:layout_constraintEnd_toStartOf="@+id/unreadCountTextView"
-        app:layout_constraintStart_toEndOf="@+id/profileImageView"
-        app:layout_constraintTop_toBottomOf="@+id/chatNameTextView"
-        tools:text="Last message text" />
+        <ImageView
+            android:id="@+id/profileImageView"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="7dp"
+            android:background="@drawable/circle_background"
+            android:backgroundTint="?attr/AuthButton"
+            android:contentDescription="Profile"
+            android:src="@drawable/ic_person"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
-        android:id="@+id/timeTextView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="@android:color/darker_gray"
-        android:textSize="12sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:text="12:34" />
+        <TextView
+            android:id="@+id/chatNameTextView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="8dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?attr/colorOnSecondary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toStartOf="@+id/timeTextView"
+            app:layout_constraintStart_toEndOf="@+id/profileImageView"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="Chat Name" />
 
-    <TextView
-        android:id="@+id/unreadCountTextView"
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:background="@drawable/circle_background"
-        android:gravity="center"
-        android:textColor="?attr/colorOnSecondary"
-        android:textSize="12sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/timeTextView"
-        tools:text="3" />
+        <TextView
+            android:id="@+id/lastMessageTextView"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="8dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?attr/colorOnSecondary"
+            android:textSize="14sp"
+            app:layout_constraintEnd_toStartOf="@+id/unreadCountTextView"
+            app:layout_constraintStart_toEndOf="@+id/profileImageView"
+            app:layout_constraintTop_toBottomOf="@+id/chatNameTextView"
+            tools:text="Last message text" />
+
+        <TextView
+            android:id="@+id/timeTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/darker_gray"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="12:34" />
+
+        <TextView
+            android:id="@+id/unreadCountTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/circle_background"
+            android:gravity="center"
+            android:minWidth="24dp"
+            android:minHeight="24dp"
+            android:padding="2dp"
+            android:textColor="@android:color/white"
+            android:textSize="12sp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/timeTextView"
+            tools:text="3"
+            tools:visibility="visible" />
+
+        <CheckBox
+            android:id="@+id/selectionCheckbox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:visibility="gone"
+            android:clickable="false"
+            android:focusable="false"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:visibility="visible" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
