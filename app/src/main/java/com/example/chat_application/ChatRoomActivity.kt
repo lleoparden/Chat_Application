@@ -145,9 +145,6 @@ class ChatRoomActivity : AppCompatActivity() {
                 }
             }
         }
-
-        // If no other participant found or the chat doesn't have participant IDs,
-        // return an empty string or some default value
         return ""
     }
 
