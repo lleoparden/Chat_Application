@@ -9,6 +9,7 @@ android {
     namespace = "com.example.chat_application"
     compileSdk = 34
 
+
     defaultConfig {
         applicationId = "com.example.chat_application"
         minSdk = 24
@@ -52,6 +53,7 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-database-ktx")
     implementation("com.google.firebase:firebase-storage-ktx")
+
     implementation(libs.firebase.inappmessaging)
 
     implementation ("com.facebook.shimmer:shimmer:0.5.0")
