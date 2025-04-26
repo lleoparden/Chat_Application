@@ -1,5 +1,6 @@
 package com.example.chat_application
 
+
 import android.annotation.SuppressLint
 import android.content.ContentValues.TAG
 import android.content.Intent
@@ -66,18 +67,7 @@ class AuthActivity : AppCompatActivity() {
     // JSON file for local storage
     private lateinit var localUsersFile: File
 
-    // User data class
-    data class UserData(
-        val uid: String,
-        val displayName: String,
-        val phoneNumber: String,
-        val password: String,
-        val userDescription: String = "",
-        val userStatus: String = "",
-        val online: Boolean,
-        val lastSeen: String = "", // Added last seen timestamp
-        val profilePictureUrl: String = "" // Added profile picture URL
-    )
+
 
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {

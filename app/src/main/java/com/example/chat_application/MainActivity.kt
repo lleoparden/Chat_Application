@@ -585,6 +585,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         val intent = Intent(this, ChatRoomActivity::class.java).apply {
             putExtra("CHAT_OBJECT", chat)
         }
+        saveChatsToFirebase()
         startActivity(intent)
         finish()
     }
@@ -687,8 +688,15 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 timeoutHandler.removeCallbacks(timeoutRunnable)
 
                 try {
-                    // Rest of your code remains the same
-                    // ...
+                    for (userSnapshot in snapshot.children) {
+                        val userId = userSnapshot.key
+                        val displayName = userSnapshot.child("displayName").getValue(String::class.java)
+
+                        if (userId != null && displayName != null) {
+                            userDisplayNames[userId] = displayName
+                            Log.d(TAG, "Loaded user: $userId -> $displayName")
+                        }
+                    }
 
                     // Save updated user data to local storage
                     saveUsersToLocalStorage()
@@ -715,55 +723,126 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     private fun loadChatsFromFirebaseAndMerge(localChats: List<Chat>) {
         Log.d(TAG, "Loading chats from Firebase")
 
-        // Show shimmer effect while loading from Firebase
-        showShimmerEffect()
-
-        // Add a timeout handler
-        val timeoutHandler = android.os.Handler(android.os.Looper.getMainLooper())
-        val timeoutRunnable = Runnable {
-            Log.w(TAG, "Firebase chats loading timed out")
-            runOnUiThread {
-                chatManager.clear()
-                chatManager.pushAll(localChats)
-                updateChatDisplayNames()
-                chatAdapter.notifyDataSetChanged()
-
-                // Hide shimmer effect after timeout
-                hideShimmerEffect()
-            }
-        }
-
-        // Set a timeout (e.g., 5 seconds)
-        timeoutHandler.postDelayed(timeoutRunnable, 5000)
-
         try {
             chatsReference.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    // Cancel the timeout since we got a response
-                    timeoutHandler.removeCallbacks(timeoutRunnable)
+                    try {
+                        val firebaseChats = mutableListOf<Chat>()
+                        val mergedChats = mutableMapOf<String, Chat>() // Using ID as key
 
-                    // Hide shimmer effect after data is loaded
-                    hideShimmerEffect()
+                        // First add all local chats to the merged map
+                        for (chat in localChats) {
+                            mergedChats[chat.id] = chat
+                        }
 
-                    // Rest of your code remains the same
-                    // ...
+                        // Process Firebase chats
+                        for (chatSnapshot in snapshot.children) {
+                            try {
+                                // Convert snapshot to Chat object
+                                val chatId = chatSnapshot.key ?: continue
+                                val name = chatSnapshot.child("name").getValue(String::class.java) ?: ""
+                                val displayName = chatSnapshot.child("displayName").getValue(String::class.java) ?: name
+                                val lastMessage = chatSnapshot.child("lastMessage").getValue(String::class.java) ?: ""
+                                val timestamp = chatSnapshot.child("timestamp").getValue(Long::class.java) ?: 0L
+                                val unreadCount = chatSnapshot.child("unreadCount").getValue(Int::class.java) ?: 0
+                                val type = chatSnapshot.child("type").getValue(String::class.java) ?: "direct"
+
+                                // Get participant IDs
+                                val participantIds = mutableListOf<String>()
+                                val participantsSnapshot = chatSnapshot.child("participantIds")
+                                for (participantSnapshot in participantsSnapshot.children) {
+                                    val participantId = participantSnapshot.getValue(String::class.java)
+                                    if (participantId != null) {
+                                        participantIds.add(participantId)
+                                    }
+                                }
+
+                                // Create chat object
+                                val chat = Chat(
+                                    id = chatId,
+                                    name = name,
+                                    displayName = displayName,
+                                    lastMessage = lastMessage,
+                                    timestamp = timestamp,
+                                    unreadCount = unreadCount,
+                                    participantIds = participantIds,
+                                    type = type
+                                )
+
+                                // Only process chats where the current user is a participant
+                                if (participantIds.contains(userId)) {
+                                    firebaseChats.add(chat)
+                                    // Firebase data overrides local data for the same chat ID
+                                    mergedChats[chat.id] = chat
+                                    Log.d(TAG, "Added Firebase chat: ${chat.name} (ID: ${chat.id})")
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error processing chat from Firebase: ${e.message}")
+                                e.printStackTrace()
+                            }
+                        }
+
+                        Log.d(TAG, "Loaded ${firebaseChats.size} chats from Firebase")
+
+                        // Update the chat manager with merged chats on the UI thread
+                        runOnUiThread {
+                            try {
+                                // Update the chat manager with merged chats
+                                chatManager.clear()
+                                chatManager.pushAll(mergedChats.values.toList())
+
+                                // Update displayNames based on user list
+                                updateChatDisplayNames()
+
+                                chatAdapter.notifyDataSetChanged()
+
+                                // Save the merged data back to local storage
+                                saveChatsToLocalStorage()
+
+                                Log.d(TAG, "Merged ${mergedChats.size} chats from local and Firebase")
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error updating UI with merged chats: ${e.message}")
+                                e.printStackTrace()
+
+                                // Fallback to local chats
+                                chatManager.clear()
+                                chatManager.pushAll(localChats)
+                                updateChatDisplayNames()
+                                chatAdapter.notifyDataSetChanged()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error in onDataChange: ${e.message}")
+                        e.printStackTrace()
+
+                        // Fallback to local chats on the UI thread
+                        runOnUiThread {
+                            chatManager.clear()
+                            chatManager.pushAll(localChats)
+                            updateChatDisplayNames()
+                            chatAdapter.notifyDataSetChanged()
+                        }
+                    }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    // Cancel the timeout since we got a response
-                    timeoutHandler.removeCallbacks(timeoutRunnable)
+                    Log.e(TAG, "Failed to load chats from Firebase: ${error.message}")
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Failed to load chats from Firebase. Using local chats.",
+                        Toast.LENGTH_SHORT
+                    ).show()
 
-                    // Hide shimmer effect in case of error
-                    hideShimmerEffect()
-
-                    // Rest of your code remains the same
-                    // ...
+                    // Just use the local chats if Firebase failed
+                    runOnUiThread {
+                        chatManager.clear()
+                        chatManager.pushAll(localChats)
+                        updateChatDisplayNames()
+                        chatAdapter.notifyDataSetChanged()
+                    }
                 }
             })
         } catch (e: Exception) {
-            // Cancel the timeout since we got an exception
-            timeoutHandler.removeCallbacks(timeoutRunnable)
-
             Log.e(TAG, "Exception during Firebase chat loading: ${e.message}")
             e.printStackTrace()
 
@@ -772,11 +851,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
             chatManager.pushAll(localChats)
             updateChatDisplayNames()
             chatAdapter.notifyDataSetChanged()
-
-            // Hide shimmer effect after exception
-            hideShimmerEffect()
         }
     }
+
 
     private fun saveChatsToFirebase() {
         if (!resources.getBoolean(R.bool.firebaseOn)) {
