@@ -13,6 +13,8 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
 import org.json.JSONArray
 import org.json.JSONObject
@@ -20,50 +22,60 @@ import java.io.File
 import java.util.UUID
 
 private const val TAG = "UserProfileActivity"
+
 class UserProfileActivity : AppCompatActivity() {
 
-    private lateinit var db:FirebaseFirestore
+    private lateinit var db: FirebaseFirestore
     private val firebaseEnabled by lazy { resources.getBoolean(R.bool.firebaseOn) }
 
     private lateinit var profileImage: ImageView
-    private lateinit var displayNameText:TextView
-    private lateinit var displayNumber:TextView
-    private lateinit var displayDescription:TextView
-    private lateinit var displayStatus:TextView
-    private lateinit var  startnewchatButton: Button
+    private lateinit var displayNameText: TextView
+    private lateinit var displayNumber: TextView
+    private lateinit var displayDescription: TextView
+    private lateinit var displayStatus: TextView
+    private lateinit var startnewchatButton: Button
 
     private var currentUserId = ""
     private var viewingUserId = ""
     private var name = ""
     private var isOwnProfile = false
 
+    private lateinit var chatsReference: DatabaseReference
+    private lateinit var firebaseDatabase: FirebaseDatabase
+    private lateinit var chat: Chat
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(UserSettings.theme)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.user_profile)
 
-        if (firebaseEnabled){
+        if (firebaseEnabled) {
             db = FirebaseFirestore.getInstance()
+            firebaseDatabase = FirebaseDatabase.getInstance()
+            chatsReference = firebaseDatabase.getReference("chats")
         }
         currentUserId = UserSettings.userId
-        viewingUserId = intent.getStringExtra("USER_ID")?:currentUserId
+        viewingUserId = intent.getStringExtra("USER_ID") ?: currentUserId
         isOwnProfile = currentUserId == viewingUserId
 
         initializeViews()
         loadUserData()
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
-        toolbar.title=if (isOwnProfile)"My Profile" else "User Profile"
+        toolbar.title = if (isOwnProfile) "My Profile" else "User Profile"
 
         toolbar.setNavigationOnClickListener {
             navigateBack()
         }
-        startnewchatButton.setOnClickListener{
-            createNewChat(currentUserId,viewingUserId,name)
+        startnewchatButton.setOnClickListener {
+            createNewChat(currentUserId, viewingUserId, name)
         }
     }
 
-    private fun createNewChat(currentUserId: String, profileUserId: String, profileUserName: String) {
+    private fun createNewChat(
+        currentUserId: String,
+        profileUserId: String,
+        profileUserName: String
+    ) {
         // Read existing chats or create a new array if file doesn't exist
         val existingChats = readChatsFromFile()
 
@@ -93,7 +105,7 @@ class UserProfileActivity : AppCompatActivity() {
                 put("type", "direct")
             }
 
-            val chat = Chat(
+            chat = Chat(
                 id = chat_id,
                 name = profileUserName,
                 lastMessage = "",
@@ -108,12 +120,17 @@ class UserProfileActivity : AppCompatActivity() {
             val jsonString = existingChats.toString()
             writeChatsToFile(jsonString)
 
+            saveChatToFirebase(chat)
             openNewChat(chat)
         }
     }
 
     // Find a chat with the exact same participants
-    private fun findExistingChat(chats: JSONArray, currentUserId: String, profileUserId: String): JSONObject? {
+    private fun findExistingChat(
+        chats: JSONArray,
+        currentUserId: String,
+        profileUserId: String
+    ): JSONObject? {
         for (i in 0 until chats.length()) {
             try {
                 val chatObject = chats.getJSONObject(i)
@@ -124,8 +141,13 @@ class UserProfileActivity : AppCompatActivity() {
 
                     // Check if the chat has exactly 2 participants and they match our users
                     if (participantIds.length() == 2) {
-                        val participantsMatch = (participantIds.getString(0) == currentUserId && participantIds.getString(1) == profileUserId) ||
-                                (participantIds.getString(0) == profileUserId && participantIds.getString(1) == currentUserId)
+                        val participantsMatch =
+                            (participantIds.getString(0) == currentUserId && participantIds.getString(
+                                1
+                            ) == profileUserId) ||
+                                    (participantIds.getString(0) == profileUserId && participantIds.getString(
+                                        1
+                                    ) == currentUserId)
 
                         if (participantsMatch) {
                             return chatObject
@@ -200,16 +222,21 @@ class UserProfileActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateUIWithUserData(displayName:String,phoneNumber:String,description: String,Status:String){
+    private fun updateUIWithUserData(
+        displayName: String,
+        phoneNumber: String,
+        description: String,
+        Status: String
+    ) {
         displayNameText.text = displayName
         name = displayName
-        displayNumber.text=phoneNumber
-        displayDescription.text=description
-        displayStatus.text=Status
+        displayNumber.text = phoneNumber
+        displayDescription.text = description
+        displayStatus.text = Status
 
     }
 
-    private fun initializeViews(){
+    private fun initializeViews() {
         profileImage = findViewById(R.id.profileImage)
         displayNameText = findViewById(R.id.displayNameText)
         displayNumber = findViewById(R.id.displayPhoneText)
@@ -220,11 +247,10 @@ class UserProfileActivity : AppCompatActivity() {
 
     }
 
-    private fun  loadUserData(){
-        if(firebaseEnabled){
+    private fun loadUserData() {
+        if (firebaseEnabled) {
             loadUserFromFirebase()
-        }
-        else
+        } else
             loadUserFromLocalStorage()
     }
 
@@ -243,7 +269,7 @@ class UserProfileActivity : AppCompatActivity() {
                 } else {
                     // If not found in Firebase, try local
                     Log.d(TAG, "User not found in Firebase, trying local storage")
-                    Toast.makeText(this,"User Not Found remotely",Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "User Not Found remotely", Toast.LENGTH_SHORT).show()
                     loadUserFromLocalStorage()
                 }
             }
@@ -253,7 +279,8 @@ class UserProfileActivity : AppCompatActivity() {
                 loadUserFromLocalStorage() // Fallback to local
             }
     }
-    private fun loadUserFromLocalStorage(){
+
+    private fun loadUserFromLocalStorage() {
         try {
             val localUsersFile = File(filesDir, "local_users.json")
             if (!localUsersFile.exists()) {
@@ -261,8 +288,8 @@ class UserProfileActivity : AppCompatActivity() {
                 Toast.makeText(this, "User Data Not Found", Toast.LENGTH_SHORT).show()
                 return
             }
-            val fileContent=localUsersFile.readText()
-            if(fileContent.isBlank()){
+            val fileContent = localUsersFile.readText()
+            if (fileContent.isBlank()) {
                 Log.e(TAG, "Local Users File Is Empty")
                 return
             }
@@ -270,28 +297,54 @@ class UserProfileActivity : AppCompatActivity() {
             if (fileContent.trim().startsWith("[")) {
                 val jsonArray = JSONArray(fileContent)
 
-                for (i in 0 until jsonArray.length()){
-                    val jsonUser =jsonArray.getJSONObject(i)
-                    if (jsonUser.getString("uid")==viewingUserId){
+                for (i in 0 until jsonArray.length()) {
+                    val jsonUser = jsonArray.getJSONObject(i)
+                    if (jsonUser.getString("uid") == viewingUserId) {
                         updateUIWithUserData(
-                            displayName =jsonUser.getString("displayName"),
-                            phoneNumber =jsonUser.getString("phoneNumber"),
-                            description =jsonUser.getString("description"),
-                            Status =jsonUser.getString("Status"))
+                            displayName = jsonUser.getString("displayName"),
+                            phoneNumber = jsonUser.getString("phoneNumber"),
+                            description = jsonUser.getString("description"),
+                            Status = jsonUser.getString("Status")
+                        )
                         return
                     }
                 }
             }
 
-            Log.e(TAG,"User Not Found In Local Storage")
-            Toast.makeText(this,"User Not Found locally",Toast.LENGTH_SHORT).show()
+            Log.e(TAG, "User Not Found In Local Storage")
+            Toast.makeText(this, "User Not Found locally", Toast.LENGTH_SHORT).show()
 
-        }
-        catch (e:Exception){
-            Log.e(TAG,"Error Reading Local Users File",e)
-            Toast.makeText(this,"Error Loading User Data",Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error Reading Local Users File", e)
+            Toast.makeText(this, "Error Loading User Data", Toast.LENGTH_SHORT).show()
         }
 
+    }
+
+    private fun saveChatToFirebase(chat: Chat) {
+        if (!resources.getBoolean(R.bool.firebaseOn)) {
+            return
+        }
+
+        try {
+            try {
+                chatsReference.child(chat.id).setValue(chat)
+                    .addOnSuccessListener {
+                        Log.d(TAG, "Successfully saved chat ${chat.id} to Firebase")
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e(TAG, "Failed to save chat ${chat.id}: ${e.message}")
+                    }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error saving chat ${chat.id} to Firebase: ${e.message}")
+                e.printStackTrace()
+            }
+
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception during saveChatToFirebase: ${e.message}")
+            e.printStackTrace()
+        }
     }
 
     private fun navigateBack() {

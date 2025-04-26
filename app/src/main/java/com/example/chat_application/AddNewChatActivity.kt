@@ -332,6 +332,8 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
     override fun onUserClick(user: UserData) {
         Log.i(TAG, "onUserClick: User clicked: ${user.displayName} (${user.uid})")
         try {
+
+            addUserToContacts(user)
             // Start user profile activity
             val intent = Intent(this, UserProfileActivity::class.java).apply {
                 putExtra("USER_ID", user.uid)
