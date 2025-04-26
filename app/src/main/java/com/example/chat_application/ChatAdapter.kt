@@ -47,6 +47,14 @@ class ChatManager {
         sortByTimestamp()
     }
 
+    // Add this method to ChatManager class
+    fun updateChat(updatedChat: Chat) {
+        val chats = getAll().toMutableList()
+        val index = chats.indexOfFirst { it.id == updatedChat.id }
+        if (index != -1) {
+            chats[index] = updatedChat
+        }
+    }
     // Add multiple chats at once
     fun pushAll(chats: List<Chat>) {
         chatStack.addAll(chats)

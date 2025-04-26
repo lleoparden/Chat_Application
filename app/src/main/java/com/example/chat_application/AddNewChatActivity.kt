@@ -85,7 +85,7 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
             Log.d(TAG, "setupUI: RecyclerView configured")
 
             // Setup search functionality - specifically for phone numbers
-            searchEditText.hint = "Search by phone number"
+
             searchEditText.addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -93,33 +93,24 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
                     val query = s.toString().trim()
                     Log.d(TAG, "Search query changed: '$query'")
 
-                    if (query.length >= 3) { // Only search when at least 3 digits entered
-                        Log.d(TAG, "Query length sufficient, initiating search")
-                        var formatednumber = formatPhoneNumber(query)
-                        searchUsersByPhone(formatednumber)
-                    } else {
-                        // Clear results if search too short
-                        Log.d(TAG, "Query too short, clearing results")
+                    if (query.isEmpty()) {
+                        // Clear results if search is empty
+                        Log.d(TAG, "Query empty, clearing results")
                         usersList.clear()
                         userAdapter.notifyDataSetChanged()
-                        showEmptyState("Enter at least 3 digits to search")
+                        showEmptyState("Enter a phone number to search for users")
+                    } else {
+                        // Search with any input, regardless of length
+                        Log.d(TAG, "Initiating search for: '$query'")
+                        val formattedNumber = formatPhoneNumber(query)
+                        searchUsersByPhone(formattedNumber)
                     }
                 }
             })
             Log.d(TAG, "setupUI: Search functionality configured")
 
             // Setup new user button - now for adding contacts directly
-            newGroupButton.setOnClickListener {
-                val phoneNumber = searchEditText.text.toString().trim()
-                Log.d(TAG, "Add contact button clicked with phone: '$phoneNumber'")
 
-                if (phoneNumber.isNotEmpty()) {
-                    addNewContact(phoneNumber)
-                } else {
-                    Log.w(TAG, "Attempted to add contact without entering phone number")
-                    Toast.makeText(this, "Enter a phone number first", Toast.LENGTH_SHORT).show()
-                }
-            }
             Log.d(TAG, "setupUI: Add contact button configured")
 
             Log.i(TAG, "setupUI: All UI components configured successfully")
@@ -232,97 +223,6 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
         }
     }
 
-    private fun addNewContact(phoneNumber: String) {
-        Log.i(TAG, "addNewContact: Adding contact with phone: '$phoneNumber'")
-        try {
-            // Show loading indicator
-            progressIndicator.visibility = View.VISIBLE
-
-            // First check if user with this phone number exists
-            Log.d(TAG, "addNewContact: Checking if user exists")
-            firestore.collection("users")
-                .whereEqualTo("phoneNumber", phoneNumber)
-                .limit(1)
-                .get()
-                .addOnSuccessListener { documents ->
-                    if (documents.isEmpty) {
-                        // User doesn't exist, invite them
-                        Log.i(TAG, "addNewContact: No user found with phone: '$phoneNumber'")
-                        progressIndicator.visibility = View.GONE
-                        Toast.makeText(this, "No user found with this number. Invite them to join!", Toast.LENGTH_LONG).show()
-                        // Here you could implement SMS invite functionality
-                    } else {
-                        // User exists, add to contacts
-                        Log.d(TAG, "addNewContact: User found, attempting to add to contacts")
-                        val user = documents.documents[0].toObject(UserData::class.java)
-                        if (user != null) {
-                            Log.d(TAG, "addNewContact: Adding user: ${user.displayName} (${user.uid})")
-                            addUserToContacts(user)
-                        } else {
-                            Log.e(TAG, "addNewContact: Failed to convert document to UserData")
-                            progressIndicator.visibility = View.GONE
-                            Toast.makeText(this, "Error adding contact", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-                .addOnFailureListener { e ->
-                    progressIndicator.visibility = View.GONE
-                    Log.e(TAG, "addNewContact: Error checking if user exists", e)
-                    Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-        } catch (e: Exception) {
-            Log.e(TAG, "addNewContact: Unexpected error", e)
-            progressIndicator.visibility = View.GONE
-            Toast.makeText(this, "An unexpected error occurred", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun addUserToContacts(user: UserData) {
-        Log.i(TAG, "addUserToContacts: Adding user to contacts: ${user.displayName} (${user.uid})")
-        try {
-            val currentUserId = auth.currentUser?.uid
-            if (currentUserId == null) {
-                Log.e(TAG, "addUserToContacts: Current user ID is null")
-                return
-            }
-
-            // Create contact entry in Firestore
-            val contactData = hashMapOf(
-                "userId" to user.uid,
-                "addedAt" to com.google.firebase.Timestamp.now()
-            )
-
-            Log.d(TAG, "addUserToContacts: Creating contact document in Firestore")
-            firestore.collection("users")
-                .document(currentUserId)
-                .collection("contacts")
-                .document(user.uid)
-                .set(contactData)
-                .addOnSuccessListener {
-                    Log.i(TAG, "addUserToContacts: Successfully added contact")
-                    progressIndicator.visibility = View.GONE
-                    Toast.makeText(this, "Contact added: ${user.displayName}", Toast.LENGTH_SHORT).show()
-
-                    // Start chat with this user
-                    Log.d(TAG, "addUserToContacts: Navigating to UserProfileActivity")
-                    val intent = Intent(this, UserProfileActivity::class.java).apply {
-                        putExtra("USER_ID", user.uid)
-                        putExtra("came_from", "AddNewChat")
-                    }
-                    startActivity(intent)
-                }
-                .addOnFailureListener { e ->
-                    progressIndicator.visibility = View.GONE
-                    Log.e(TAG, "addUserToContacts: Failed to add contact", e)
-                    Toast.makeText(this, "Failed to add contact: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-        } catch (e: Exception) {
-            Log.e(TAG, "addUserToContacts: Unexpected error", e)
-            progressIndicator.visibility = View.GONE
-            Toast.makeText(this, "An unexpected error occurred", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     private fun showEmptyState(message: String) {
         Log.d(TAG, "showEmptyState: Showing empty state message: '$message'")
         emptyResultsTextView.text = message
@@ -332,8 +232,6 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
     override fun onUserClick(user: UserData) {
         Log.i(TAG, "onUserClick: User clicked: ${user.displayName} (${user.uid})")
         try {
-
-            addUserToContacts(user)
             // Start user profile activity
             val intent = Intent(this, UserProfileActivity::class.java).apply {
                 putExtra("USER_ID", user.uid)

@@ -25,6 +25,7 @@ class UserAdapter(
     inner class UserViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val nameTextView: TextView = itemView.findViewById(R.id.nameTextView)
         private val phoneTextView: TextView = itemView.findViewById(R.id.phoneTextView)
+        private val statustextView: TextView = itemView.findViewById(R.id.statusTextView)
 
         init {
             Log.v(TAG, "ViewHolder initialized")
@@ -36,6 +37,7 @@ class UserAdapter(
             try {
                 nameTextView.text = user.displayName
                 phoneTextView.text = user.phoneNumber
+                statustextView.text=user.userStatus
 
                 // Set click listener
                 itemView.setOnClickListener {

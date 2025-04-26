@@ -4,71 +4,63 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginTop="-5dp"
+    android:layout_marginBottom="8dp"
     android:background="@drawable/chatlistborder"
-    android:padding="16dp">
+    android:clickable="true"
+    android:focusable="true"
+    android:padding="12dp"  >
 
-    <androidx.cardview.widget.CardView
-        android:id="@+id/profileImageCardView"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
-        app:cardCornerRadius="28dp"
-        app:cardElevation="0dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+    <ImageView
+        android:id="@+id/profileImageView"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginLeft="7dp"
+        android:background="@drawable/circle_background"
+        android:backgroundTint="?attr/AuthButton"
+        android:contentDescription="Profile"
+        android:src="@drawable/ic_person"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <ImageView
-            android:id="@+id/profileImageView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:contentDescription="Profile Picture"
-            android:scaleType="centerCrop"
-            android:src="@drawable/circle_background" />
-    </androidx.cardview.widget.CardView>
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/nameTextView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="17dp"
-        android:layout_marginTop="-8dp"
+        android:layout_marginStart="12dp"
         android:layout_marginEnd="8dp"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:textColor="?attr/generalText"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/profileImageCardView"
-        app:layout_constraintTop_toTopOf="@+id/profileImageCardView"
-        tools:text="John Doe" />
-
-    <TextView
-        android:id="@+id/phoneTextView"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:textColor="?attr/generalText"
+        android:textColor="?attr/colorOnSecondary"
         android:textSize="16sp"
-        app:layout_constraintEnd_toEndOf="@+id/nameTextView"
-        app:layout_constraintStart_toStartOf="@+id/nameTextView"
-        app:layout_constraintTop_toBottomOf="@+id/nameTextView"
-        tools:text="+1 (555) 123-4567" />
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@+id/phoneTextView"
+        app:layout_constraintStart_toEndOf="@+id/profileImageView"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="User Name" />
 
     <TextView
         android:id="@+id/statusTextView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="8dp"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textSize="15sp"
-        app:layout_constraintEnd_toEndOf="@+id/phoneTextView"
-        app:layout_constraintStart_toStartOf="@+id/phoneTextView"
-        app:layout_constraintTop_toBottomOf="@+id/phoneTextView"
-        tools:text="Hey there! I'm using this app." />
+        android:textColor="?attr/colorOnSecondary"
+        android:textSize="14sp"
+        app:layout_constraintStart_toEndOf="@+id/profileImageView"
+        app:layout_constraintTop_toBottomOf="@+id/nameTextView"
+        tools:text="Status Here" />
+
+    <TextView
+        android:id="@+id/phoneTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@android:color/darker_gray"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="+20-100-1234-231" />
+
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>
