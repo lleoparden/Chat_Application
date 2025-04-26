@@ -9,23 +9,20 @@ import androidx.recyclerview.widget.RecyclerView
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 import java.util.*
-
 @Parcelize
 data class Chat(
     var id: String = "",
-    var name: String = "",           // Original chat name (group name or fallback)
-    var displayName: String = "",    // Display name (other user's name for direct chats)
+    var name: String = "",
     var lastMessage: String = "",
     var timestamp: Long = 0,
     var unreadCount: Int = 0,
     var participantIds: MutableList<String> = mutableListOf(),
-    var type: String = ""
-) : Parcelable {
-    // Initialize displayName with name as fallback
-    init {
-        if (displayName.isEmpty()) {
-            displayName = name
-        }
+    var type: String = "",
+    val displayName: String = ""
+):Parcelable {
+    fun getEffectiveDisplayName(): String {
+        // If displayName is set, use it. Otherwise, fall back to name
+        return if (displayName.isNotEmpty()) displayName else name
     }
 }
 
@@ -48,11 +45,36 @@ class ChatManager {
     }
 
     // Add this method to ChatManager class
-    fun updateChat(updatedChat: Chat) {
-        val chats = getAll().toMutableList()
-        val index = chats.indexOfFirst { it.id == updatedChat.id }
-        if (index != -1) {
-            chats[index] = updatedChat
+    // Add this function to your ChatManager class
+    fun updateDisplayNames(userMap: Map<String, String>) {
+        val allChats = getAll().toMutableList()
+        var hasUpdates = false
+
+        for (i in allChats.indices) {
+            val chat = allChats[i]
+
+            // For direct chats, update the display name based on the other participant
+            if (chat.type == "direct") {
+                // Find the other participant's ID (not the current user)
+                val otherUserId = chat.participantIds.find { it != UserSettings.userId }
+
+                // If we have the other user's display name in our map, update it
+                if (otherUserId != null && userMap.containsKey(otherUserId)) {
+                    val newDisplayName = userMap[otherUserId] ?: ""
+                    if (chat.displayName != newDisplayName && newDisplayName.isNotEmpty()) {
+                        // Create updated chat with new display name
+                        allChats[i] = chat.copy(displayName = newDisplayName)
+                        hasUpdates = true
+                    }
+                }
+            }
+            // For group chats, you might want different logic, or leave displayName as is
+        }
+
+        // Only update the chat manager and save if we made changes
+        if (hasUpdates) {
+            clear()
+            pushAll(allChats)
         }
     }
     // Add multiple chats at once
@@ -64,7 +86,7 @@ class ChatManager {
         sortByTimestamp()
     }
 
-    // BST insertion - now using displayName instead of name for searching
+    // BST insertion - now using name instead of name for searching
     private fun insertIntoBST(chat: Chat) {
         if (bstRoot == null) {
             bstRoot = ChatBSTNode(chat)
@@ -75,16 +97,16 @@ class ChatManager {
     }
 
     private fun insertNode(node: ChatBSTNode, chat: Chat): ChatBSTNode {
-        // Compare chat displayNames lexicographically
-        val comparison = chat.displayName.compareTo(node.chat.displayName, ignoreCase = true)
+        // Compare chat names lexicographically
+        val comparison = chat.name.compareTo(node.chat.name, ignoreCase = true)
 
         when {
             comparison < 0 -> {
-                // Insert to the left subtree if displayName comes before current node
+                // Insert to the left subtree if name comes before current node
                 node.left = node.left?.let { insertNode(it, chat) } ?: ChatBSTNode(chat)
             }
             comparison > 0 -> {
-                // Insert to the right subtree if displayName comes after current node
+                // Insert to the right subtree if name comes after current node
                 node.right = node.right?.let { insertNode(it, chat) } ?: ChatBSTNode(chat)
             }
             else -> {
@@ -98,7 +120,7 @@ class ChatManager {
         return node
     }
 
-    // Find a chat by displayName using BST (O(log n) search)
+    // Find a chat by name using BST (O(log n) search)
     fun findByName(name: String): Chat? {
         return findNodeByName(bstRoot, name)?.chat
     }
@@ -106,7 +128,7 @@ class ChatManager {
     private fun findNodeByName(node: ChatBSTNode?, name: String): ChatBSTNode? {
         if (node == null) return null
 
-        val comparison = name.compareTo(node.chat.displayName, ignoreCase = true)
+        val comparison = name.compareTo(node.chat.name, ignoreCase = true)
 
         return when {
             comparison < 0 -> findNodeByName(node.left, name)
@@ -134,8 +156,8 @@ class ChatManager {
             val oldChat = chatStack[index]
             chatStack[index] = updatedChat
 
-            // If displayName changed, we need to rebuild the BST
-            if (oldChat.displayName != updatedChat.displayName) {
+            // If name changed, we need to rebuild the BST
+            if (oldChat.name != updatedChat.name) {
                 rebuildBST()
             }
 
@@ -186,7 +208,7 @@ class ChatManager {
         chatStack.addAll(sortedList)
     }
 
-    // For finding partial matches using the BST (using displayName)
+    // For finding partial matches using the BST (using name)
     fun findPartialMatches(query: String): List<Chat> {
         val results = mutableListOf<Chat>()
         findPartialMatchesInSubtree(bstRoot, query.lowercase(), results)
@@ -200,7 +222,7 @@ class ChatManager {
         findPartialMatchesInSubtree(node.left, query, results)
 
         // Check current node
-        if (node.chat.displayName.lowercase().contains(query)) {
+        if (node.chat.name.lowercase().contains(query)) {
             results.add(node.chat)
         }
 
@@ -213,6 +235,7 @@ class ChatManager {
 class ChatAdapter(private val chatManager: ChatManager, private val listener: OnChatClickListener) :
     RecyclerView.Adapter<ChatAdapter.ChatViewHolder>() {
 
+
     interface OnChatClickListener {
         fun onChatClick(chat: Chat)
     }
@@ -224,8 +247,8 @@ class ChatAdapter(private val chatManager: ChatManager, private val listener: On
         private val unreadCountTextView: TextView = itemView.findViewById(R.id.unreadCountTextView)
 
         fun bind(chat: Chat) {
-            // Use displayName instead of name
-            nameTextView.text = chat.displayName
+
+            nameTextView.text = chat.getEffectiveDisplayName()
             lastMessageTextView.text = chat.lastMessage
 
             // Format timestamp
@@ -253,7 +276,8 @@ class ChatAdapter(private val chatManager: ChatManager, private val listener: On
     }
 
     override fun onBindViewHolder(holder: ChatViewHolder, position: Int) {
-        holder.bind(chatManager.get(position))
+        val chat = chatManager.get(position)
+        holder.bind(chat)
     }
 
     override fun getItemCount(): Int = chatManager.size()

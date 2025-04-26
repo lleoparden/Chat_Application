@@ -115,7 +115,7 @@ class ChatRoomActivity : AppCompatActivity() {
         initializeViews()
 
         // Set contact name in the top bar
-        nameView.text = chat.name
+        nameView.text = chat.displayName
 
         // Initialize RecyclerView
         setupRecyclerView()

@@ -20,7 +20,10 @@ import com.example.chat_application.UserSettings.userId
 import com.facebook.shimmer.ShimmerFrameLayout  // Added import
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.firebase.Firebase
 import com.google.firebase.database.*
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.firestore
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -45,12 +48,12 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     // Data Components
     private lateinit var chatAdapter: ChatAdapter
     private val chatManager = ChatManager()
-    private val userDisplayNames = mutableMapOf<String, String>()
 
     // Firebase Components
     private lateinit var firebaseDatabase: FirebaseDatabase
     private lateinit var chatsReference: DatabaseReference
     private lateinit var usersReference: DatabaseReference
+    private lateinit var firestore: FirebaseFirestore
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(UserSettings.theme)
@@ -67,7 +70,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         showShimmerEffect()
 
         // Load data
-        loadUsers()
+        loadChats()
     }
 
     // Method to show shimmer effect
@@ -224,25 +227,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     //endregion
 
     //region Chat Management
-    private fun loadUsers() {
-        Log.d(TAG, "Loading users")
-
-        // First load from local storage
-        loadUsersFromLocalStorage()
-
-        // If no users found locally, add demo users
-        if (userDisplayNames.isEmpty()) {
-            addDemoUsers()
-        }
-
-        // If Firebase is enabled and we're online, load from there
-        if (resources.getBoolean(R.bool.firebaseOn)) {
-            checkConnectionAndLoadUsersFromFirebase()
-        } else {
-            // If Firebase is disabled, proceed directly to loading chats
-            loadChats()
-        }
-    }
 
     private fun loadChats() {
         Log.d(TAG, "Loading chats")
@@ -263,8 +247,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         // Update UI with local chats immediately
         chatManager.clear()
         chatManager.pushAll(localChats)
-        updateChatDisplayNames() // Update display names
         chatAdapter.notifyDataSetChanged()
+
+        fetchUserDataAndUpdateDisplayNames()
 
         // Hide shimmer effect after data is loaded
         hideShimmerEffect()
@@ -275,28 +260,18 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         }
     }
 
-    private fun addDemoUsers() {
-        Log.d(TAG, "Adding demo users")
-
-        userDisplayNames["demo_user_1"] = "John Doe"
-        userDisplayNames["demo_user_2"] = "Jane Smith"
-
-        // Save demo users to local storage
-        saveUsersToLocalStorage()
-    }
-
     private fun addDemoChat() {
         Log.d(TAG, "Adding demo chats")
         try {
             chatManager.clear()
             val currentTime = System.currentTimeMillis()
 
-            // Make sure userId is included in the participant IDs
+            // Include displayName directly in the Chat objects
             val demoChats = listOf(
                 Chat(
                     id = "demo1",
-                    name = "Demo Group",
-                    displayName = "Demo Group", // Same for group chats
+                    name = "Demo Group", // Original name
+                    displayName = "Demo Group", // Same as name for group chats
                     lastMessage = "Welcome to FireChat! This is a demo message.",
                     timestamp = currentTime - 6000,
                     unreadCount = 9,
@@ -305,8 +280,8 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 ),
                 Chat(
                     id = "demo2",
-                    name = "John Doe", // Original name
-                    displayName = "John Doe", // Will be updated in updateChatDisplayNames()
+                    name = "demo_user_1", // Original ID/name
+                    displayName = "John Doe", // Human-readable display name
                     lastMessage = "Hey there! How are you doing?",
                     timestamp = currentTime,
                     unreadCount = 0,
@@ -317,9 +292,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
 
             // Add all demo chats to the stack
             chatManager.pushAll(demoChats)
-
-            // Update display names
-            updateChatDisplayNames()
 
             // Save demo chats to local storage
             saveChatsToLocalStorage()
@@ -346,109 +318,103 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
     }
 
     // Update display names for direct chats
-    private fun updateChatDisplayNames() {
-        Log.d(TAG, "Updating chat display names")
-
-        val allChats = chatManager.getAll()
-        val updatedChats = mutableListOf<Chat>()
-
-        for (chat in allChats) {
-            // For direct chats, set displayName to the other user's name
-            if (chat.type == "direct" && chat.participantIds.size == 2) {
-                // Find the other user's ID (not current user)
-                val otherUserId = chat.participantIds.find { it != userId }
-
-                // If found, get their display name
-                if (otherUserId != null) {
-                    val otherUserName = userDisplayNames[otherUserId]
-
-                    if (otherUserName != null) {
-                        // Create a new chat with updated displayName
-                        val updatedChat = chat.copy(displayName = otherUserName)
-                        updatedChats.add(updatedChat)
-                        continue
-                    }
-                }
-            }
-
-            // For group chats or if other user not found, keep original
-            updatedChats.add(chat)
-        }
-
-        // Update chat manager with the updated chats
-        chatManager.clear()
-        chatManager.pushAll(updatedChats)
-
-        // Save the updated chats with display names
-        saveChatsToLocalStorage()
-    }
-    //endregion
-
-    //region Local Storage
-    private fun loadUsersFromLocalStorage() {
-        Log.d(TAG, "Loading users from local storage")
-        val jsonString = readUsersFromFile()
-
-        if (jsonString.isEmpty()) {
-            Log.d(TAG, "No users file found or empty file")
+    private fun fetchUserDataAndUpdateDisplayNames() {
+        if (!resources.getBoolean(R.bool.firebaseOn)) {
             return
         }
 
-        try {
-            val jsonObject = JSONObject(jsonString)
-            val userIds = jsonObject.keys()
+        // Create a map to store user IDs and their display names
+        val userDisplayNames = mutableMapOf<String, String>()
 
-            // Clear existing map to avoid duplicates
-            userDisplayNames.clear()
+        // Get all chats to find all participant IDs
+        val allChats = chatManager.getAll()
+        val allParticipantIds = mutableSetOf<String>()
 
-            // Populate the userDisplayNames map
-            while (userIds.hasNext()) {
-                val userId = userIds.next()
-                val displayName = jsonObject.getString(userId)
-                userDisplayNames[userId] = displayName
-            }
+        // Collect all unique participant IDs
+        for (chat in allChats) {
+            allParticipantIds.addAll(chat.participantIds)
+        }
 
-            Log.d(TAG, "Loaded ${userDisplayNames.size} users from local storage")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error loading users from file: ${e.message}", e)
+        // Remove the current user ID
+        allParticipantIds.remove(UserSettings.userId)
+
+        // If there are no other participants, we're done
+        if (allParticipantIds.isEmpty()) {
+            return
+        }
+
+        // Show shimmer effect while loading
+        showShimmerEffect()
+
+        // Keep track of how many users we've processed
+        var processedCount = 0
+
+        // Query Firestore for each user's data
+        for (userId in allParticipantIds) {
+            firestore.collection("users").document(userId)
+                .get()
+                .addOnSuccessListener { document ->
+                    if (document != null && document.exists()) {
+                        // Get the user's display name from Firestore
+                        val displayName = document.getString("displayName") ?: userId
+
+                        // Add to our map
+                        userDisplayNames[userId] = displayName
+
+                        Log.d(TAG, "Fetched user $userId with display name: $displayName")
+                    } else {
+                        // If user document doesn't exist, use the ID as display name
+                        userDisplayNames[userId] = userId
+                        Log.d(TAG, "User document not found for $userId")
+                    }
+
+                    // Increment processed count
+                    processedCount++
+
+                    // If we've processed all users, update display names
+                    if (processedCount == allParticipantIds.size) {
+                        updateDisplayNamesAndRefresh(userDisplayNames)
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "Error fetching user $userId: ${e.message}")
+
+                    // Use the ID as display name in case of failure
+                    userDisplayNames[userId] = userId
+
+                    // Increment processed count
+                    processedCount++
+
+                    // If we've processed all users, proceed even with some errors
+                    if (processedCount == allParticipantIds.size) {
+                        updateDisplayNamesAndRefresh(userDisplayNames)
+                    }
+                }
         }
     }
 
-    private fun saveUsersToLocalStorage() {
-        try {
-            val jsonObject = JSONObject()
+    // Helper method to update display names and refresh the UI
+    private fun updateDisplayNamesAndRefresh(userDisplayNames: Map<String, String>) {
+        // Update display names in chat manager
+        chatManager.updateDisplayNames(userDisplayNames)
 
-            for ((userId, displayName) in userDisplayNames) {
-                jsonObject.put(userId, displayName)
-            }
+        // Update UI
+        chatAdapter.notifyDataSetChanged()
 
-            val jsonString = jsonObject.toString()
-            writeUsersToFile(jsonString)
+        // Save changes
+        saveChatsToLocalStorage()
 
-            Log.d(TAG, "Saved ${userDisplayNames.size} users to local storage")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error saving users to file: ${e.message}")
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            saveChatsToFirebase()
         }
+
+        // Hide shimmer effect
+        hideShimmerEffect()
     }
 
-    private fun readUsersFromFile(): String {
-        val file = File(filesDir, USERS_FILE)
-        return if (file.exists()) {
-            file.readText()
-        } else {
-            ""
-        }
-    }
+    //endregion
 
-    private fun writeUsersToFile(jsonString: String) {
-        try {
-            val file = File(filesDir, USERS_FILE)
-            file.writeText(jsonString)
-            Log.d(TAG, "Users saved to file: ${file.absolutePath}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error writing users to file: ${e.message}")
-        }
-    }
+    //region Local Storage
 
     private fun loadChatsFromLocalStorageWithoutSaving(): List<Chat> {
         Log.d(TAG, "Loading chats from local storage")
@@ -472,10 +438,14 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                     participantIds.add(participantIdsJsonArray.getString(j))
                 }
 
+                // Get displayName if it exists, otherwise default to empty string
+                val displayName = if (chatObject.has("displayName"))
+                    chatObject.getString("displayName") else ""
+
                 val chat = Chat(
                     id = chatObject.getString("id"),
                     name = chatObject.getString("name"),
-                    displayName = chatObject.optString("displayName", chatObject.getString("name")),
+                    displayName = displayName,
                     lastMessage = chatObject.getString("lastMessage"),
                     timestamp = chatObject.getLong("timestamp"),
                     unreadCount = chatObject.getInt("unreadCount"),
@@ -507,7 +477,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         } else {
             chatManager.clear()
             chatManager.pushAll(localChats)
-            updateChatDisplayNames()
             chatAdapter.notifyDataSetChanged()
 
             // Hide shimmer effect after data is loaded
@@ -585,7 +554,9 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         val intent = Intent(this, ChatRoomActivity::class.java).apply {
             putExtra("CHAT_OBJECT", chat)
         }
-        saveChatsToFirebase()
+        if (resources.getBoolean(R.bool.firebaseOn) && ::chatsReference.isInitialized) {
+            saveChatsToFirebase()
+        }
         startActivity(intent)
         finish()
     }
@@ -596,6 +567,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         firebaseDatabase = FirebaseDatabase.getInstance()
         chatsReference = firebaseDatabase.getReference("chats")
         usersReference = firebaseDatabase.getReference("users")
+        firestore = Firebase.firestore
 
         // Add connection status listener
         val connectedRef = firebaseDatabase.getReference(".info/connected")
@@ -604,13 +576,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 val connected = snapshot.getValue(Boolean::class.java) ?: false
                 if (!connected) {
                     Log.w(TAG, "Device is offline, using local data")
-                    // When offline, load local data directly
-                    if (userDisplayNames.isEmpty()) {
-                        loadUsersFromLocalStorage()
-                        if (userDisplayNames.isEmpty()) {
-                            addDemoUsers()
-                        }
-                    }
                     loadChatsFromLocalStorageAndDisplay()
                 }
             }
@@ -626,27 +591,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
         })
     }
 
-    private fun checkConnectionAndLoadUsersFromFirebase() {
-        // Check if we're online before attempting Firebase operations
-        val connectedRef = firebaseDatabase.getReference(".info/connected")
-        connectedRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val connected = snapshot.getValue(Boolean::class.java) ?: false
-                if (connected) {
-                    loadUsersFromFirebase()
-                } else {
-                    // If offline, proceed directly to loading chats
-                    loadChats()
-                }
-            }
 
-            override fun onCancelled(error: DatabaseError) {
-                Log.e(TAG, "Failed to check connection status")
-                // If checking connection fails, proceed with chats
-                loadChats()
-            }
-        })
-    }
 
     private fun checkConnectionAndLoadChatsFromFirebase(localChats: List<Chat>) {
         val connectedRef = firebaseDatabase.getReference(".info/connected")
@@ -662,60 +607,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                 Log.e(TAG, "Failed to check connection status for chat loading")
                 // Hide shimmer effect in case of error
                 hideShimmerEffect()
-            }
-        })
-    }
-
-    private fun loadUsersFromFirebase() {
-        Log.d(TAG, "Loading users from Firebase")
-
-        // Add a timeout handler
-        val timeoutHandler = android.os.Handler(android.os.Looper.getMainLooper())
-        val timeoutRunnable = Runnable {
-            Log.w(TAG, "Firebase users loading timed out")
-            if (userDisplayNames.isEmpty()) {
-                addDemoUsers()
-            }
-            loadChats()
-        }
-
-        // Set a timeout (e.g., 5 seconds)
-        timeoutHandler.postDelayed(timeoutRunnable, 5000)
-
-        usersReference.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                // Cancel the timeout since we got a response
-                timeoutHandler.removeCallbacks(timeoutRunnable)
-
-                try {
-                    for (userSnapshot in snapshot.children) {
-                        val userId = userSnapshot.key
-                        val displayName = userSnapshot.child("displayName").getValue(String::class.java)
-
-                        if (userId != null && displayName != null) {
-                            userDisplayNames[userId] = displayName
-                            Log.d(TAG, "Loaded user: $userId -> $displayName")
-                        }
-                    }
-
-                    // Save updated user data to local storage
-                    saveUsersToLocalStorage()
-
-                    // After loading users, proceed to load chats
-                    loadChats()
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error in users onDataChange: ${e.message}")
-                    e.printStackTrace()
-                    loadChats()
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                // Cancel the timeout since we got a response
-                timeoutHandler.removeCallbacks(timeoutRunnable)
-
-                Log.e(TAG, "Failed to load users from Firebase: ${error.message}")
-                loadChats()
             }
         })
     }
@@ -741,7 +632,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                                 // Convert snapshot to Chat object
                                 val chatId = chatSnapshot.key ?: continue
                                 val name = chatSnapshot.child("name").getValue(String::class.java) ?: ""
-                                val displayName = chatSnapshot.child("displayName").getValue(String::class.java) ?: name
+                                val displayName = chatSnapshot.child("displayName").getValue(String::class.java) ?: ""
                                 val lastMessage = chatSnapshot.child("lastMessage").getValue(String::class.java) ?: ""
                                 val timestamp = chatSnapshot.child("timestamp").getValue(Long::class.java) ?: 0L
                                 val unreadCount = chatSnapshot.child("unreadCount").getValue(Int::class.java) ?: 0
@@ -774,7 +665,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                                     firebaseChats.add(chat)
                                     // Firebase data overrides local data for the same chat ID
                                     mergedChats[chat.id] = chat
-                                    Log.d(TAG, "Added Firebase chat: ${chat.name} (ID: ${chat.id})")
+                                    Log.d(TAG, "Added Firebase chat: ${chat.getEffectiveDisplayName()} (ID: ${chat.id})")
                                 }
                             } catch (e: Exception) {
                                 Log.e(TAG, "Error processing chat from Firebase: ${e.message}")
@@ -791,8 +682,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                                 chatManager.clear()
                                 chatManager.pushAll(mergedChats.values.toList())
 
-                                // Update displayNames based on user list
-                                updateChatDisplayNames()
+                                // Update display names if needed
 
                                 chatAdapter.notifyDataSetChanged()
 
@@ -807,7 +697,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                                 // Fallback to local chats
                                 chatManager.clear()
                                 chatManager.pushAll(localChats)
-                                updateChatDisplayNames()
                                 chatAdapter.notifyDataSetChanged()
                             }
                         }
@@ -819,7 +708,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                         runOnUiThread {
                             chatManager.clear()
                             chatManager.pushAll(localChats)
-                            updateChatDisplayNames()
                             chatAdapter.notifyDataSetChanged()
                         }
                     }
@@ -837,7 +725,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
                     runOnUiThread {
                         chatManager.clear()
                         chatManager.pushAll(localChats)
-                        updateChatDisplayNames()
                         chatAdapter.notifyDataSetChanged()
                     }
                 }
@@ -849,14 +736,12 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
             // Fallback to local chats
             chatManager.clear()
             chatManager.pushAll(localChats)
-            updateChatDisplayNames()
             chatAdapter.notifyDataSetChanged()
         }
     }
 
-
     private fun saveChatsToFirebase() {
-        if (!resources.getBoolean(R.bool.firebaseOn)) {
+        if (!resources.getBoolean(R.bool.firebaseOn) ) {
             return
         }
 
@@ -889,5 +774,8 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener {
             e.printStackTrace()
         }
     }
-    //endregion
 }
+
+
+
+//endregion
