@@ -116,7 +116,7 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
         }
     }
 
-    // New method to load existing chats
+
     private fun loadExistingChats() {
         Log.d(TAG, "loadExistingChats: Loading existing chats")
         val currentUserId = UserSettings.userId ?: return
@@ -216,7 +216,7 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
                                             else -> false
                                         },
                                         lastSeen = document.getString("lastSeen") ?: "",
-                                        profilePictureUrl = document.getString("profilePictureUrl") ?: ""
+                                        profilePictureUrl = document.getString("profilPictureUrl") ?: ""
                                     )
 
                                     // Add users that are not the current user and not already in the list

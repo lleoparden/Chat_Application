@@ -4,8 +4,12 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.request.RequestOptions
 
 class UserAdapter(
     private val users: List<UserData>,
@@ -27,6 +31,7 @@ class UserAdapter(
         private val nameTextView: TextView = itemView.findViewById(R.id.nameTextView)
         private val phoneTextView: TextView = itemView.findViewById(R.id.phoneTextView)
         private val statusTextView: TextView = itemView.findViewById(R.id.statusTextView)
+        private val profileImageView : ImageView = itemView.findViewById(R.id.profileImageView)
         private val chatStatusView: TextView = itemView.findViewById(R.id.chatStatusTextView)
 
         init {
@@ -40,6 +45,8 @@ class UserAdapter(
                 nameTextView.text = user.displayName
                 phoneTextView.text = user.phoneNumber
                 statusTextView.text = user.userStatus
+                globalFunctions.loadImageFromUrl(user.profilePictureUrl,profileImageView)
+
 
                 // Show chat status by checking the set instead of a property on UserData
                 val hasExistingChat = existingChatUserIds.contains(user.uid)
@@ -59,7 +66,10 @@ class UserAdapter(
                 Log.e(TAG, "Error binding user data", e)
             }
         }
+
+
     }
+
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): UserViewHolder {
         Log.d(TAG, "Creating new ViewHolder")

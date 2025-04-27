@@ -82,6 +82,8 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
 
     implementation ("com.github.dhaval2404:imagepicker:2.1")
+    implementation ("androidx.browser:browser:1.5.0")
+    implementation ("com.squareup.okhttp3:okhttp:4.9.3")
 
 
 }

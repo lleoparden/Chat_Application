@@ -28,6 +28,10 @@ import com.google.firebase.firestore.auth.User
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import kotlinx.coroutines.*
+import androidx.lifecycle.lifecycleScope
+import com.bumptech.glide.Glide
+import com.google.android.gms.tasks.Tasks
 
 class ChatRoomActivity : AppCompatActivity() {
 
@@ -35,7 +39,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var sendBtn: Button
     private lateinit var backBtn: ImageButton
     private lateinit var inputText: EditText
-    private lateinit var profilePic: ImageButton
+    private lateinit var profileImageView: ImageButton
     private lateinit var menuBtn: ImageButton
     private lateinit var messagesRecyclerView: RecyclerView
     private lateinit var nameView: TextView
@@ -86,14 +90,14 @@ class ChatRoomActivity : AppCompatActivity() {
 
         if ( resources.getBoolean(R.bool.firebaseOn)) {
             val db = FirebaseFirestore.getInstance()
-            UserSettings.setUserOnline(UserSettings.userId, db)
+            globalFunctions.setUserOnline(UserSettings.userId, db)
         }
 
     }
 
     override fun onDestroy() {
         if (resources.getBoolean(R.bool.firebaseOn)) {
-            UserSettings.setUserOffline(UserSettings.userId)
+            globalFunctions.setUserOffline(UserSettings.userId)
         }
         removeRealtimeMessageListener()
         super.onDestroy()
@@ -128,11 +132,72 @@ class ChatRoomActivity : AppCompatActivity() {
         // Set contact name in the top bar
         nameView.text = chat.getEffectiveDisplayName()
 
+//        initializeProfileImage()
+
         // Initialize RecyclerView
         setupRecyclerView()
 
         // Initialize chat-specific messages file
         chatMessagesFile = File(filesDir, "messages_${chatId}.json")
+    }
+
+    private fun initializeProfileImage() {
+        Log.d("ChatRoomActivity", "1")
+
+        // Don't block UI thread with this operation
+        lifecycleScope.launch(Dispatchers.IO) {
+            val user = getUser(otherParticipantId)
+            Log.d("ChatRoomActivity", "2")
+
+            // Switch back to main thread for UI updates
+            withContext(Dispatchers.Main) {
+                globalFunctions.loadImageFromUrl(user.profilePictureUrl, profileImageView)
+                Log.d("ChatRoomActivity", "3")
+            }
+        }
+    }
+
+
+    fun getUser(userId: String): UserData {
+        if (userId.isEmpty()) {
+            Log.e("ChatRoomActivity", "Attempted to get user with empty ID")
+            return UserData()
+        }
+
+        // Create a placeholder for the result
+        var userData = UserData(uid = userId)
+
+        // Try to get from Firebase if enabled
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+
+            val document = Tasks.await(db.collection("users").document(userId).get())
+
+                    if (document != null && document.exists()) {
+                        // Extract user fields
+                        userData = UserData(
+                            uid = userId,
+                            displayName = document.getString("displayName") ?: "",
+                            phoneNumber = document.getString("phoneNumber") ?: "",
+                            password = document.getString("password") ?: "",
+                            userDescription = document.getString("userDescription") ?: "",
+                            userStatus = document.getString("userStatus") ?: "",
+                            online = document.getBoolean("online") ?: false,
+                            lastSeen = document.getString("lastSeen") ?: "",
+                            profilePictureUrl = document.getString("profilePictureUrl") ?: ""
+                        )
+                        Log.d("ChatRoomActivity", "User data loaded from Firebase: ${userData.displayName}")
+                    } else {
+                        Log.d("ChatRoomActivity", "User document does not exist")
+                    }
+
+
+
+        } else {
+            Log.e("ChatRoomActivity", "Firebase disabled but no context provided to access local storage")
+            return UserData(uid = userId)
+        }
+
+        return userData
     }
 
     private fun determineOtherParticipantId(chat: Chat): String {
@@ -151,7 +216,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun initializeViews() {
         sendBtn = findViewById(R.id.sendButton)
         backBtn = findViewById(R.id.backButton)
-        profilePic = findViewById(R.id.accountpic)
+        profileImageView = findViewById(R.id.profileImageView)
         inputText = findViewById(R.id.messageInput)
         menuBtn = findViewById(R.id.menuButton)
         messagesRecyclerView = findViewById(R.id.messagesRecyclerView)
@@ -358,7 +423,7 @@ class ChatRoomActivity : AppCompatActivity() {
             }
         }
 
-        profilePic.setOnClickListener {
+        profileImageView.setOnClickListener {
             val intent = Intent(this, UserProfileActivity::class.java).apply {
                 putExtra("came_from", "ChatRoom")
                 putExtra("USER_ID", otherParticipantId)

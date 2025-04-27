@@ -13,6 +13,9 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.request.RequestOptions
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
@@ -226,18 +229,22 @@ class UserProfileActivity : AppCompatActivity() {
         displayName: String,
         phoneNumber: String,
         description: String,
-        Status: String
+        Status: String,
+        imageUrl: String
     ) {
         displayNameText.text = displayName
         name = displayName
         displayNumber.text = phoneNumber
         displayDescription.text = description
         displayStatus.text = Status
-
+        if (imageUrl.isNotEmpty()) {
+            globalFunctions.loadImageFromUrl(imageUrl,profileImage)
+        }
     }
 
+
     private fun initializeViews() {
-        profileImage = findViewById(R.id.profileImage)
+        profileImage = findViewById(R.id.profileImageView)
         displayNameText = findViewById(R.id.displayNameText)
         displayNumber = findViewById(R.id.displayPhoneText)
         displayDescription = findViewById(R.id.userDescriptionEdit)
@@ -264,7 +271,9 @@ class UserProfileActivity : AppCompatActivity() {
                         displayName = document.getString("displayName") ?: "",
                         phoneNumber = document.getString("phoneNumber") ?: "",
                         description = document.getString("userDescription") ?: "",
-                        Status = document.getString("userStatus") ?: ""
+                        Status = document.getString("userStatus") ?: "",
+                        imageUrl= document.getString("profilPictureUrl") ?: ""
+
                     )
                 } else {
                     // If not found in Firebase, try local
@@ -304,7 +313,8 @@ class UserProfileActivity : AppCompatActivity() {
                             displayName = jsonUser.getString("displayName"),
                             phoneNumber = jsonUser.getString("phoneNumber"),
                             description = jsonUser.getString("description"),
-                            Status = jsonUser.getString("Status")
+                            Status = jsonUser.getString("Status"),
+                            imageUrl= jsonUser.getString("profilPictureUrl")?:""
                         )
                         return
                     }
