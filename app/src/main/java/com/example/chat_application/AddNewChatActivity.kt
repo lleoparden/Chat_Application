@@ -215,7 +215,7 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
                                             is String -> onlineValue.equals("true", ignoreCase = true)
                                             else -> false
                                         },
-                                        lastSeen = document.getString("lastSeen") ?: "",
+                                        lastSeen = document.getLong("lastSeen").toString(),
                                         profilePictureUrl = document.getString("profilePictureUrl") ?: ""
                                     )
 
