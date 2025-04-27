@@ -185,11 +185,12 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         isInSelectionMode = true
         selectedChatIds.clear()
 
-        // Show selection toolbar
+        // Update adapter FIRST
+        chatAdapter.updateSelectionMode(true)
+
+        // Then update UI
         normalToolbarView.visibility = View.GONE
         selectionToolbarView.visibility = View.VISIBLE
-
-        // Hide FAB during selection
         newChatFab.visibility = View.GONE
 
         updateSelectionCount()
@@ -204,6 +205,8 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         // Restore normal toolbar
         selectionToolbarView.visibility = View.GONE
         normalToolbarView.visibility = View.VISIBLE
+
+        chatAdapter.updateSelectionMode(false)
 
         // Show FAB again
         newChatFab.visibility = View.VISIBLE
@@ -222,6 +225,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
 
         // Update adapter with the new selection state
         chatAdapter.updateSelectedItems(selectedChatIds)
+
 
         // If no chats are selected, exit selection mode
         if (selectedChatIds.isEmpty()) {
@@ -397,7 +401,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
             }
 
             // Update UI
-            chatAdapter.notifyDataSetChanged()
+            chatAdapter.updateData(chatManager.getAll())
 
             // Hide shimmer effect after data is loaded
             hideShimmerEffect()
@@ -494,7 +498,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         chatManager.updateDisplayNames(userDisplayNames)
 
         // Update UI
-        chatAdapter.notifyDataSetChanged()
+        chatAdapter.updateData(chatManager.getAll())
 
         // Save changes
         saveChatsToLocalStorage()
@@ -572,7 +576,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         } else {
             chatManager.clear()
             chatManager.pushAll(localChats)
-            chatAdapter.notifyDataSetChanged()
+            chatAdapter.updateData(chatManager.getAll())
 
             // Hide shimmer effect after data is loaded
             hideShimmerEffect()
@@ -646,6 +650,11 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
     }
 
     override fun onChatClick(chat: Chat) {
+        // First hide shimmer if it's visible
+        if (shimmerLayout.visibility == View.VISIBLE) {
+            hideShimmerEffect()
+        }
+
         if (isInSelectionMode) {
             toggleChatSelection(chat)
         } else {
@@ -663,22 +672,11 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
 
     override fun onChatLongClick(chat: Chat): Boolean {
         if (!isInSelectionMode) {
-            // Enter selection mode first
-            isInSelectionMode = true
-            selectedChatIds.clear()
-
-            // Show selection toolbar
-            normalToolbarView.visibility = View.GONE
-            selectionToolbarView.visibility = View.VISIBLE
-
-            // Hide FAB during selection
-            newChatFab.visibility = View.GONE
-
-            // Update adapter BEFORE adding the first selection
-            chatAdapter.updateSelectionMode(isInSelectionMode)
+            // Enter selection mode
+            enterSelectionMode()
         }
 
-        // Now toggle the selection after mode is updated
+        // Toggle selection after mode is updated
         toggleChatSelection(chat)
         return true
     }
@@ -839,7 +837,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
 
                                 // Update display names if needed
 
-                                chatAdapter.notifyDataSetChanged()
+                                chatAdapter.updateData(chatManager.getAll())
 
                                 // Save the merged data back to local storage
                                 saveChatsToLocalStorage()
@@ -852,7 +850,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
                                 // Fallback to local chats
                                 chatManager.clear()
                                 chatManager.pushAll(localChats)
-                                chatAdapter.notifyDataSetChanged()
+                                chatAdapter.updateData(chatManager.getAll())
                             }
                         }
                     } catch (e: Exception) {
@@ -863,7 +861,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
                         runOnUiThread {
                             chatManager.clear()
                             chatManager.pushAll(localChats)
-                            chatAdapter.notifyDataSetChanged()
+                            chatAdapter.updateData(chatManager.getAll())
                         }
                     }
                 }
@@ -880,7 +878,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
                     runOnUiThread {
                         chatManager.clear()
                         chatManager.pushAll(localChats)
-                        chatAdapter.notifyDataSetChanged()
+                        chatAdapter.updateData(chatManager.getAll())
                     }
                 }
             })
@@ -891,7 +889,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
             // Fallback to local chats
             chatManager.clear()
             chatManager.pushAll(localChats)
-            chatAdapter.notifyDataSetChanged()
+            chatAdapter.updateData(chatManager.getAll())
         }
     }
 

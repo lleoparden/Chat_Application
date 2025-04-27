@@ -58,7 +58,7 @@ class EditProfileActivity : AppCompatActivity() {
 
     // State variables
     private var selectedImageUri: Uri? = null
-    private var profilPictureUrl: String? = null
+    private var profilePictureUrl: String? = null
     private var localImagePath: String? = null
     private var userId = ""
     private var isUploadingImage = false
@@ -270,9 +270,9 @@ class EditProfileActivity : AppCompatActivity() {
 
                         // Then try URL if local image failed or doesn't exist
                         if (selectedImageUri == null) {
-                            val imageUrl = jsonUser.optString("profilPictureUrl", "")
+                            val imageUrl = jsonUser.optString("profilePictureUrl", "")
                             if (imageUrl.isNotEmpty()) {
-                                profilPictureUrl = imageUrl
+                                profilePictureUrl = imageUrl
                                 globalFunctions.loadImageFromUrl(imageUrl,profileImageView)
                             }
                         }
@@ -319,8 +319,8 @@ class EditProfileActivity : AppCompatActivity() {
                     }
 
                     // Also save URL if available (as backup or for online access)
-                    if (profilPictureUrl != null) {
-                        jsonUser.put("profilPictureUrl", profilPictureUrl)
+                    if (profilePictureUrl != null) {
+                        jsonUser.put("profilePictureUrl", profilePictureUrl)
                     }
 
                     userFound = true
@@ -343,8 +343,8 @@ class EditProfileActivity : AppCompatActivity() {
                     }
 
                     // Also save URL if available
-                    if (profilPictureUrl != null) {
-                        put("profilPictureUrl", profilPictureUrl)
+                    if (profilePictureUrl != null) {
+                        put("profilePictureUrl", profilePictureUrl)
                     }
                 }
                 jsonArray.put(newUser)
@@ -408,9 +408,9 @@ class EditProfileActivity : AppCompatActivity() {
                     }
                     // Otherwise, try to load from URL
                     else {
-                        val imageUrl = document.getString("profilPictureUrl")
+                        val imageUrl = document.getString("profilePictureUrl")
                         if (!imageUrl.isNullOrEmpty()) {
-                            profilPictureUrl = imageUrl
+                            profilePictureUrl = imageUrl
                             globalFunctions.loadImageFromUrl(imageUrl,profileImageView)
 
                             // Try to download and save the image locally for next time
@@ -445,8 +445,8 @@ class EditProfileActivity : AppCompatActivity() {
         )
 
         // Add image URL if available for online access
-        if (profilPictureUrl != null) {
-            data["profilPictureUrl"] = profilPictureUrl!!
+        if (profilePictureUrl != null) {
+            data["profilePictureUrl"] = profilePictureUrl!!
         }
 
         db.collection("users").document(userId)
@@ -520,7 +520,7 @@ class EditProfileActivity : AppCompatActivity() {
                             val imageUrl = data.getString("url")
 
                             runOnUiThread {
-                                profilPictureUrl = imageUrl
+                                profilePictureUrl = imageUrl
                                 Toast.makeText(applicationContext, "Image uploaded to cloud successfully!", Toast.LENGTH_SHORT).show()
                                 imageUploadProgressBar.visibility = View.GONE
                                 isUploadingImage = false

@@ -272,7 +272,7 @@ class UserProfileActivity : AppCompatActivity() {
                         phoneNumber = document.getString("phoneNumber") ?: "",
                         description = document.getString("userDescription") ?: "",
                         Status = document.getString("userStatus") ?: "",
-                        imageUrl= document.getString("profilPictureUrl") ?: ""
+                        imageUrl= document.getString("profilePictureUrl") ?: ""
 
                     )
                 } else {
@@ -314,7 +314,7 @@ class UserProfileActivity : AppCompatActivity() {
                             phoneNumber = jsonUser.getString("phoneNumber"),
                             description = jsonUser.getString("description"),
                             Status = jsonUser.getString("Status"),
-                            imageUrl= jsonUser.getString("profilPictureUrl")?:""
+                            imageUrl= jsonUser.getString("profilePictureUrl")?:""
                         )
                         return
                     }

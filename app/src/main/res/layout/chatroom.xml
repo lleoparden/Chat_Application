@@ -56,6 +56,7 @@
                     android:layout_width="32dp"
                     android:layout_height="32dp"
                     android:layout_marginStart="16dp"
+                    android:clipToOutline="true"
                     android:adjustViewBounds="true"
                     android:background="@null"
                     android:scaleType="fitCenter"

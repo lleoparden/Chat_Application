@@ -123,8 +123,7 @@ class ChatRoomActivity : AppCompatActivity() {
         chatId = chat.id
 
         // Determine the other participant's ID
-        // Assuming chat.participantIds contains a list of all participant IDs
-        otherParticipantId = determineOtherParticipantId(chat)
+        otherParticipantId = globalFunctions.determineOtherParticipantId(chat)
 
         // Initialize UI elements
         initializeViews()
@@ -132,7 +131,7 @@ class ChatRoomActivity : AppCompatActivity() {
         // Set contact name in the top bar
         nameView.text = chat.getEffectiveDisplayName()
 
-//        initializeProfileImage()
+        initializeProfileImage()
 
         // Initialize RecyclerView
         setupRecyclerView()
@@ -142,76 +141,18 @@ class ChatRoomActivity : AppCompatActivity() {
     }
 
     private fun initializeProfileImage() {
-        Log.d("ChatRoomActivity", "1")
 
-        // Don't block UI thread with this operation
-        lifecycleScope.launch(Dispatchers.IO) {
-            val user = getUser(otherParticipantId)
-            Log.d("ChatRoomActivity", "2")
+        val user: UserData? = globalFunctions.getUserData(this@ChatRoomActivity, otherParticipantId)
 
-            // Switch back to main thread for UI updates
-            withContext(Dispatchers.Main) {
-                globalFunctions.loadImageFromUrl(user.profilePictureUrl, profileImageView)
-                Log.d("ChatRoomActivity", "3")
-            }
+        if (user != null) {
+            globalFunctions.loadImageFromUrl(user.profilePictureUrl, profileImageView)
         }
+
     }
 
 
-    fun getUser(userId: String): UserData {
-        if (userId.isEmpty()) {
-            Log.e("ChatRoomActivity", "Attempted to get user with empty ID")
-            return UserData()
-        }
-
-        // Create a placeholder for the result
-        var userData = UserData(uid = userId)
-
-        // Try to get from Firebase if enabled
-        if (resources.getBoolean(R.bool.firebaseOn)) {
-
-            val document = Tasks.await(db.collection("users").document(userId).get())
-
-                    if (document != null && document.exists()) {
-                        // Extract user fields
-                        userData = UserData(
-                            uid = userId,
-                            displayName = document.getString("displayName") ?: "",
-                            phoneNumber = document.getString("phoneNumber") ?: "",
-                            password = document.getString("password") ?: "",
-                            userDescription = document.getString("userDescription") ?: "",
-                            userStatus = document.getString("userStatus") ?: "",
-                            online = document.getBoolean("online") ?: false,
-                            lastSeen = document.getString("lastSeen") ?: "",
-                            profilePictureUrl = document.getString("profilePictureUrl") ?: ""
-                        )
-                        Log.d("ChatRoomActivity", "User data loaded from Firebase: ${userData.displayName}")
-                    } else {
-                        Log.d("ChatRoomActivity", "User document does not exist")
-                    }
 
 
-
-        } else {
-            Log.e("ChatRoomActivity", "Firebase disabled but no context provided to access local storage")
-            return UserData(uid = userId)
-        }
-
-        return userData
-    }
-
-    private fun determineOtherParticipantId(chat: Chat): String {
-        // Check if the chat object has participantIds
-        if (chat.participantIds != null && chat.participantIds.isNotEmpty()) {
-            // Return the first ID that is not the current user
-            for (id in chat.participantIds) {
-                if (id != currentUserId) {
-                    return id
-                }
-            }
-        }
-        return ""
-    }
 
     private fun initializeViews() {
         sendBtn = findViewById(R.id.sendButton)

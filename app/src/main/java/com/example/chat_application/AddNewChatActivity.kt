@@ -216,7 +216,7 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
                                             else -> false
                                         },
                                         lastSeen = document.getString("lastSeen") ?: "",
-                                        profilePictureUrl = document.getString("profilPictureUrl") ?: ""
+                                        profilePictureUrl = document.getString("profilePictureUrl") ?: ""
                                     )
 
                                     // Add users that are not the current user and not already in the list
