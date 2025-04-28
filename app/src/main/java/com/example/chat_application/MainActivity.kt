@@ -14,6 +14,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -241,8 +242,20 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         selectionCountTextView.text = "$count selected"
     }
 
+
     private fun deleteSelectedChats() {
+        var groupExists =false
         if (selectedChatIds.isEmpty()) return
+
+        val groupChatsToLeave = selectedChatIds.toList().mapNotNull { chatId ->
+            chatManager.getChatById(chatId)?.takeIf { it.type == "group" }
+        }
+
+        // Process group chats separately
+        for (chat in groupChatsToLeave) {
+            selectedChatIds.remove(chat.id) // Assuming chat has an 'id' property
+            groupExists = true
+        }
 
         // Remove selected chats from the chat manager
         val updatedChats = chatManager.getAll().filter { !selectedChatIds.contains(it.id) }
@@ -262,8 +275,15 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         saveChatsToLocalStorage()
 
         // Show confirmation
-        Toast.makeText(this, "${selectedChatIds.size} chat(s) deleted", Toast.LENGTH_SHORT).show()
+        if (selectedChatIds.size > 1) {
+            Toast.makeText(this, "${selectedChatIds.size} chats deleted", Toast.LENGTH_SHORT).show()
+        }else {
+            Toast.makeText(this, "chat deleted", Toast.LENGTH_SHORT).show()
+        }
 
+        if(groupExists){
+            Toast.makeText(this, "Can't delete groups", Toast.LENGTH_SHORT).show()
+        }
         // Exit selection mode and update UI
         exitSelectionMode()
         chatAdapter.updateData(chatManager.getAll())

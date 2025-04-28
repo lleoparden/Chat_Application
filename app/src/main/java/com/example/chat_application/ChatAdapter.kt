@@ -237,7 +237,7 @@ class ChatAdapter(
         holder.timeTextView.text = sdf.format(Date(chat.timestamp))
 
         // Set group-specific avatar
-        holder.avatarImageView.setImageResource(R.drawable.ic_person) // Assume you have a group icon
+        holder.avatarImageView.setImageResource(R.drawable.ic_person)
 
         // Show unread count if any
         if (chat.unreadCount > 0) {
@@ -246,6 +246,17 @@ class ChatAdapter(
         } else {
             holder.unreadCountTextView.visibility = View.GONE
         }
+
+
+        globalFunctions.getGroupPfp(chat.id) { url ->
+            if (url != null) {
+                // Make sure we're on the UI thread when updating the ImageView
+                holder.avatarImageView.post {
+                    globalFunctions.loadImageFromUrl(url, holder.avatarImageView)
+                }
+            }
+        }
+
 
         // Handle selection state
         handleSelectionState(chat.id, holder.chatCardView, holder.selectionCheckbox)

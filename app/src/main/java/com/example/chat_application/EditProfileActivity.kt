@@ -33,8 +33,6 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 private const val TAG = "EditProfileActivity"
-private const val IMGBB_API_URL = "https://api.imgbb.com/1/upload"
-private const val IMGBB_API_KEY = "38328309adada9acb189c19a81befaa6"
 
 class EditProfileActivity : AppCompatActivity() {
     // UI Components
@@ -489,13 +487,13 @@ class EditProfileActivity : AppCompatActivity() {
             // Create form data for ImgBB API
             val requestBody = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
-                .addFormDataPart("key", IMGBB_API_KEY)
+                .addFormDataPart("key", globalFunctions.IMGBB_API_KEY)
                 .addFormDataPart("image", base64Image)
                 .build()
 
             // Create request
             val request = Request.Builder()
-                .url(IMGBB_API_URL)
+                .url( globalFunctions.IMGBB_API_URL)
                 .post(requestBody)
                 .build()
 

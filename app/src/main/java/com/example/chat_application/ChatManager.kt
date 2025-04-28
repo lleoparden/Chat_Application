@@ -22,6 +22,14 @@ class ChatManager {
         sortByTimestamp()
     }
 
+    fun getChatById(id: String): Chat? {
+        // Direct lookup in the stack - O(n) operation
+        return chatStack.find { it.id == id }
+
+        // Note: We could potentially optimize this in the future by
+        // maintaining a separate HashMap<String, Chat> for ID-based lookups
+        // if this operation becomes a performance bottleneck
+    }
     // Add this method to ChatManager class
     fun updateDisplayNames(userMap: Map<String, String>) {
         val allChats = getAll().toMutableList()

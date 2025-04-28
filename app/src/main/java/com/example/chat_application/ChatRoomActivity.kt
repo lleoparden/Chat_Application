@@ -142,10 +142,21 @@ class ChatRoomActivity : AppCompatActivity() {
 
     private fun initializeProfileImage() {
 
-        val user: UserData? = globalFunctions.getUserData(this@ChatRoomActivity, otherParticipantId)
+        if (chat.type == "direct") {
+            val user: UserData? = globalFunctions.getUserData(this@ChatRoomActivity, otherParticipantId)
 
-        if (user != null) {
-            globalFunctions.loadImageFromUrl(user.profilePictureUrl, profileImageView)
+            if (user != null) {
+                globalFunctions.loadImageFromUrl(user.profilePictureUrl, profileImageView)
+            }
+        }else{
+            globalFunctions.getGroupPfp(chat.id) { url ->
+                if (url != null) {
+                    // Make sure we're on the UI thread when updating the ImageView
+                    profileImageView.post {
+                        globalFunctions.loadImageFromUrl(url, profileImageView)
+                    }
+                }
+            }
         }
 
     }
