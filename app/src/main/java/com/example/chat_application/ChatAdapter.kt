@@ -148,7 +148,7 @@ class ChatAdapter(
 
     private fun bindDirectChat(holder: DirectChatViewHolder, chat: Chat) {
         // Basic chat info
-        holder.nameTextView.text = chat.getEffectiveDisplayName()
+
         holder.lastMessageTextView.text = chat.lastMessage
 
         // Format timestamp
@@ -197,6 +197,7 @@ class ChatAdapter(
                         // Make sure we're on the UI thread when updating the ImageView
                         holder.avatarImageView.post {
                             globalFunctions.loadImageFromUrl(userData.profilePictureUrl, holder.avatarImageView)
+                            holder.nameTextView.text = userData.displayName
                         }
                     }
                 }

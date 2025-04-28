@@ -155,6 +155,7 @@ object globalFunctions {
             .into(profileImageView)
     }
 
+
     fun determineOtherParticipantId(chat: Chat): String {
         // Check if the chat object has participantIds
         if (chat.participantIds != null && chat.participantIds.isNotEmpty()) {
