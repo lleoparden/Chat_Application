@@ -365,23 +365,41 @@ class ChatRoomActivity : AppCompatActivity() {
         }
 
         profileImageView.setOnClickListener {
-            val intent = Intent(this, UserProfileActivity::class.java).apply {
-                putExtra("came_from", "ChatRoom")
-                putExtra("USER_ID", otherParticipantId)
-                putExtra("CHAT_OBJECT", chat)
+            if (chat.type == "group") {
+                val intent = Intent(this, GroupProfileActivity::class.java).apply {
+                    putExtra("came_from", "ChatRoom")
+                    putExtra("CHAT_OBJECT", chat)
+                }
+                startActivity(intent)
+                finish()
+            } else {
+                val intent = Intent(this, UserProfileActivity::class.java).apply {
+                    putExtra("came_from", "ChatRoom")
+                    putExtra("USER_ID", otherParticipantId)
+                    putExtra("CHAT_OBJECT", chat)
+                }
+                startActivity(intent)
+                finish()
             }
-            startActivity(intent)
-            finish()
         }
 
         nameView.setOnClickListener {
-            val intent = Intent(this, UserProfileActivity::class.java).apply {
-                putExtra("came_from", "ChatRoom")
-                putExtra("CHAT_OBJECT", chat)
-                putExtra("USER_ID", otherParticipantId)
+            if (chat.type == "group") {
+                val intent = Intent(this, GroupProfileActivity::class.java).apply {
+                    putExtra("came_from", "ChatRoom")
+                    putExtra("CHAT_OBJECT", chat)
+                }
+                startActivity(intent)
+                finish()
+            } else {
+                val intent = Intent(this, UserProfileActivity::class.java).apply {
+                    putExtra("came_from", "ChatRoom")
+                    putExtra("CHAT_OBJECT", chat)
+                    putExtra("USER_ID", otherParticipantId)
+                }
+                startActivity(intent)
+                finish()
             }
-            startActivity(intent)
-            finish()
         }
 
         // Existing click listeners...

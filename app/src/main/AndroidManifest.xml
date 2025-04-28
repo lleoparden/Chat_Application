@@ -58,6 +58,8 @@
         <activity android:name=".AboutActivity" android:exported="true" />
         <!-- Account Settings Activity -->
         <activity android:name=".AccountSettingsActivity" android:exported="true" />
+        <activity android:name=".AddNewGroupActivity" android:exported="true" />
+        <activity android:name=".GroupProfileActivity" android:exported="true" />
 
     </application>
 

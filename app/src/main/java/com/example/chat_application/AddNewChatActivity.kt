@@ -89,6 +89,10 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
             usersRecyclerView.adapter = userAdapter
             Log.d(TAG, "setupUI: RecyclerView configured")
 
+            newGroupButton.setOnClickListener {
+                startActivity(Intent(this, AddNewGroupActivity::class.java))
+                finish()
+            }
             searchEditText.addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
