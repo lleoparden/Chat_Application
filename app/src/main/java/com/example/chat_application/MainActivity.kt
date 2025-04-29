@@ -66,16 +66,25 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
     private lateinit var usersReference: DatabaseReference
     private lateinit var firestore: FirebaseFirestore
 
+    lateinit var contactManager : ContactManager
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(UserSettings.theme)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.mainpage)
 
+
+        contactManager = ContactManager(this)
+        contactManager.checkAndRequestContactsPermission(this)
+
+
         initViews()
         setupUI()
         setupRecyclerView()
         setupFirebase()
+
 
         // Show shimmer effect before loading data
         showShimmerEffect()
@@ -175,7 +184,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
 
     private fun setupRecyclerView() {
         chatRecyclerView.layoutManager = LinearLayoutManager(this)
-        chatAdapter = ChatAdapter(chatManager.getAll(), this, this)
+        chatAdapter = ChatAdapter(chatManager.getAll(), this, this,contactManager)
         chatRecyclerView.adapter = chatAdapter
     }
 

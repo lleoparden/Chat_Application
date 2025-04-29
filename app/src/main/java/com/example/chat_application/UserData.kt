@@ -3,7 +3,7 @@ package com.example.chat_application
 // User data class
 data class UserData(
     val uid: String = "",
-    val displayName: String = "",
+    var displayName: String = "",
     val phoneNumber: String = "",
     val password: String = "",
     val userDescription: String = "",

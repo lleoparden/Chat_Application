@@ -39,6 +39,8 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
     private lateinit var firestore: FirebaseFirestore
     private lateinit var auth: FirebaseAuth
 
+    lateinit var contactManager : ContactManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d(TAG, "onCreate: Starting activity")
         setTheme(UserSettings.theme)
@@ -50,6 +52,10 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
         Log.d(TAG, "onCreate: Initializing Firebase components")
         firestore = FirebaseFirestore.getInstance()
         auth = FirebaseAuth.getInstance()
+
+
+        contactManager = ContactManager(this)
+        contactManager.checkAndRequestContactsPermission(this)
 
         initViews()
         setupUI()
@@ -237,6 +243,10 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
                                 }
                             }
 
+                            val userListUpdated =contactManager.processUsersToContact(usersList,true)
+
+                            usersList.clear()
+                            usersList.addAll(userListUpdated)
                             // Update adapter with newly found users
                             userAdapter.notifyDataSetChanged()
                         }

@@ -23,7 +23,8 @@ import java.util.*
 class ChatAdapter(
     private var chats: List<Chat>,
     private val onChatClickListener: OnChatClickListener,
-    private val onChatLongClickListener: OnChatLongClickListener
+    private val onChatLongClickListener: OnChatLongClickListener,
+    private val contactManager: ContactManager
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private var selectedItems = mutableSetOf<String>()
@@ -196,8 +197,9 @@ class ChatAdapter(
 
                         // Make sure we're on the UI thread when updating the ImageView
                         holder.avatarImageView.post {
+                            val contact = contactManager.processUserToContact(userData)
                             globalFunctions.loadImageFromUrl(userData.profilePictureUrl, holder.avatarImageView)
-                            holder.nameTextView.text = userData.displayName
+                            holder.nameTextView.text = contact.displayName
                         }
                     }
                 }

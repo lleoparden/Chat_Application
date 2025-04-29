@@ -12,6 +12,7 @@
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" /> <!-- Deprecated in API 29+ -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
 
     <!-- Features -->
     <uses-feature

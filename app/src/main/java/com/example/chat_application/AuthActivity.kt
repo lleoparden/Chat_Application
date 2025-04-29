@@ -85,7 +85,6 @@ class AuthActivity : AppCompatActivity() {
         initializeAnimations()
 
 
-
         // Initialize local storage file
         initializeLocalStorage()
 
