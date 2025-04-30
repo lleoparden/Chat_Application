@@ -18,6 +18,7 @@ import android.widget.LinearLayout
 import androidx.core.view.isVisible
 import com.example.chat_application.services.FirebaseService
 import com.example.chat_application.services.LocalStorageService
+import com.hbb20.CountryCodePicker
 
 class AuthActivity : AppCompatActivity() {
     // Current view state tracking
@@ -281,6 +282,23 @@ class AuthActivity : AppCompatActivity() {
         val switchLayout = findViewById<TextView>(R.id.switchSignInButton)
         val signupLayout = findViewById<LinearLayout>(R.id.signUpLayout)
 
+
+        // Initialize CountryCodePicker
+        val ccp = findViewById<CountryCodePicker>(R.id.ccp)
+        ccp.registerCarrierNumberEditText(number)
+        ccp.setAutoDetectedCountry(true)
+        ccp.setNumberAutoFormattingEnabled(true)
+
+        // Add phone number validation listener
+        ccp.setPhoneNumberValidityChangeListener { isValidNumber ->
+            if (number.text.isNotEmpty() && !isValidNumber) {
+                number.error = "Invalid phone number"
+            } else {
+                number.error = null
+            }
+        }
+
+
         //Initialize BG Items
         initializeBackGround()
 
@@ -313,6 +331,13 @@ class AuthActivity : AppCompatActivity() {
                 showToast("Please fill all fields")
                 return@setOnClickListener
             }
+// Check if phone number is valid
+            if (!ccp.isValidFullNumber) {
+                number.error = "Invalid phone number"
+                return@setOnClickListener
+            }
+
+
 
             // Store user data for registration
             userName = nameText

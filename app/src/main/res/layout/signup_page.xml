@@ -8,7 +8,6 @@
     >
 
     <ImageView
-
         android:id="@+id/topleftbg"
         android:layout_width="125dp"
         android:layout_height="289dp"
@@ -141,16 +140,37 @@
             android:inputType="text"
             android:paddingLeft="5dp" />
 
-        <EditText
-            android:id="@+id/signInPhone"
+        <LinearLayout
             android:layout_width="wrap_content"
-            android:layout_height="39dp"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
             android:layout_marginBottom="30dp"
-            android:background="@drawable/border"
-            android:ems="10"
-            android:hint="  Phone Number"
-            android:inputType="phone"
-            android:paddingLeft="5dp" />
+            android:background="@drawable/border">
+
+            <com.hbb20.CountryCodePicker
+                android:id="@+id/ccp"
+                app:ccp_showFullName="false"
+                app:ccp_showPhoneCode="true"
+                app:ccp_showNameCode="false"
+                app:ccp_showFlag="true"
+                app:ccp_autoFormatNumber="true"
+                app:ccp_showArrow="true"
+                app:ccp_textSize="14sp"
+                app:ccp_arrowSize="12dp"
+                app:ccpDialog_backgroundColor="@android:color/white"
+                app:ccp_defaultNameCode="US"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+            <EditText
+                android:id="@+id/signInPhone"
+                android:layout_width="wrap_content"
+                android:layout_height="39dp"
+                android:background="@null"
+                android:ems="8"
+                android:hint="Phone Number"
+                android:inputType="phone"
+                android:paddingLeft="5dp" />
+        </LinearLayout>
 
         <EditText
             android:id="@+id/signInPassword"

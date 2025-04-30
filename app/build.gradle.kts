@@ -88,6 +88,11 @@ dependencies {
     implementation ("androidx.browser:browser:1.5.0")
     implementation ("com.squareup.okhttp3:okhttp:4.9.3")
 
+    //CountryCodePicker
+    implementation ("com.hbb20:ccp:2.5.0")
+
+
+
 
 }
 
