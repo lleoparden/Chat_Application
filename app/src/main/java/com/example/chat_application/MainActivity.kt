@@ -14,7 +14,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -165,7 +164,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
             when (item.itemId) {
                 R.id.navigation_chats -> true // Already on chats page
                 R.id.navigation_stories -> {
-                    startActivity(Intent(this, StoryActivity::class.java))
+                    startActivity(Intent(this, StoryListActivity::class.java))
                     finish()
                     true
                 }

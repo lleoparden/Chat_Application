@@ -50,7 +50,8 @@
         <activity android:name=".NotificationActivity" android:exported="true" />
         <activity android:name=".EditProfileActivity" android:exported="true" />
         <activity android:name=".SettingsActivity" android:exported="true" />
-        <activity android:name=".StoryActivity" android:exported="true" />
+        <activity android:name=".StoryListActivity" android:exported="true" />
+        <activity android:name=".AddNewStoryActivity" android:exported="true" />
         <activity android:name=".AddNewChatActivity" android:exported="true" />
         <activity android:name=".UserProfileActivity" android:exported="true" />
         <activity android:name=".ChatWallpaperActivity" android:exported="true" />

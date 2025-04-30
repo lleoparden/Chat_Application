@@ -13,8 +13,8 @@ import java.io.File
 object globalFunctions {
 
 
-     const val IMGBB_API_URL = "https://api.imgbb.com/1/upload"
-     const val IMGBB_API_KEY = "38328309adada9acb189c19a81befaa6"
+    const val IMGBB_API_URL = "https://api.imgbb.com/1/upload"
+    const val IMGBB_API_KEY = "38328309adada9acb189c19a81befaa6"
 
     private const val TAG = "GlobalFunctions"
     private val db = FirebaseFirestore.getInstance()
@@ -43,11 +43,11 @@ object globalFunctions {
 
     fun getUserData(userId: String, callback: (UserData?) -> Unit) {
         // First check the cache
-//        if (userCache.containsKey(userId)) {
-//            Log.d(TAG, "Returning cached user data for $userId")
-//            callback(userCache[userId])
-//            return
-//        }
+        if (userCache.containsKey(userId)) {
+            Log.d(TAG, "Returning cached user data for $userId")
+            callback(userCache[userId])
+            return
+        }
 
         Log.d(TAG, "Fetching user data from Firebase for $userId")
         // If not in cache, fetch from Firebase
