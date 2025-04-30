@@ -324,24 +324,30 @@ class AuthActivity : AppCompatActivity() {
 
         signUpButton.setOnClickListener {
             val nameText = name.text.toString().trim()
-            val phoneNumber = number.text.toString().trim()
             val passwordText = password.text.toString().trim()
+
+            // Instead of getting just the number text, get the full number with country code
+            val phoneNumber = if (number.text.isNotEmpty()) {
+                // This gets the complete phone number with country code
+                ccp.fullNumberWithPlus
+            } else {
+                ""
+            }
 
             if (nameText.isEmpty() || phoneNumber.isEmpty() || passwordText.isEmpty()) {
                 showToast("Please fill all fields")
                 return@setOnClickListener
             }
-// Check if phone number is valid
+
+            // Check if phone number is valid
             if (!ccp.isValidFullNumber) {
                 number.error = "Invalid phone number"
                 return@setOnClickListener
             }
 
-
-
             // Store user data for registration
             userName = nameText
-            userPhone = formatPhoneNumber(phoneNumber)
+            userPhone = phoneNumber  // Now correctly includes country code
             userPassword = passwordText
 
             // Check if user already exists locally with this phone number
