@@ -296,6 +296,7 @@ class AuthActivity : AppCompatActivity() {
         val hasSpecialChar = password.any { !it.isLetterOrDigit() }
 
         return hasUppercase && hasSpecialChar
+
     }
 
     private fun validatePassword(password: String, passwordField: EditText) {
