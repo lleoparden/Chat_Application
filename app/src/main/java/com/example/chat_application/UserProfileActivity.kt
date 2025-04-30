@@ -108,13 +108,18 @@ class UserProfileActivity : AppCompatActivity() {
                 put("type", "direct")
             }
 
+
+
             chat = Chat(
                 id = chat_id,
                 name = profileUserName,
                 lastMessage = "",
                 timestamp = System.currentTimeMillis(),
                 unreadCount = 0,
-                participantIds = mutableListOf(profileUserId, currentUserId),
+                participantIds = hashMapOf(
+                    profileUserId to true,
+                    currentUserId to true
+                ),
                 type = "direct"
             )
 
@@ -167,10 +172,10 @@ class UserProfileActivity : AppCompatActivity() {
     // Convert JSONObject to Chat object
     private fun chatFromJson(jsonObject: JSONObject): Chat {
         val participantIdsArray = jsonObject.getJSONArray("participantIds")
-        val participantsList = mutableListOf<String>()
+        val participantsList = hashMapOf<String,Boolean>()
 
         for (i in 0 until participantIdsArray.length()) {
-            participantsList.add(participantIdsArray.getString(i))
+            participantsList[participantIdsArray.getString(i)] = true
         }
 
         return Chat(

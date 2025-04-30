@@ -156,16 +156,17 @@ object globalFunctions {
     }
 
 
-    fun determineOtherParticipantId(chat: Chat): String {
-        // Check if the chat object has participantIds
-        if (chat.participantIds != null && chat.participantIds.isNotEmpty()) {
-            // Return the first ID that is not the current user
-            for (id in chat.participantIds) {
-                if (id != UserSettings.userId) {
-                    return id
-                }
-            }
+    fun determineOtherParticipantId(chat: Chat): String? {
+        val currentUserId = UserSettings.userId
+        val participantIds = chat.participantIds // HashMap<String, Boolean>
+
+        // Ensure this is a two-person chat
+        if (participantIds.size != 2) {
+            Log.w(TAG, "Chat is not a two-person chat, contains ${participantIds.size} participants")
+            return null
         }
-        return ""
+
+        // Get the other user's ID (the key that's not the current user's ID)
+        return participantIds.keys.firstOrNull { it != currentUserId }
     }
 }

@@ -163,14 +163,18 @@ class ChatAdapter(
             val otherUserId = globalFunctions.determineOtherParticipantId(chat)
             Log.d("ChatAdapter", "Other participant ID: $otherUserId")
 
-            if (otherUserId.isEmpty()) {
-                Log.e("ChatAdapter", "Empty otherUserId returned - check participantIds in chat object")
-                holder.avatarImageView.setImageResource(R.drawable.ic_person)
-                return
+            if (otherUserId != null) {
+                if (otherUserId.isEmpty()) {
+                    Log.e("ChatAdapter", "Empty otherUserId returned - check participantIds in chat object")
+                    holder.avatarImageView.setImageResource(R.drawable.ic_person)
+                    return
+                }
             }
 
             // First check if we can get cached data immediately
-            val cachedUserData = globalFunctions.getUserData(holder.itemView.context, otherUserId)
+            val cachedUserData = globalFunctions.getUserData(holder.itemView.context,
+                otherUserId.toString()
+            )
             if (cachedUserData != null) {
                 Log.d("ChatAdapter", "Cached user data found for $otherUserId")
                 Log.d("ChatAdapter", "Profile picture URL from cache: '${cachedUserData.profilePictureUrl}'")
@@ -188,7 +192,7 @@ class ChatAdapter(
 
                 // Use the correct getUserData method with callback to fetch latest
                 Log.d("ChatAdapter", "Fetching user data for ID: $otherUserId")
-                globalFunctions.getUserData(otherUserId) { userData ->
+                globalFunctions.getUserData(otherUserId.toString()) { userData ->
                     Log.d("ChatAdapter", "User data callback received for $otherUserId: ${userData != null}")
 
                     if (userData != null && !userData.profilePictureUrl.isNullOrEmpty()) {

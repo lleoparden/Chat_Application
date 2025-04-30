@@ -123,7 +123,7 @@ class ChatRoomActivity : AppCompatActivity() {
         chatId = chat.id
 
         // Determine the other participant's ID
-        otherParticipantId = globalFunctions.determineOtherParticipantId(chat)
+        otherParticipantId = globalFunctions.determineOtherParticipantId(chat).toString()
 
         // Initialize UI elements
         initializeViews()
@@ -443,9 +443,10 @@ class ChatRoomActivity : AppCompatActivity() {
 
         map = HashMap()
 
-        for(par in chat.participantIds) {
+        for (par in chat.participantIds.keys) {
             map[par] = false
         }
+
 
         val message = Message(
             id = messageId,

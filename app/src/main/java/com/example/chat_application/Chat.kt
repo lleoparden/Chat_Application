@@ -10,7 +10,7 @@ data class Chat(
     var lastMessage: String = "",
     var timestamp: Long = 0,
     var unreadCount: Int = 0,
-    var participantIds: MutableList<String> = mutableListOf(),
+    var participantIds: HashMap<String,Boolean> = HashMap(),
     var type: String = "",
     val displayName: String = ""
 ): Parcelable {

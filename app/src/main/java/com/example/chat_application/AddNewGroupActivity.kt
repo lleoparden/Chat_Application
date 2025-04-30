@@ -420,10 +420,10 @@ class AddNewGroupActivity : AppCompatActivity(), UserAdapter.OnUserClickListener
             val groupId = UUID.randomUUID().toString()
 
             // Create participant IDs list (including current user)
-            val participantIds = mutableListOf<String>()
-            participantIds.add(UserSettings.userId!!) // Add current user
+            val participantIds = HashMap<String,Boolean>()
+            participantIds[UserSettings.userId] =true // Add current user
             for (user in selectedUsers) {
-                participantIds.add(user.uid)
+                participantIds[user.uid] = true
             }
 
             // Create Chat object

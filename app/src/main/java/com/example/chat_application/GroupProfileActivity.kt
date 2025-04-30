@@ -588,7 +588,7 @@ class GroupProfileActivity : AppCompatActivity() {
         groupMembers.clear()
 
         // For each participant ID in the group
-        for (participantId in groupChat.participantIds) {
+        for (participantId in groupChat.participantIds.keys) {
             loadGroupMember(participantId)
         }
     }

@@ -26,9 +26,6 @@ class ChatManager {
         // Direct lookup in the stack - O(n) operation
         return chatStack.find { it.id == id }
 
-        // Note: We could potentially optimize this in the future by
-        // maintaining a separate HashMap<String, Chat> for ID-based lookups
-        // if this operation becomes a performance bottleneck
     }
     // Add this method to ChatManager class
     fun updateDisplayNames(userMap: Map<String, String>) {
@@ -41,7 +38,7 @@ class ChatManager {
             // For direct chats, update the display name based on the other participant
             if (chat.type == "direct") {
                 // Find the other participant's ID (not the current user)
-                val otherUserId = chat.participantIds.find { it != UserSettings.userId }
+                val otherUserId = globalFunctions.determineOtherParticipantId(chat)
 
                 // If we have the other user's display name in our map, update it
                 if (otherUserId != null && userMap.containsKey(otherUserId)) {
