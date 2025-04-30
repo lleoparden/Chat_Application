@@ -24,7 +24,6 @@ class ChatAdapter(
     private var chats: List<Chat>,
     private val onChatClickListener: OnChatClickListener,
     private val onChatLongClickListener: OnChatLongClickListener,
-    private val contactManager: ContactManager
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private var selectedItems = mutableSetOf<String>()
@@ -197,9 +196,8 @@ class ChatAdapter(
 
                         // Make sure we're on the UI thread when updating the ImageView
                         holder.avatarImageView.post {
-                            val contact = contactManager.processUserToContact(userData)
                             globalFunctions.loadImageFromUrl(userData.profilePictureUrl, holder.avatarImageView)
-                            holder.nameTextView.text = contact.displayName
+                            holder.nameTextView.text = userData.displayName
                         }
                     }
                 }
@@ -209,7 +207,13 @@ class ChatAdapter(
             holder.avatarImageView.setImageResource(R.drawable.ic_person)
         }
 
+        if( holder.nameTextView.text.isEmpty()){
+            holder.nameTextView.text = chat.getEffectiveDisplayName()
+        }
+
+
         handleSelectionState(chat.id, holder.chatCardView, holder.selectionCheckbox)
+
 
         // Set click listeners
         holder.itemView.setOnClickListener {

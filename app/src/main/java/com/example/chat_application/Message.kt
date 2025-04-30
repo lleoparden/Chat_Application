@@ -6,5 +6,5 @@ data class Message(
     val senderId: String,
     val content: String,
     val timestamp: Long,
-    val readStatus: Map<String, Boolean> = mapOf()
+    val readStatus: HashMap<String, Boolean> = HashMap()
 )

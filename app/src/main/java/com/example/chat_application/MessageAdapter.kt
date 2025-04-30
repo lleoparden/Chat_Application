@@ -7,6 +7,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.database.DatabaseReference
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -15,7 +16,8 @@ class MessageAdapter(
     private val currentUserId: String,
     private val messageList: List<Message>,
     private val onMessageLongClick: (Int, Message) -> Unit,
-    private val onMessageClick: (Int, Message) -> Unit
+    private val onMessageClick: (Int, Message) -> Unit,
+    private val database: DatabaseReference
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val SENT = 1
@@ -104,9 +106,21 @@ class MessageAdapter(
         private val timeText: TextView = itemView.findViewById(R.id.timeTextView)
         private val profileImage: ImageView = itemView.findViewById(R.id.profileImageView)
 
+
         fun bind(message: Message, position: Int) {
             messageText.text = message.content
             timeText.text = formatTime(message.timestamp)
+
+            if (message.readStatus[currentUserId] != true) {
+                message.readStatus[currentUserId] = true
+
+                val readStatusUpdates = HashMap<String, Any>()
+                readStatusUpdates["readStatus/${currentUserId}"] = true
+
+                database.child("messages").child(message.chatId).child(message.id).updateChildren(readStatusUpdates)
+
+            }
+
 
             // Apply selection highlighting
             val isSelected = (itemView.context as? ChatRoomActivity)?.isMessageSelected(message.id) == true

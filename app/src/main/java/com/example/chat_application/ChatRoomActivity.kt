@@ -128,7 +128,6 @@ class ChatRoomActivity : AppCompatActivity() {
         // Initialize UI elements
         initializeViews()
 
-        // Set contact name in the top bar
         nameView.text = chat.getEffectiveDisplayName()
 
         initializeProfileImage()
@@ -147,6 +146,10 @@ class ChatRoomActivity : AppCompatActivity() {
 
             if (user != null) {
                 globalFunctions.loadImageFromUrl(user.profilePictureUrl, profileImageView)
+                nameView.text =user.displayName
+            }
+            if(nameView.text.isEmpty()){
+                nameView.text =chat.getEffectiveDisplayName()
             }
         }else{
             globalFunctions.getGroupPfp(chat.id) { url ->
@@ -154,6 +157,7 @@ class ChatRoomActivity : AppCompatActivity() {
                     // Make sure we're on the UI thread when updating the ImageView
                     profileImageView.post {
                         globalFunctions.loadImageFromUrl(url, profileImageView)
+                        // Set contact name in the top bar
                     }
                 }
             }
@@ -198,7 +202,8 @@ class ChatRoomActivity : AppCompatActivity() {
                 if (isInSelectionMode) {
                     toggleMessageSelection(message)
                 }
-            }
+            },
+            database
         )
 
         val layoutManager = LinearLayoutManager(this)
@@ -434,14 +439,28 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun sendMessage(textMessage: String) {
         val messageId = generateMessageId()
 
+        var map: HashMap<String, Boolean>
+
+        map = HashMap()
+
+        for(par in chat.participantIds) {
+            map[par] = false
+        }
+
         val message = Message(
             id = messageId,
             chatId = chatId,
             senderId = currentUserId,
             content = textMessage,
             timestamp = System.currentTimeMillis(),
-            readStatus = mapOf()
+            readStatus = map
         )
+
+        val timestampUpdate = hashMapOf<String, Any>("timestamp" to message.timestamp)
+        val lastMessageUpdate = hashMapOf<String, Any>("lastMessage" to message.content)
+
+        database.child("chats").child(message.chatId).updateChildren(timestampUpdate)
+        database.child("chats").child(message.chatId).updateChildren(lastMessageUpdate)
 
         // Add message to local list and update UI immediately
         messageList.add(message)
@@ -543,36 +562,25 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
-    private fun parseReadStatus(messageObject: JSONObject): MutableMap<String, Boolean> {
-        val readStatus = mutableMapOf<String, Boolean>()
+    private fun parseReadStatus(messageObject: JSONObject): HashMap<String, Boolean> {
+        val readStatusMap = HashMap<String, Boolean>()
 
-        try {
-            // Try parsing as JSONObject first
-            val readStatusJsonObject = messageObject.getJSONObject("readStatus")
-            val keys = readStatusJsonObject.keys()
+        // Check if readStatus field exists in the JSON
+        if (messageObject.has("readStatus") && !messageObject.isNull("readStatus")) {
+            val readStatusObject = messageObject.getJSONObject("readStatus")
+
+            // Get all keys (user IDs) from the readStatus object
+            val keys = readStatusObject.keys()
+
+            // Iterate through keys and add to HashMap
             while (keys.hasNext()) {
-                val key = keys.next()
-                readStatus[key] = readStatusJsonObject.getBoolean(key)
-            }
-        } catch (e: Exception) {
-            try {
-                // Fall back to parsing as JSONArray
-                val readStatusArray = messageObject.getJSONArray("readStatus")
-                for (j in 0 until readStatusArray.length()) {
-                    val entry = readStatusArray.getString(j)
-                    if (entry.contains("=")) {
-                        val parts = entry.split("=")
-                        if (parts.size == 2) {
-                            readStatus[parts[0]] = parts[1].toBoolean()
-                        }
-                    }
-                }
-            } catch (e2: Exception) {
-                Log.e("ChatRoomActivity", "Error parsing readStatus: ${e2.message}")
+                val userId = keys.next()
+                val isRead = readStatusObject.getBoolean(userId)
+                readStatusMap[userId] = isRead
             }
         }
 
-        return readStatus
+        return readStatusMap
     }
 
     //region Firebase Methods
@@ -678,7 +686,7 @@ class ChatRoomActivity : AppCompatActivity() {
             val content = messageMap["content"] as? String ?: ""
             val timestamp = (messageMap["timestamp"] as? Long) ?: 0L
 
-            val readStatusMap = mutableMapOf<String, Boolean>()
+            val readStatusMap = HashMap<String, Boolean>()
             val readStatusRaw = messageMap["readStatus"] as? Map<*, *>
             readStatusRaw?.forEach { (key, value) ->
                 if (key is String && value is Boolean) {

@@ -183,7 +183,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
 
     private fun setupRecyclerView() {
         chatRecyclerView.layoutManager = LinearLayoutManager(this)
-        chatAdapter = ChatAdapter(chatManager.getAll(), this, this,contactManager)
+        chatAdapter = ChatAdapter(chatManager.getAll(), this, this)
         chatRecyclerView.adapter = chatAdapter
     }
 
@@ -673,7 +673,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         super.onResume()
         // Save chats to Firebase when returning to this activity
         if (resources.getBoolean(R.bool.firebaseOn) && ::chatsReference.isInitialized) {
-            saveChatsToFirebase()
+//            saveChatsToFirebase()
         }
     }
 
