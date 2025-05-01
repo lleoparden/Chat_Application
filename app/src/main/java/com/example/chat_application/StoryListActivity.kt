@@ -16,6 +16,8 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
+import org.json.JSONArray
+import java.io.File
 
 
 class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener {
@@ -105,10 +107,11 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
                 loadStoryFromFirebase(userIds)
             }
             else{
-                //loadStoryfromLocalStorage()
+                //loadStoryfromLocalStorage(TAG)
             }
         }
     }
+
 
     private fun loadStoryFromFirebase(users: List<String>) {
         if (!firebaseEnabled) {
@@ -144,8 +147,9 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
                                 val stories = storyList.mapNotNull { storyMap ->
                                     try {
                                         Story(
-                                            // Add proper conversions based on your Story class structure
-                                            // Example: id = (storyMap["id"] as? String) ?: "",
+                                            imageurl = storyMap.get("imageurl").toString(),
+                                            storyCaption = storyMap.get("storyCaption").toString(),
+                                            uploadedAt = storyMap.get("uploadedAt").toString()
                                         )
                                     } catch (e: Exception) {
                                         Log.e(TAG, "Error parsing story data", e)
@@ -207,8 +211,11 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
     // Implement the OnStoryClickListener interface method
     override fun onStoryClick(story: Stories) {
         // Handle story click here
-        val intent = Intent(this, ViewStoryActivity::class.java)
+        val intent = Intent(this, ViewStoryActivity::class.java).apply {
+            putExtra("passedStory", story)
+        }
         intent.putExtra("storyId", story.uid)
         startActivity(intent)
+        finish()
     }
 }

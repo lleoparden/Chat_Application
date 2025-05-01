@@ -1,11 +1,14 @@
 package com.example.chat_application
 
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
+
+@Parcelize
 data class Story (
     val imageurl : String = "",
     val storyCaption : String = "",
-    val seen : Boolean = false,
     val uploadedAt : String = "",
-)
+) : Parcelable
 
 
 

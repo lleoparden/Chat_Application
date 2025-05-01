@@ -121,7 +121,6 @@ class AddNewStoryActivity : AppCompatActivity(){
         val story = Story(
             imageurl = imageURL,
             storyCaption = caption,
-            seen = false,
             uploadedAt = System.currentTimeMillis().toString()
         )
 
@@ -384,7 +383,6 @@ class AddNewStoryActivity : AppCompatActivity(){
                 put("imageUrl", story.imageurl)
                 put("caption", story.storyCaption)
                 put("timestamp", story.uploadedAt)
-                put("seen", story.seen)
 
                 // Add local image path if available
                 if (localImagePath != null) {
