@@ -147,13 +147,21 @@ class ChatAdapter(
     }
 
     private fun bindDirectChat(holder: DirectChatViewHolder, chat: Chat) {
-        // Basic chat info
-
+        // Start with a default or fallback name
+        holder.nameTextView.text = chat.getEffectiveDisplayName()
         holder.lastMessageTextView.text = chat.lastMessage
 
         // Format timestamp
         val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
         holder.timeTextView.text = sdf.format(Date(chat.timestamp))
+
+        // Show unread count if any
+        if (chat.unreadCount > 0) {
+            holder.unreadCountTextView.visibility = View.VISIBLE
+            holder.unreadCountTextView.text = if (chat.unreadCount > 99) "99+" else chat.unreadCount.toString()
+        } else {
+            holder.unreadCountTextView.visibility = View.GONE
+        }
 
         // Load profile picture with extensive logging
         Log.d("ChatAdapter", "Starting profile picture load for chat: ${chat.id}")
@@ -163,22 +171,24 @@ class ChatAdapter(
             val otherUserId = globalFunctions.determineOtherParticipantId(chat)
             Log.d("ChatAdapter", "Other participant ID: $otherUserId")
 
-            if (otherUserId != null) {
-                if (otherUserId.isEmpty()) {
-                    Log.e("ChatAdapter", "Empty otherUserId returned - check participantIds in chat object")
-                    holder.avatarImageView.setImageResource(R.drawable.ic_person)
-                    return
-                }
+            if (otherUserId == null || otherUserId.isEmpty()) {
+                Log.e("ChatAdapter", "Empty or null otherUserId - check participantIds in chat object")
+                holder.avatarImageView.setImageResource(R.drawable.ic_person)
+                return
             }
 
             // First check if we can get cached data immediately
-            val cachedUserData = globalFunctions.getUserData(holder.itemView.context,
-                otherUserId.toString()
-            )
+            val cachedUserData = globalFunctions.getUserData(holder.itemView.context, otherUserId)
             if (cachedUserData != null) {
                 Log.d("ChatAdapter", "Cached user data found for $otherUserId")
-                Log.d("ChatAdapter", "Profile picture URL from cache: '${cachedUserData.profilePictureUrl}'")
 
+                // Always set the display name if available in cache
+                if (!cachedUserData.displayName.isNullOrEmpty()) {
+                    Log.d("ChatAdapter", "Setting name from cache: ${cachedUserData.displayName}")
+                    holder.nameTextView.text = cachedUserData.displayName
+                }
+
+                // Set profile picture if available in cache
                 if (!cachedUserData.profilePictureUrl.isNullOrEmpty()) {
                     Log.d("ChatAdapter", "Loading profile picture from cache: ${cachedUserData.profilePictureUrl}")
                     globalFunctions.loadImageFromUrl(cachedUserData.profilePictureUrl, holder.avatarImageView)
@@ -192,16 +202,23 @@ class ChatAdapter(
 
                 // Use the correct getUserData method with callback to fetch latest
                 Log.d("ChatAdapter", "Fetching user data for ID: $otherUserId")
-                globalFunctions.getUserData(otherUserId.toString()) { userData ->
+                globalFunctions.getUserData(otherUserId) { userData ->
                     Log.d("ChatAdapter", "User data callback received for $otherUserId: ${userData != null}")
 
-                    if (userData != null && !userData.profilePictureUrl.isNullOrEmpty()) {
-                        Log.d("ChatAdapter", "Loading profile picture from URL: ${userData.profilePictureUrl}")
-
-                        // Make sure we're on the UI thread when updating the ImageView
+                    if (userData != null) {
+                        // Make sure we're on the UI thread when updating the views
                         holder.avatarImageView.post {
-                            globalFunctions.loadImageFromUrl(userData.profilePictureUrl, holder.avatarImageView)
-                            holder.nameTextView.text = userData.displayName
+                            // Update display name if available
+                            if (!userData.displayName.isNullOrEmpty()) {
+                                Log.d("ChatAdapter", "Setting name from API: ${userData.displayName}")
+                                holder.nameTextView.text = userData.displayName
+                            }
+
+                            // Update profile picture if available
+                            if (!userData.profilePictureUrl.isNullOrEmpty()) {
+                                Log.d("ChatAdapter", "Loading profile picture from URL: ${userData.profilePictureUrl}")
+                                globalFunctions.loadImageFromUrl(userData.profilePictureUrl, holder.avatarImageView)
+                            }
                         }
                     }
                 }
@@ -211,13 +228,7 @@ class ChatAdapter(
             holder.avatarImageView.setImageResource(R.drawable.ic_person)
         }
 
-        if( holder.nameTextView.text.isEmpty()){
-            holder.nameTextView.text = chat.getEffectiveDisplayName()
-        }
-
-
         handleSelectionState(chat.id, holder.chatCardView, holder.selectionCheckbox)
-
 
         // Set click listeners
         holder.itemView.setOnClickListener {
@@ -247,9 +258,6 @@ class ChatAdapter(
         val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
         holder.timeTextView.text = sdf.format(Date(chat.timestamp))
 
-        // Set group-specific avatar
-        holder.avatarImageView.setImageResource(R.drawable.ic_person)
-
         // Show unread count if any
         if (chat.unreadCount > 0) {
             holder.unreadCountTextView.visibility = View.VISIBLE
@@ -258,7 +266,10 @@ class ChatAdapter(
             holder.unreadCountTextView.visibility = View.GONE
         }
 
+        // Set default group avatar
+        holder.avatarImageView.setImageResource(R.drawable.ic_person)
 
+        // Try to load group profile picture
         globalFunctions.getGroupPfp(chat.id) { url ->
             if (url != null) {
                 // Make sure we're on the UI thread when updating the ImageView
@@ -268,7 +279,6 @@ class ChatAdapter(
             }
         }
 
-
         // Handle selection state
         handleSelectionState(chat.id, holder.chatCardView, holder.selectionCheckbox)
 
@@ -277,7 +287,7 @@ class ChatAdapter(
             try {
                 onChatClickListener.onChatClick(chat)
             } catch (e: Exception) {
-                Log.e("CombinedChatAdapter", "Error in group chat click listener: ${e.message}")
+                Log.e("ChatAdapter", "Error in group chat click listener: ${e.message}")
             }
         }
 
@@ -285,7 +295,7 @@ class ChatAdapter(
             try {
                 onChatLongClickListener.onChatLongClick(chat)
             } catch (e: Exception) {
-                Log.e("CombinedChatAdapter", "Error in group chat long click listener: ${e.message}")
+                Log.e("ChatAdapter", "Error in group chat long click listener: ${e.message}")
                 false
             }
         }

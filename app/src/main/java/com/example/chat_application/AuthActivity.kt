@@ -56,6 +56,9 @@ class AuthActivity : AppCompatActivity() {
     private lateinit var balltopleft: ImageView
 
 
+    private val firebaseEnabled by lazy { resources.getBoolean(R.bool.firebaseOn) }
+
+
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(UserSettings.theme)
@@ -63,10 +66,10 @@ class AuthActivity : AppCompatActivity() {
         enableEdgeToEdge()
 
         // Initialize services
-        LocalStorageService.initialize(applicationContext)
+        LocalStorageService.initialize(applicationContext,TAG)
 
-        if (resources.getBoolean(R.bool.firebaseOn)) {
-            FirebaseService.initialize()
+        if (firebaseEnabled) {
+            FirebaseService.initialize(this,TAG,firebaseEnabled)
         }
 
         //Initialize Animations
@@ -114,9 +117,8 @@ class AuthActivity : AppCompatActivity() {
             }
 
             // If not found locally, verify in Firestore
-            if (resources.getBoolean(R.bool.firebaseOn)) {
-                FirebaseService.verifyUserInFirestore(
-                    userId,
+            if (firebaseEnabled) {
+                FirebaseService.verifyUserInFirestore(userId,
                     onSuccess = { userData ->
                         // Save user data locally for future logins
                         LocalStorageService.saveUserToLocalStorage(userData)
@@ -244,7 +246,7 @@ class AuthActivity : AppCompatActivity() {
             }
 
             // If local login fails, check database
-            if (resources.getBoolean(R.bool.firebaseOn)) {
+            if (firebaseEnabled) {
                 FirebaseService.validateLoginRemote(
                     formattedPhone,
                     userPassword,
@@ -274,6 +276,41 @@ class AuthActivity : AppCompatActivity() {
         }
     }
 
+
+    private fun isValidPassword(password: String): Boolean {
+        if (password.length < 8) return false
+
+        val hasUppercase = password.any { it.isUpperCase() }
+        val hasSpecialChar = password.any { !it.isLetterOrDigit() }
+
+        return hasUppercase && hasSpecialChar
+    }
+
+    /**
+     * Validates password in real-time and shows appropriate error message
+     */
+    private fun validatePassword(password: String, passwordField: EditText) {
+        if (password.isEmpty()) {
+            passwordField.error = null
+            return
+        }
+
+        when {
+            password.length < 8 -> {
+                passwordField.error = "Password must be at least 8 characters"
+            }
+            !password.any { it.isUpperCase() } -> {
+                passwordField.error = "Password must include uppercase letters"
+            }
+            !password.any { !it.isLetterOrDigit() } -> {
+                passwordField.error = "Password must include special characters"
+            }
+            else -> {
+                passwordField.error = null
+            }
+        }
+    }
+
     private fun setupSignupView() {
         val name = findViewById<EditText>(R.id.signUpName)
         val number = findViewById<EditText>(R.id.signInPhone)
@@ -281,6 +318,16 @@ class AuthActivity : AppCompatActivity() {
         val signUpButton = findViewById<Button>(R.id.signUpButton)
         val switchLayout = findViewById<TextView>(R.id.switchSignInButton)
         val signupLayout = findViewById<LinearLayout>(R.id.signUpLayout)
+
+        password.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                validatePassword(s.toString(), password)
+            }
+
+            override fun afterTextChanged(s: android.text.Editable?) {}
+        })
 
 
         // Initialize CountryCodePicker
@@ -324,30 +371,29 @@ class AuthActivity : AppCompatActivity() {
 
         signUpButton.setOnClickListener {
             val nameText = name.text.toString().trim()
+            val phoneNumber = number.text.toString().trim()
             val passwordText = password.text.toString().trim()
-
-            // Instead of getting just the number text, get the full number with country code
-            val phoneNumber = if (number.text.isNotEmpty()) {
-                // This gets the complete phone number with country code
-                ccp.fullNumberWithPlus
-            } else {
-                ""
-            }
 
             if (nameText.isEmpty() || phoneNumber.isEmpty() || passwordText.isEmpty()) {
                 showToast("Please fill all fields")
                 return@setOnClickListener
             }
-
-            // Check if phone number is valid
+// Check if phone number is valid
             if (!ccp.isValidFullNumber) {
-                number.error = "Invalid phone number"
+                showToast("Please enter a valid phone number")
+                return@setOnClickListener
+            }
+//check if the password is vaild
+            if (!isValidPassword(passwordText)) {
+                showToast("Password must be at least 8 characters with uppercase letters and special symbols")
                 return@setOnClickListener
             }
 
+
+
             // Store user data for registration
             userName = nameText
-            userPhone = phoneNumber  // Now correctly includes country code
+            userPhone = formatPhoneNumber(phoneNumber)
             userPassword = passwordText
 
             // Check if user already exists locally with this phone number
@@ -357,7 +403,7 @@ class AuthActivity : AppCompatActivity() {
             }
 
             // Check if user exists in the database
-            if (resources.getBoolean(R.bool.firebaseOn)) {
+            if (firebaseEnabled) {
                 FirebaseService.checkUserExistsRemote(
                     userPhone,
                     onExists = {
@@ -402,7 +448,7 @@ class AuthActivity : AppCompatActivity() {
 
     private fun registerUser() {
         // Generate a unique ID for the user
-        val userId = if (resources.getBoolean(R.bool.firebaseOn)) {
+        val userId = if (firebaseEnabled) {
             FirebaseService.generateUserId()
         } else {
             // Generate a local ID if Firebase is off
@@ -429,8 +475,8 @@ class AuthActivity : AppCompatActivity() {
         LocalStorageService.saveUserSession(userId)
 
         // Then attempt to save to Firebase
-        if (resources.getBoolean(R.bool.firebaseOn)) {
-            val userData = FirebaseService.createUserData(userId, userName, userPhone, userPassword)
+        if (firebaseEnabled) {
+            val userData = FirebaseService.createUserData(userId,userName, userPhone, userPassword)
             FirebaseService.saveUserToFirebase(
                 userData,
                 userId,

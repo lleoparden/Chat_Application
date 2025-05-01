@@ -1,9 +1,9 @@
 package com.example.chat_application.services
 
 import android.annotation.SuppressLint
-import android.content.ContentValues.TAG
 import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import com.example.chat_application.Chat
 import com.example.chat_application.ChatAdapter
 import com.example.chat_application.ChatManager
@@ -29,22 +29,24 @@ object LocalStorageService {
 
     // Properties
     private lateinit var context: Context
+    private lateinit var tag :String
     private lateinit var localUsersFile: File
 
     /**
      * Initializes the local storage service
      */
-    fun initialize(context: Context) {
+    fun initialize(context: Context,Tag :String) {
         LocalStorageService.context = context
         localUsersFile = File(context.filesDir, USERS_FILE)
+        tag= Tag
 
         if (!localUsersFile.exists()) {
             try {
                 localUsersFile.createNewFile()
                 saveUsersToJson(emptyList())
-                Log.d(TAG, "Created new local users file at: ${localUsersFile.absolutePath}")
+                Log.d(tag, "Created new local users file at: ${localUsersFile.absolutePath}")
             } catch (e: Exception) {
-                Log.e(TAG, "Error creating local users file", e)
+                Log.e(tag, "Error creating local users file", e)
             }
         }
     }
@@ -91,7 +93,7 @@ object LocalStorageService {
 
             usersList
         } catch (e: Exception) {
-            Log.e(TAG, "Error reading local users file", e)
+            Log.e(tag, "Error reading local users file", e)
             emptyList()
         }
     }
@@ -122,7 +124,7 @@ object LocalStorageService {
                 writer.write(jsonArray.toString())
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error saving users to local storage", e)
+            Log.e(tag, "Error saving users to local storage", e)
         }
     }
 
@@ -193,6 +195,114 @@ object LocalStorageService {
         return prefs.getString(USER_ID_KEY, null)
     }
 
+     fun updateUserToLocalStorage(displayName: String, status: String, description: String,userId: String,localImagePath:String,profilePictureUrl:String,phoneNumber: String,) : Boolean{
+        try {
+            val fileContent = if (localUsersFile.exists() && localUsersFile.readText().isNotBlank()) {
+                localUsersFile.readText()
+            } else {
+                "[]"
+            }
+
+            val jsonArray = JSONArray(fileContent)
+            var userFound = false
+
+            // Update existing user or add new one
+            for (i in 0 until jsonArray.length()) {
+                val jsonUser = jsonArray.getJSONObject(i)
+                if (jsonUser.getString("uid") == userId) {
+                    // Update basic info
+                    jsonUser.put("displayName", displayName)
+                    jsonUser.put("Status", status)
+                    jsonUser.put("description", description)
+
+                    // Always save local image path if available
+                    if (localImagePath != null) {
+                        jsonUser.put("profileImagePath", localImagePath)
+                    }
+
+                    // Also save URL if available (as backup or for online access)
+                    if (profilePictureUrl != null) {
+                        jsonUser.put("profilePictureUrl", profilePictureUrl)
+                    }
+
+                    userFound = true
+                    break
+                }
+            }
+
+            // If user not found, add new user
+            if (!userFound) {
+                val newUser = JSONObject().apply {
+                    put("uid", userId)
+                    put("displayName", displayName)
+                    put("Status", status)
+                    put("description", description)
+                    put("phoneNumber", phoneNumber)
+
+                    // Always save local image path if available
+                    if (localImagePath != null) {
+                        put("profileImagePath", localImagePath)
+                    }
+
+                    // Also save URL if available
+                    if (profilePictureUrl != null) {
+                        put("profilePictureUrl", profilePictureUrl)
+                    }
+                }
+                jsonArray.put(newUser)
+            }
+
+            // Write updated JSON to file
+            localUsersFile.writeText(jsonArray.toString())
+
+            return true
+            
+        } catch (e: Exception) {
+            Log.e(tag, "Error saving profile to local storage", e)
+            Toast.makeText(context, "Failed to save profile", Toast.LENGTH_SHORT).show()
+            
+            return false
+        }
+    }
+
+    fun loadUserFromLocalStorage(userId: String,callback: (UserData) -> Unit) {
+        try {
+            if (!localUsersFile.exists() || localUsersFile.readText().isBlank()) {
+                Log.e(tag, "Local Users File Not Found or Empty")
+                Toast.makeText(context, "User Data Not Found", Toast.LENGTH_SHORT).show()
+                return
+            }
+            var user : UserData
+            val fileContent = localUsersFile.readText()
+            if (fileContent.trim().startsWith("[")) {
+                val jsonArray = JSONArray(fileContent)
+                for (i in 0 until jsonArray.length()) {
+                    val jsonUser = jsonArray.getJSONObject(i)
+                    if (jsonUser.getString("uid") == userId) {
+                         user = UserData(
+                            uid = userId,
+                            displayName = jsonUser.getString("displayName") ?: "",
+                            phoneNumber = jsonUser.getString("phoneNumber") ?: "",
+                            password = jsonUser.getString("password") ?: "",
+                            userDescription = jsonUser.getString("userDescription") ?: "",
+                            userStatus = jsonUser.getString("userStatus") ?: "",
+                            online = jsonUser.getBoolean("online") ?: false,
+                            lastSeen = jsonUser.getLong("lastSeen")?.toString() ?: "",
+                            profilePictureUrl = jsonUser.getString("profilePictureUrl") ?: ""
+                        )
+
+                        callback(user)
+                    }
+                }
+            }
+            Log.e(tag, "User Not Found In Local Storage")
+            Toast.makeText(context, "User Not Found locally", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Log.e(tag, "Error Reading Local Users File", e)
+            Toast.makeText(context, "Error Loading User Data", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     // ============================
     // Chat Management Methods
     // ============================
@@ -200,8 +310,8 @@ object LocalStorageService {
     /**
      * Loads chats from local storage and updates the ChatManager and ChatAdapter
      */
-    fun loadChatsFromLocalStorageAndDisplay(chatManager: ChatManager, chatAdapter: ChatAdapter, tag: String) {
-        val localChats = loadChatsFromLocalStorageWithoutSaving(tag)
+    fun loadChatsFromLocalStorageAndDisplay(chatManager: ChatManager, chatAdapter: ChatAdapter, ) {
+        val localChats = loadChatsFromLocalStorageWithoutSaving()
         chatManager.clear()
         chatManager.pushAll(localChats)
         chatAdapter.updateData(chatManager.getAll())
@@ -210,9 +320,9 @@ object LocalStorageService {
     /**
      * Loads chats from local storage without updating the ChatManager
      */
-    fun loadChatsFromLocalStorageWithoutSaving(tag: String): List<Chat> {
+    fun loadChatsFromLocalStorageWithoutSaving(): List<Chat> {
         Log.d(tag, "Loading chats from local storage")
-        val jsonString = readChatsFromFile(tag)
+        val jsonString = readChatsFromFile()
         val localChats = mutableListOf<Chat>()
 
         if (jsonString.isEmpty()) {
@@ -264,7 +374,7 @@ object LocalStorageService {
     /**
      * Reads chat data from the local file
      */
-    private fun readChatsFromFile(tag: String): String {
+    private fun readChatsFromFile(): String {
         val file = File(context.filesDir, CHATS_FILE)
         val content = if (file.exists()) {
             val text = file.readText()
@@ -284,7 +394,7 @@ object LocalStorageService {
     /**
      * Saves all chats from the ChatManager to local storage
      */
-    fun saveChatsToLocalStorage(chatManager: ChatManager, tag: String) {
+    fun saveChatsToLocalStorage(chatManager: ChatManager, ) {
         val jsonArray = JSONArray()
         val allChats = chatManager.getAll()
 
@@ -310,13 +420,13 @@ object LocalStorageService {
         Log.d(tag, "Saving ${chatManager.size()} chats to local storage")
 
         val jsonString = jsonArray.toString()
-        writeChatsToFile(jsonString, tag)
+        writeChatsToFile(jsonString)
     }
 
     /**
      * Writes chat data to the local file
      */
-    private fun writeChatsToFile(jsonString: String, tag: String) {
+    private fun writeChatsToFile(jsonString: String, ) {
         try {
             val file = File(context.filesDir, CHATS_FILE)
             file.writeText(jsonString)

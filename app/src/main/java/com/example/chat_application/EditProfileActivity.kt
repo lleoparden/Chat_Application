@@ -1,6 +1,7 @@
 package com.example.chat_application
 
 import android.app.Activity
+import android.content.ContentValues
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -10,7 +11,10 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.View
-import android.widget.*
+import android.widget.ImageView
+import android.widget.ProgressBar
+import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
@@ -20,16 +24,21 @@ import androidx.appcompat.widget.Toolbar
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.request.RequestOptions
+import com.example.chat_application.services.FirebaseService
+import com.example.chat_application.services.LocalStorageService
 import com.github.dhaval2404.imagepicker.ImagePicker
 import com.google.android.material.textfield.TextInputEditText
-import com.google.firebase.firestore.FirebaseFirestore
-import okhttp3.*
-import org.json.JSONArray
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
-import java.util.*
+import java.util.Base64
 import java.util.concurrent.TimeUnit
 
 private const val TAG = "EditProfileActivity"
@@ -47,7 +56,6 @@ class EditProfileActivity : AppCompatActivity() {
 
     // Data objects
     private val firebaseEnabled by lazy { resources.getBoolean(R.bool.firebaseOn) }
-    private lateinit var db: FirebaseFirestore
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
@@ -71,14 +79,17 @@ class EditProfileActivity : AppCompatActivity() {
         // Initialize UI components and setup launchers
         initializeViews()
         setupImagePickerLauncher()
+        // Initialize services
+        LocalStorageService.initialize(this, ContentValues.TAG)
+
+        if (firebaseEnabled) {
+            FirebaseService.initialize(this,TAG,firebaseEnabled)
+        }
 
         // Get current user ID
         userId = UserSettings.userId
 
-        // Initialize Firebase if enabled
-        if (firebaseEnabled) {
-            db = FirebaseFirestore.getInstance()
-        }
+
 
         // Set click listeners
         setupClickListeners()
@@ -134,12 +145,33 @@ class EditProfileActivity : AppCompatActivity() {
 
     private fun loadUserData() {
         progressIndicator.visibility = View.VISIBLE
+        loadInfoIntoViews()
+    }
+    private fun loadInfoIntoViews(){
+        FirebaseService.loadUserFromFirebase(userId) { user ->
 
-        if (firebaseEnabled) {
-            loadUserFromFirebase()
-        } else {
-            loadUserFromLocalStorage()
+            nameEditText.setText(user.displayName)
+            statusEditText.setText(user.userStatus)
+            descriptionEditText.setText(user.userDescription)
+            phoneTextView.text = user.phoneNumber
+
+            // Check for local image first - we may have saved it locally previously
+            val localImageFile = File(filesDir, "profile_${userId}.jpg")
+            val imageUrl = user.profilePictureUrl
+            if (imageUrl.isNotEmpty()) {
+                profilePictureUrl = imageUrl
+                globalFunctions.loadImageFromUrl(imageUrl, profileImageView)
+
+                // Try to download and save the image locally for next time
+                downloadAndSaveImageLocally(imageUrl)
+            }else {
+                localImagePath = localImageFile.absolutePath
+                selectedImageUri = Uri.fromFile(localImageFile)
+                loadImageIntoView(selectedImageUri)
+            }
+
         }
+        progressIndicator.visibility = View.GONE
     }
 
     private fun pickImage() {
@@ -189,11 +221,41 @@ class EditProfileActivity : AppCompatActivity() {
         saveButton.visibility = View.GONE
         Toast.makeText(this, "Saving profile...", Toast.LENGTH_SHORT).show()
 
-        if (firebaseEnabled) {
-            saveProfileToFirebase(displayName, status, description)
-        } else {
-            saveProfileToLocalStorage(displayName, status, description)
+        val data = hashMapOf<String, Any>(
+            "displayName" to displayName,
+            "userStatus" to status,
+            "userDescription" to description,
+            "profilePictureUrl" to profilePictureUrl.toString()
+        )
+
+
+        FirebaseService.updateUserinFirebase(userId,data) {
+            if (it) {
+                // Update in chat list
+                updateUserInChatsList(displayName)
+
+            }
         }
+
+        val flag = LocalStorageService.updateUserToLocalStorage(
+            displayName,
+            status,
+            description,
+            userId,
+            localImagePath.toString(),
+            profilePictureUrl.toString(),
+            phoneTextView.text.toString(),
+        )
+        if (flag) {
+            // Also update in chat list if applicable
+            updateUserInChatsList(displayName)
+
+            finalizeProfileSave()
+        } else {
+            progressIndicator.visibility = View.GONE
+            saveButton.visibility = View.VISIBLE
+        }
+
     }
 
     private fun navigateBack() {
@@ -233,135 +295,9 @@ class EditProfileActivity : AppCompatActivity() {
 
     // ---- Local Storage Methods ----
 
-    private fun loadUserFromLocalStorage() {
-        try {
-            val localUsersFile = File(filesDir, "local_users.json")
-            if (!localUsersFile.exists() || localUsersFile.readText().isBlank()) {
-                Log.e(TAG, "Local Users File Not Found or Empty")
-                Toast.makeText(this, "User Data Not Found", Toast.LENGTH_SHORT).show()
-                progressIndicator.visibility = View.GONE
-                return
-            }
 
-            val fileContent = localUsersFile.readText()
-            if (fileContent.trim().startsWith("[")) {
-                val jsonArray = JSONArray(fileContent)
 
-                for (i in 0 until jsonArray.length()) {
-                    val jsonUser = jsonArray.getJSONObject(i)
-                    if (jsonUser.getString("uid") == userId) {
-                        nameEditText.setText(jsonUser.getString("displayName"))
-                        statusEditText.setText(jsonUser.optString("Status", ""))
-                        descriptionEditText.setText(jsonUser.optString("description", ""))
-                        phoneTextView.text = jsonUser.optString("phoneNumber", "N/A")
 
-                        // Load profile image - first try local path
-                        val profileImagePath = jsonUser.optString("profileImagePath", "")
-                        if (profileImagePath.isNotEmpty()) {
-                            val imageFile = File(profileImagePath)
-                            if (imageFile.exists()) {
-                                selectedImageUri = Uri.fromFile(imageFile)
-                                localImagePath = profileImagePath
-                                loadImageIntoView(selectedImageUri)
-                            }
-                        }
-
-                        // Then try URL if local image failed or doesn't exist
-                        if (selectedImageUri == null) {
-                            val imageUrl = jsonUser.optString("profilePictureUrl", "")
-                            if (imageUrl.isNotEmpty()) {
-                                profilePictureUrl = imageUrl
-                                globalFunctions.loadImageFromUrl(imageUrl,profileImageView)
-                            }
-                        }
-
-                        progressIndicator.visibility = View.GONE
-                        return
-                    }
-                }
-            }
-            Log.e(TAG, "User Not Found In Local Storage")
-            Toast.makeText(this, "User Not Found locally", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error Reading Local Users File", e)
-            Toast.makeText(this, "Error Loading User Data", Toast.LENGTH_SHORT).show()
-        } finally {
-            progressIndicator.visibility = View.GONE
-        }
-    }
-
-    private fun saveProfileToLocalStorage(displayName: String, status: String, description: String) {
-        try {
-            val localUsersFile = File(filesDir, "local_users.json")
-            val fileContent = if (localUsersFile.exists() && localUsersFile.readText().isNotBlank()) {
-                localUsersFile.readText()
-            } else {
-                "[]"
-            }
-
-            val jsonArray = JSONArray(fileContent)
-            var userFound = false
-
-            // Update existing user or add new one
-            for (i in 0 until jsonArray.length()) {
-                val jsonUser = jsonArray.getJSONObject(i)
-                if (jsonUser.getString("uid") == userId) {
-                    // Update basic info
-                    jsonUser.put("displayName", displayName)
-                    jsonUser.put("Status", status)
-                    jsonUser.put("description", description)
-
-                    // Always save local image path if available
-                    if (localImagePath != null) {
-                        jsonUser.put("profileImagePath", localImagePath)
-                    }
-
-                    // Also save URL if available (as backup or for online access)
-                    if (profilePictureUrl != null) {
-                        jsonUser.put("profilePictureUrl", profilePictureUrl)
-                    }
-
-                    userFound = true
-                    break
-                }
-            }
-
-            // If user not found, add new user
-            if (!userFound) {
-                val newUser = JSONObject().apply {
-                    put("uid", userId)
-                    put("displayName", displayName)
-                    put("Status", status)
-                    put("description", description)
-                    put("phoneNumber", phoneTextView.text.toString())
-
-                    // Always save local image path if available
-                    if (localImagePath != null) {
-                        put("profileImagePath", localImagePath)
-                    }
-
-                    // Also save URL if available
-                    if (profilePictureUrl != null) {
-                        put("profilePictureUrl", profilePictureUrl)
-                    }
-                }
-                jsonArray.put(newUser)
-            }
-
-            // Write updated JSON to file
-            localUsersFile.writeText(jsonArray.toString())
-
-            // Also update in chat list if applicable
-            updateUserInChatsList(displayName)
-
-            finalizeProfileSave()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error saving profile to local storage", e)
-            Toast.makeText(this, "Failed to save profile", Toast.LENGTH_SHORT).show()
-            progressIndicator.visibility = View.GONE
-            saveButton.visibility = View.VISIBLE
-        }
-    }
 
     private fun updateUserInChatsList(displayName: String) {
         try {
@@ -383,86 +319,6 @@ class EditProfileActivity : AppCompatActivity() {
 
     // ---- Firebase Methods ----
 
-    private fun loadUserFromFirebase() {
-        if (!firebaseEnabled) {
-            loadUserFromLocalStorage()
-            return
-        }
-
-        db.collection("users").document(userId).get()
-            .addOnSuccessListener { document ->
-                if (document != null && document.exists()) {
-                    nameEditText.setText(document.getString("displayName") ?: "")
-                    statusEditText.setText(document.getString("userStatus") ?: "")
-                    descriptionEditText.setText(document.getString("userDescription") ?: "")
-                    phoneTextView.text = document.getString("phoneNumber") ?: "N/A"
-
-                    // Check for local image first - we may have saved it locally previously
-                    val localImageFile = File(filesDir, "profile_${userId}.jpg")
-                    if (localImageFile.exists()) {
-                        localImagePath = localImageFile.absolutePath
-                        selectedImageUri = Uri.fromFile(localImageFile)
-                        loadImageIntoView(selectedImageUri)
-                    }
-                    // Otherwise, try to load from URL
-                    else {
-                        val imageUrl = document.getString("profilePictureUrl")
-                        if (!imageUrl.isNullOrEmpty()) {
-                            profilePictureUrl = imageUrl
-                            globalFunctions.loadImageFromUrl(imageUrl,profileImageView)
-
-                            // Try to download and save the image locally for next time
-                            downloadAndSaveImageLocally(imageUrl)
-                        }
-                    }
-                } else {
-                    Log.d(TAG, "User not found in Firebase, trying local storage")
-                    loadUserFromLocalStorage()
-                }
-            }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "Error loading user data from Firebase", e)
-                Toast.makeText(this, "Failed to load profile", Toast.LENGTH_SHORT).show()
-                loadUserFromLocalStorage() // Fallback to local
-            }
-            .addOnCompleteListener {
-                progressIndicator.visibility = View.GONE
-            }
-    }
-
-    private fun saveProfileToFirebase(displayName: String, status: String, description: String) {
-        if (!firebaseEnabled) {
-            saveProfileToLocalStorage(displayName, status, description)
-            return
-        }
-
-        val data = hashMapOf<String, Any>(
-            "displayName" to displayName,
-            "userStatus" to status,
-            "userDescription" to description
-        )
-
-        // Add image URL if available for online access
-        if (profilePictureUrl != null) {
-            data["profilePictureUrl"] = profilePictureUrl!!
-        }
-
-        db.collection("users").document(userId)
-            .update(data)
-            .addOnSuccessListener {
-                // Update in chat list
-                updateUserInChatsList(displayName)
-
-                // Also make sure to save everything locally
-                saveProfileToLocalStorage(displayName, status, description)
-            }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "Error updating profile in Firebase", e)
-                Toast.makeText(this, "Failed to save profile online, saving locally", Toast.LENGTH_SHORT).show()
-                // Still try to save locally even if Firebase failed
-                saveProfileToLocalStorage(displayName, status, description)
-            }
-    }
 
     // ---- API Methods ----
 

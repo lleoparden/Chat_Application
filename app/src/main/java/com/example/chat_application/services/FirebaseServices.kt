@@ -1,12 +1,22 @@
+@file:Suppress("IMPLICIT_CAST_TO_ANY")
+
 package com.example.chat_application.services
 
+import android.annotation.SuppressLint
 import android.content.ContentValues.TAG
+import android.content.Context
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import android.view.View
+import android.widget.Toast
 import com.example.chat_application.Chat
 import com.example.chat_application.ChatAdapter
 import com.example.chat_application.ChatManager
 import com.example.chat_application.UserData
 import com.example.chat_application.UserSettings
+import com.example.chat_application.globalFunctions
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -15,12 +25,16 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.QuerySnapshot
+import java.io.File
+import kotlin.properties.Delegates
 
 
 /**
  * Service for managing Firebase connections and operations.
  * Handles real-time chat synchronization, user data management, and authentication.
  */
+
+@SuppressLint("StaticFieldLeak")
 object FirebaseService {
     // Firebase components
     private lateinit var firestore: FirebaseFirestore
@@ -28,24 +42,35 @@ object FirebaseService {
     private lateinit var chatsReference: DatabaseReference
     private lateinit var usersReference: DatabaseReference
 
+
     // Active listeners
     private var chatsListener: ChildEventListener? = null
     private var connectionListener: ValueEventListener? = null
+    private var messagesListener: ChildEventListener? = null
+
+    private lateinit var context: Context
+    private lateinit var tag :String
+    private var firebaseEnabled by Delegates.notNull<Boolean>()
 
     /**
      * Initialize Firebase services
      */
-    fun initialize() {
+
+    fun initialize(Context: Context, Tag :String,FirebaseEnabled:Boolean) {
         firestore = FirebaseFirestore.getInstance()
         firebaseDatabase = FirebaseDatabase.getInstance()
         chatsReference = firebaseDatabase.getReference("chats")
         usersReference = firebaseDatabase.getReference("users")
+
+        context = Context
+        tag = Tag
+        firebaseEnabled = FirebaseEnabled
     }
 
     /**
      * Set up Firebase connection monitoring and fallback mechanisms
      */
-    fun setupFirebase(tag: String, chatManager: ChatManager, chatAdapter: ChatAdapter) {
+    fun setupFirebase(chatManager: ChatManager, chatAdapter: ChatAdapter) {
         try {
             // Add connection status listener with improved error handling
             val connectedRef = firebaseDatabase.getReference(".info/connected")
@@ -54,17 +79,17 @@ object FirebaseService {
                     val connected = snapshot.getValue(Boolean::class.java) ?: false
                     if (!connected) {
                         Log.w(tag, "Device is offline, using local data")
-                        LocalStorageService.loadChatsFromLocalStorageAndDisplay(chatManager, chatAdapter, tag)
+                        LocalStorageService.loadChatsFromLocalStorageAndDisplay(chatManager, chatAdapter)
                     } else {
                         // If we're connected, set up real-time chat listener
-                        setupRealTimeChatListener(tag, chatManager, chatAdapter)
+                        setupRealTimeChatListener(chatManager, chatAdapter)
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e(tag, "Firebase connection listener cancelled: ${error.message}")
                     // When connection is cancelled, fall back to local data
-                    LocalStorageService.loadChatsFromLocalStorageAndDisplay(chatManager, chatAdapter, tag)
+                    LocalStorageService.loadChatsFromLocalStorageAndDisplay(chatManager, chatAdapter)
                 }
             }
 
@@ -74,14 +99,14 @@ object FirebaseService {
             e.printStackTrace()
 
             // Fall back to local storage
-            LocalStorageService.loadChatsFromLocalStorageAndDisplay(chatManager, chatAdapter, tag)
+            LocalStorageService.loadChatsFromLocalStorageAndDisplay(chatManager, chatAdapter)
         }
     }
 
     /**
      * Set up real-time listeners for chat updates
      */
-    private fun setupRealTimeChatListener(tag: String, chatManager: ChatManager, chatAdapter: ChatAdapter) {
+    private fun setupRealTimeChatListener( chatManager: ChatManager, chatAdapter: ChatAdapter) {
         // Remove existing listener if any
         removeRealTimeChatListener()
 
@@ -102,14 +127,14 @@ object FirebaseService {
                             // Chat doesn't exist - add it
                             chatManager.push(chat)
                             chatAdapter.updateData(chatManager.getAll())
-                            LocalStorageService.saveChatsToLocalStorage(chatManager, tag)
+                            LocalStorageService.saveChatsToLocalStorage(chatManager)
                             Log.d(tag, "New chat added from realtime event: ${chat.getEffectiveDisplayName()}")
                         } else {
                             // Chat exists - update if needed based on timestamp
                             if (existingChat.timestamp < chat.timestamp) {
                                 chatManager.updateById(chat.id, chat)
                                 chatAdapter.updateData(chatManager.getAll())
-                                LocalStorageService.saveChatsToLocalStorage(chatManager, tag)
+                                LocalStorageService.saveChatsToLocalStorage(chatManager)
                                 Log.d(tag, "Existing chat updated with newer data: ${chat.getEffectiveDisplayName()}")
                             }
                         }
@@ -133,7 +158,7 @@ object FirebaseService {
                         // Update existing chat
                         chatManager.updateById(chat.id, chat)
                         chatAdapter.updateData(chatManager.getAll())
-                        LocalStorageService.saveChatsToLocalStorage(chatManager, tag)
+                        LocalStorageService.saveChatsToLocalStorage(chatManager)
                         Log.d(tag, "Chat updated: ${chat.getEffectiveDisplayName()}")
                     } else if (chat != null &&
                         chat.participantIds.containsKey(UserSettings.userId) &&
@@ -141,7 +166,7 @@ object FirebaseService {
                         // User was removed from this chat, so remove it from the UI
                         chatManager.removeById(chat.id)
                         chatAdapter.updateData(chatManager.getAll())
-                        LocalStorageService.saveChatsToLocalStorage(chatManager, tag)
+                        LocalStorageService.saveChatsToLocalStorage(chatManager)
                         Log.d(tag, "Chat removed (user inactive): ${chat.id}")
                     }
                 } catch (e: Exception) {
@@ -156,7 +181,7 @@ object FirebaseService {
                         // Remove from chat manager
                         chatManager.removeById(chatId)
                         chatAdapter.updateData(chatManager.getAll())
-                        LocalStorageService.saveChatsToLocalStorage(chatManager, tag)
+                        LocalStorageService.saveChatsToLocalStorage(chatManager)
                         Log.d(tag, "Chat removed: $chatId")
                     }
                 } catch (e: Exception) {
@@ -222,7 +247,7 @@ object FirebaseService {
     /**
      * Remove real-time chat listener to prevent memory leaks
      */
-    fun removeRealTimeChatListener() {
+    private fun removeRealTimeChatListener() {
         chatsListener?.let {
             chatsReference.removeEventListener(it)
             chatsListener = null
@@ -233,7 +258,7 @@ object FirebaseService {
     /**
      * Remove connection status listener to prevent memory leaks
      */
-    fun removeConnectionListener() {
+    private fun removeConnectionListener() {
         connectionListener?.let {
             firebaseDatabase.getReference(".info/connected").removeEventListener(it)
             connectionListener = null
@@ -252,7 +277,7 @@ object FirebaseService {
     /**
      * Delete a chat by ID from Firebase
      */
-    fun removeUserFromParticipants(chatId: String) {
+    fun removeUserFromParticipants(chatId:String) {
         val currentUserId = UserSettings.userId
 
         chatsReference.child(chatId)
@@ -267,7 +292,7 @@ object FirebaseService {
     /**
      * Fetch user data and update display names in the UI
      */
-    fun fetchUserDataAndUpdateDisplayNames(chatManager: ChatManager, tag: String, chatAdapter: ChatAdapter) {
+    fun fetchUserDataAndUpdateDisplayNames(chatManager: ChatManager, chatAdapter: ChatAdapter) {
         // Create a map to store user IDs and their display names
         val userDisplayNames = mutableMapOf<String, String>()
 
@@ -319,7 +344,7 @@ object FirebaseService {
 
                     // If we've processed all users, update display names
                     if (processedCount == allParticipantIds.size) {
-                        updateDisplayNamesAndRefresh(userDisplayNames, chatManager, chatAdapter, tag)
+                        updateDisplayNamesAndRefresh(userDisplayNames, chatManager, chatAdapter)
                     }
                 }
                 .addOnFailureListener { e ->
@@ -333,7 +358,7 @@ object FirebaseService {
 
                     // If we've processed all users, proceed even with some errors
                     if (processedCount == allParticipantIds.size) {
-                        updateDisplayNamesAndRefresh(userDisplayNames, chatManager, chatAdapter, tag)
+                        updateDisplayNamesAndRefresh(userDisplayNames, chatManager, chatAdapter)
                     }
                 }
         }
@@ -342,7 +367,7 @@ object FirebaseService {
     /**
      * Update display names in chat manager and refresh UI
      */
-    private fun updateDisplayNamesAndRefresh(userDisplayNames: Map<String, String>, chatManager: ChatManager, chatAdapter: ChatAdapter, tag: String) {
+    private fun updateDisplayNamesAndRefresh(userDisplayNames: Map<String, String>, chatManager: ChatManager, chatAdapter: ChatAdapter) {
         // Update display names in chat manager
         chatManager.updateDisplayNames(userDisplayNames)
 
@@ -350,27 +375,47 @@ object FirebaseService {
         chatAdapter.updateData(chatManager.getAll())
 
         // Save changes
-        LocalStorageService.saveChatsToLocalStorage(chatManager, tag)
+        LocalStorageService.saveChatsToLocalStorage(chatManager)
 
         // Update Firebase
-        saveChatsToFirebase(chatManager, tag)
+        saveChatsToFirebase(chatManager)
     }
 
     /**
      * Check connection status and load chats from Firebase if online
      */
-    fun checkConnectionAndLoadChatsFromFirebase(localChats: List<Chat>, tag: String, chatAdapter: ChatAdapter, chatManager: ChatManager) {
+    fun checkConnectionAndLoadChatsFromFirebase(localChats: List<Chat>, chatAdapter: ChatAdapter, chatManager: ChatManager) {
         try {
+            // First, ensure Firebase is properly initialized
+            if (!this::firebaseDatabase.isInitialized) {
+                Log.e(tag, "Firebase database not initialized")
+                return
+            }
+
+            // Add timeout to fallback to local data if Firebase doesn't respond
+            val timeoutHandler = Handler(Looper.getMainLooper())
+            val timeoutRunnable = Runnable {
+                Log.d(tag, "Firebase connection timeout - using local data")
+                // Already loaded local data, so no action needed
+            }
+
+            // Set timeout for 5 seconds
+            timeoutHandler.postDelayed(timeoutRunnable, 5000)
+
+            // Use ValueEventListener instead of SingleValueEvent to catch connection changes
             val connectedRef = firebaseDatabase.getReference(".info/connected")
-            connectedRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            connectedRef.addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     try {
                         val connected = snapshot.getValue(Boolean::class.java) ?: false
                         if (connected) {
-                            loadChatsFromFirebaseAndMerge(localChats, tag, chatManager, chatAdapter)
+                            // Cancel timeout since we're connected
+                            timeoutHandler.removeCallbacks(timeoutRunnable)
+                            Log.d(tag, "Firebase connected, loading chats")
+                            loadChatsFromFirebaseAndMerge(localChats, chatManager, chatAdapter)
                         } else {
-                            // Explicitly handle the offline case
-                            Log.d(tag, "Device is offline, using local data only")
+                            // Still waiting for connection or disconnected
+                            Log.d(tag, "Firebase not connected yet")
                         }
                     } catch (e: Exception) {
                         Log.e(tag, "Error processing connection status: ${e.message}")
@@ -378,6 +423,8 @@ object FirebaseService {
                 }
 
                 override fun onCancelled(error: DatabaseError) {
+                    // Cancel timeout in case of explicit cancellation
+                    timeoutHandler.removeCallbacks(timeoutRunnable)
                     Log.e(tag, "Failed to check connection status: ${error.message}")
                 }
             })
@@ -389,7 +436,7 @@ object FirebaseService {
     /**
      * Load chats from Firebase and merge with local chats
      */
-    private fun loadChatsFromFirebaseAndMerge(localChats: List<Chat>, tag: String, chatManager: ChatManager, chatAdapter: ChatAdapter) {
+    private fun loadChatsFromFirebaseAndMerge(localChats: List<Chat>, chatManager: ChatManager, chatAdapter: ChatAdapter) {
         Log.d(tag, "Loading chats from Firebase")
 
         try {
@@ -436,12 +483,12 @@ object FirebaseService {
                             chatAdapter.updateData(chatManager.getAll())
 
                             // Save the merged data back to local storage
-                            LocalStorageService.saveChatsToLocalStorage(chatManager, tag)
+                            LocalStorageService.saveChatsToLocalStorage(chatManager)
 
                             Log.d(tag, "Merged ${mergedChats.size} chats from local and Firebase")
 
                             // Set up real-time listener for future updates
-                            setupRealTimeChatListener(tag, chatManager, chatAdapter)
+                            setupRealTimeChatListener(chatManager, chatAdapter)
                         } catch (e: Exception) {
                             Log.e(tag, "Error updating UI with merged chats: ${e.message}")
                             e.printStackTrace()
@@ -485,7 +532,7 @@ object FirebaseService {
     /**
      * Save chats to Firebase database
      */
-    fun saveChatsToFirebase(chatManager: ChatManager, tag: String) {
+    fun saveChatsToFirebase(chatManager: ChatManager) {
         if (!this::chatsReference.isInitialized) {
             return
         }
@@ -522,11 +569,16 @@ object FirebaseService {
         }
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+
     /**
      * Verify user exists in Firestore
      */
     fun verifyUserInFirestore(
-        userId: String,
+        userId:String,
         onSuccess: (UserData) -> Unit,
         onFailure: (Exception?) -> Unit
     ) {
@@ -596,7 +648,7 @@ object FirebaseService {
      */
     fun saveUserToFirebase(
         userData: HashMap<String, String>,
-        userId: String,
+        userId:String,
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
@@ -613,7 +665,7 @@ object FirebaseService {
     /**
      * Create user data hashmap for Firebase
      */
-    fun createUserData(userId: String, name: String, phone: String, password: String): HashMap<String, String> {
+    fun createUserData(userId:String, name: String, phone: String, password: String ): HashMap<String, String> {
         return hashMapOf(
             "uid" to userId,
             "displayName" to name,
@@ -653,7 +705,7 @@ object FirebaseService {
     /**
      * Handle login query result from Firestore
      */
-    fun handleLoginQueryResult(
+    private fun handleLoginQueryResult(
         documents: QuerySnapshot,
         password: String,
         onSuccess: (String, String) -> Unit,
@@ -685,4 +737,75 @@ object FirebaseService {
             onUserNotFound()
         }
     }
+
+    fun loadUserFromFirebase(
+        userId:String,
+        callback: (UserData) -> Unit
+    ) {
+        if (!firebaseEnabled) {
+            LocalStorageService.loadUserFromLocalStorage(userId) { user ->
+                callback(user)
+            }
+            return // prevent continuing to Firebase
+        }
+
+        firestore.collection("users").document(userId).get()
+            .addOnSuccessListener { document ->
+                if (document != null && document.exists()) {
+                    val userData = UserData(
+                        uid = userId,
+                        displayName = document.getString("displayName") ?: "",
+                        phoneNumber = document.getString("phoneNumber") ?: "",
+                        password = document.getString("password") ?: "",
+                        userDescription = document.getString("userDescription") ?: "",
+                        userStatus = document.getString("userStatus") ?: "",
+                        online = document.getBoolean("online") ?: false,
+                        lastSeen = document.getLong("lastSeen")?.toString() ?: "",
+                        profilePictureUrl = document.getString("profilePictureUrl") ?: ""
+                    )
+                    callback(userData)
+                } else {
+                    Log.d(tag, "User not found in Firebase, trying local storage")
+                    LocalStorageService.loadUserFromLocalStorage(userId) { user ->
+                        callback(user)
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(tag, "Error loading user data from Firebase", e)
+                Toast.makeText(context, "Failed to load profile", Toast.LENGTH_SHORT).show()
+                LocalStorageService.loadUserFromLocalStorage(userId) { user ->
+                    callback(user)
+                }
+            }
+    }
+
+
+    fun updateUserinFirebase(userId:String,data: HashMap<String,Any>,callback: (Boolean) -> Unit) {
+        if (!firebaseEnabled) {
+            callback(false)
+            return
+        }
+
+        firestore.collection("users").document(userId)
+            .update(data)
+            .addOnSuccessListener {
+                // Update in chat list
+                Log.d(tag, "uploaded successfully")
+                callback(true)
+
+            }
+            .addOnFailureListener { e ->
+                Log.e(tag, "Error updating profile in Firebase", e)
+                callback(false)
+            }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    
+    
 }

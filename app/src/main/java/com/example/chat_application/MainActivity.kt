@@ -1,5 +1,6 @@
 package com.example.chat_application
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -37,7 +38,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
     private lateinit var bottomNavigation: BottomNavigationView
     private lateinit var searchBar: EditText
     private lateinit var searchContainer: LinearLayout
-    private lateinit var shimmerLayout: ShimmerFrameLayout
     private var isSearchVisible = false
 
     // Selection mode components
@@ -53,6 +53,8 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
     private lateinit var chatAdapter: ChatAdapter
     private val chatManager = ChatManager()
 
+    private val firebaseEnabled by lazy { resources.getBoolean(R.bool.firebaseOn) }
+
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,12 +68,12 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         initViews()
         setupUI()
         setupRecyclerView()
-        if (resources.getBoolean(R.bool.firebaseOn)) {
-            FirebaseService.setupFirebase(TAG,chatManager,chatAdapter)
+        // Initialize services
+        LocalStorageService.initialize(this, ContentValues.TAG)
+
+        if (firebaseEnabled) {
+            FirebaseService.initialize(this,TAG,firebaseEnabled)
         }
-
-
-
 
         // Load data
         loadChats()
@@ -87,7 +89,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         bottomNavigation = findViewById(R.id.bottomNavigation)
         searchBar = findViewById(R.id.searchBar)
         searchContainer = findViewById(R.id.searchContainer)
-        shimmerLayout = findViewById(R.id.shimmerLayout)  // Initialize shimmer layout
 
         // Initially hide search bar
         searchContainer.visibility = View.GONE
@@ -122,13 +123,13 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         // Setup settings button
         settingsButton.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
-            finish()
+
         }
 
         // Setup FAB
         newChatFab.setOnClickListener {
             startActivity(Intent(this, AddNewChatActivity::class.java))
-            finish()
+
         }
 
         // Setup bottom navigation
@@ -137,7 +138,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
                 R.id.navigation_chats -> true // Already on chats page
                 R.id.navigation_stories -> {
                     startActivity(Intent(this, StoryListActivity::class.java))
-                    finish()
+
                     true
                 }
                 else -> false
@@ -246,7 +247,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
             File(filesDir,"messages_${chatId}.json").delete()
 
             // Remove from Firebase if enabled
-            if (resources.getBoolean(R.bool.firebaseOn)) {
+            if (firebaseEnabled) {
                 FirebaseService.removeUserFromParticipants(chatId)
             }
         }
@@ -256,7 +257,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         chatManager.pushAll(updatedChats)
 
         // Save to local storage
-        LocalStorageService.saveChatsToLocalStorage(chatManager, TAG)
+        LocalStorageService.saveChatsToLocalStorage(chatManager)
 
         // Show confirmation
         if (selectedChatIds.size > 1) {
@@ -342,7 +343,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
 
 
         // Load local chats first
-        val localChats = LocalStorageService.loadChatsFromLocalStorageWithoutSaving(TAG)
+        val localChats = LocalStorageService.loadChatsFromLocalStorageWithoutSaving()
 
         // Update UI with local chats immediately
         chatManager.clear()
@@ -350,12 +351,12 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         chatAdapter.updateData(chatManager.getAll()) // Add this line to update adapter
 
 
-        FirebaseService.fetchUserDataAndUpdateDisplayNames(chatManager, TAG,chatAdapter)
+        FirebaseService.fetchUserDataAndUpdateDisplayNames(chatManager,chatAdapter)
 
 
         // Only attempt Firebase loading if explicitly enabled AND we're online
-        if (resources.getBoolean(R.bool.firebaseOn)) {
-            FirebaseService.checkConnectionAndLoadChatsFromFirebase(localChats,TAG,chatAdapter,chatManager)
+        if (firebaseEnabled) {
+            FirebaseService.checkConnectionAndLoadChatsFromFirebase(localChats,chatAdapter,chatManager)
         }
     }
 
@@ -363,10 +364,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
     //region Event Handling
 
     override fun onChatClick(chat: Chat) {
-        // First hide shimmer if it's visible
-        if (shimmerLayout.visibility == View.VISIBLE) {
-
-        }
 
         if (isInSelectionMode) {
             toggleChatSelection(chat)
@@ -374,11 +371,10 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
             val intent = Intent(this, ChatRoomActivity::class.java).apply {
                 putExtra("CHAT_OBJECT", chat)
             }
-            if (resources.getBoolean(R.bool.firebaseOn)) {
-                FirebaseService.saveChatsToFirebase(chatManager,TAG)
+            if (firebaseEnabled) {
+                FirebaseService.saveChatsToFirebase(chatManager)
             }
             startActivity(intent)
-            finish()
         }
     }
 
