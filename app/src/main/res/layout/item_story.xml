@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:id = "@+id/item_story"
+    android:layout_marginBottom="8dp"
+    android:background="@drawable/chatlistborder"
+    android:clickable="true"
+    android:focusable="true"
+    android:padding="12dp"  >
+
+    <ImageView
+        android:id="@+id/storyProfileImageView"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginLeft="7dp"
+        android:background="@drawable/circle_background"
+        android:clipToOutline="true"
+        android:backgroundTint="?attr/AuthButton"
+        android:contentDescription="Profile"
+        android:src="@drawable/ic_person"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/storyNameTextView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:textColor="?attr/colorOnSecondary"
+        android:textSize="21dp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toEndOf="@+id/storyProfileImageView"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="User Name" />
+
+    <TextView
+        android:id="@+id/storyCountView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="8dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="?attr/colorOnSecondary"
+        android:textSize="14sp"
+        app:layout_constraintStart_toEndOf="@+id/storyProfileImageView"
+        app:layout_constraintTop_toBottomOf="@+id/storyNameTextView"
+        tools:text="Status Here" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

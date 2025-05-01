@@ -89,6 +89,35 @@ object globalFunctions {
             }
     }
 
+    fun getAllUserIds(callback: (List<String>?) -> Unit) {
+        val db = FirebaseFirestore.getInstance()
+
+        db.collection("users")
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                if (!querySnapshot.isEmpty) {
+                    val userIdsList = mutableListOf<String>()
+
+                    for (document in querySnapshot.documents) {
+                        // Add each user's ID to our list
+                        document.id.let { userId ->
+                            userIdsList.add(userId)
+                        }
+                    }
+
+                    Log.d(TAG, "Successfully fetched ${userIdsList.size} user IDs")
+                    callback(userIdsList)
+                } else {
+                    Log.d(TAG, "No users found in database")
+                    callback(emptyList())
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Error fetching user IDs", e)
+                callback(null)
+            }
+    }
+
     fun getGroupPfp(groupid: String, callback: (String?) -> Unit) {
 
 //        if (groupCache.containsKey(groupid)) {
