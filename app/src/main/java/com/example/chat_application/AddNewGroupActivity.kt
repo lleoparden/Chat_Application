@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.chat_application.adapters.SelectedMemberAdapter
 import com.example.chat_application.adapters.UserAdapter
 import com.example.chat_application.dataclasses.Chat
 import com.example.chat_application.dataclasses.UserData
