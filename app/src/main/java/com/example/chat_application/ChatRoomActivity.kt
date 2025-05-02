@@ -1,6 +1,14 @@
 package com.example.chat_application
 
 import android.content.Intent
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import android.os.Build
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
+import android.view.MotionEvent
 import android.graphics.Rect
 import android.os.Bundle
 import android.util.Log
@@ -56,6 +64,13 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var selectionCountText: TextView
     private lateinit var deleteAction: ImageButton
 
+    private lateinit var voiceRecorder: VoiceRecorder
+    private lateinit var recordButton: ImageButton
+    private lateinit var recordingLayout: View
+    private lateinit var recordStateText: TextView
+    private var isRecording = false
+    private val RECORD_AUDIO_PERMISSION_CODE = 101
+
     // Data & Adapters
     private lateinit var messageAdapter: MessageAdapter
     private val messageList = mutableListOf<Message>()
@@ -77,9 +92,11 @@ class ChatRoomActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setupThemeAndLayout(savedInstanceState)
+        voiceRecorder = VoiceRecorder(this)
         setupKeyboardBehavior()
         initializeComponents()
         setupClickListeners()
+
 
         loadMessagesFromLocalStorage()
 
@@ -87,21 +104,12 @@ class ChatRoomActivity : AppCompatActivity() {
             setupRealtimeMessageListener()
         }
 
-
-        if ( resources.getBoolean(R.bool.firebaseOn)) {
+        if (resources.getBoolean(R.bool.firebaseOn)) {
             val db = FirebaseFirestore.getInstance()
             globalFunctions.setUserOnline(UserSettings.userId, db)
         }
-
     }
 
-    override fun onDestroy() {
-        if (resources.getBoolean(R.bool.firebaseOn)) {
-            globalFunctions.setUserOffline(UserSettings.userId)
-        }
-        removeRealtimeMessageListener()
-        super.onDestroy()
-    }
 
     //region Setup Methods
 
@@ -166,9 +174,6 @@ class ChatRoomActivity : AppCompatActivity() {
     }
 
 
-
-
-
     private fun initializeViews() {
         sendBtn = findViewById(R.id.sendButton)
         backBtn = findViewById(R.id.backButton)
@@ -178,6 +183,17 @@ class ChatRoomActivity : AppCompatActivity() {
         messagesRecyclerView = findViewById(R.id.messagesRecyclerView)
         nameView = findViewById(R.id.contactNameTextView)
         inputLayout = findViewById(R.id.messageInputLayout)
+
+
+
+        recordButton = findViewById(R.id.recordButton)
+        recordingLayout = findViewById(R.id.recordingLayout)
+        recordStateText = findViewById(R.id.recordStateText)
+
+        // Initially hide recording UI
+        findViewById<LinearLayout>(R.id.recordingLayout).visibility = View.GONE
+
+
 
         // New views for selection mode
         normalToolbarContent = findViewById(R.id.normalToolbarContent)
@@ -380,6 +396,8 @@ class ChatRoomActivity : AppCompatActivity() {
             }
         }
 
+        setupVoiceRecordingButton()
+
         profileImageView.setOnClickListener {
             if (chat.type == "group") {
                 val intent = Intent(this, GroupProfileActivity::class.java).apply {
@@ -493,6 +511,13 @@ class ChatRoomActivity : AppCompatActivity() {
                 put("senderId", message.senderId)
                 put("content", message.content)
                 put("timestamp", message.timestamp)
+                put("messageType", message.messageType.toString())
+
+                if (message.messageType == MessageType.VOICE_NOTE) {
+                    put("voiceNoteDuration", message.voiceNoteDuration)
+                    put("voiceNoteLocalPath", message.voiceNoteLocalPath)
+                    put("voiceNoteBase64", message.voiceNoteBase64)
+                }
 
                 // Create a JSONObject for readStatus
                 val readStatusObject = JSONObject()
@@ -544,14 +569,38 @@ class ChatRoomActivity : AppCompatActivity() {
             val messageObject = jsonArray.getJSONObject(i)
             val readStatus = parseReadStatus(messageObject)
 
-            val message = Message(
-                id = messageObject.getString("id"),
-                chatId = messageObject.getString("chatId"),
-                senderId = messageObject.getString("senderId"),
-                content = messageObject.getString("content"),
-                timestamp = messageObject.getLong("timestamp"),
-                readStatus = readStatus
-            )
+            // Determine message type
+            val messageTypeStr = messageObject.optString("messageType", MessageType.TEXT.toString())
+            val messageType = try {
+                MessageType.valueOf(messageTypeStr)
+            } catch (e: Exception) {
+                MessageType.TEXT
+            }
+
+            val message = if (messageType == MessageType.VOICE_NOTE) {
+                Message(
+                    id = messageObject.getString("id"),
+                    chatId = messageObject.getString("chatId"),
+                    senderId = messageObject.getString("senderId"),
+                    content = messageObject.getString("content"),
+                    timestamp = messageObject.getLong("timestamp"),
+                    readStatus = readStatus,
+                    messageType = messageType,
+                    voiceNoteDuration = messageObject.optInt("voiceNoteDuration", 0),
+                    voiceNoteLocalPath = messageObject.optString("voiceNoteLocalPath", ""),
+                    voiceNoteBase64 = messageObject.optString("voiceNoteBase64", "")
+                )
+            } else {
+                Message(
+                    id = messageObject.getString("id"),
+                    chatId = messageObject.getString("chatId"),
+                    senderId = messageObject.getString("senderId"),
+                    content = messageObject.getString("content"),
+                    timestamp = messageObject.getLong("timestamp"),
+                    readStatus = readStatus,
+                    messageType = messageType
+                )
+            }
 
             messageList.add(message)
         }
@@ -587,14 +636,30 @@ class ChatRoomActivity : AppCompatActivity() {
     //region Firebase Methods
 
     private fun saveMessageToFirebase(messageData: Message, messageId: String) {
-        val messageMap = hashMapOf(
-            "id" to messageData.id,
-            "chatId" to messageData.chatId,
-            "senderId" to messageData.senderId,
-            "content" to messageData.content,
-            "timestamp" to messageData.timestamp,
-            "readStatus" to messageData.readStatus
-        )
+        val messageMap = if (messageData.messageType == MessageType.VOICE_NOTE) {
+            hashMapOf(
+                "id" to messageData.id,
+                "chatId" to messageData.chatId,
+                "senderId" to messageData.senderId,
+                "content" to messageData.content,
+                "timestamp" to messageData.timestamp,
+                "readStatus" to messageData.readStatus,
+                "messageType" to messageData.messageType.toString(),
+                "voiceNoteDuration" to messageData.voiceNoteDuration,
+                "voiceNoteLocalPath" to "", // Don't save local path to Firebase
+                "voiceNoteBase64" to messageData.voiceNoteBase64 // Save the Base64 data instead
+            )
+        } else {
+            hashMapOf(
+                "id" to messageData.id,
+                "chatId" to messageData.chatId,
+                "senderId" to messageData.senderId,
+                "content" to messageData.content,
+                "timestamp" to messageData.timestamp,
+                "readStatus" to messageData.readStatus,
+                "messageType" to messageData.messageType.toString()
+            )
+        }
 
         // Save under messages/chatId/messageId in Realtime Database
         database.child("messages")
@@ -687,6 +752,13 @@ class ChatRoomActivity : AppCompatActivity() {
             val content = messageMap["content"] as? String ?: ""
             val timestamp = (messageMap["timestamp"] as? Long) ?: 0L
 
+            val messageTypeStr = messageMap["messageType"] as? String ?: MessageType.TEXT.toString()
+            val messageType = try {
+                MessageType.valueOf(messageTypeStr)
+            } catch (e: Exception) {
+                MessageType.TEXT
+            }
+
             val readStatusMap = HashMap<String, Boolean>()
             val readStatusRaw = messageMap["readStatus"] as? Map<*, *>
             readStatusRaw?.forEach { (key, value) ->
@@ -695,19 +767,78 @@ class ChatRoomActivity : AppCompatActivity() {
                 }
             }
 
-            return Message(
-                id = id,
-                chatId = chatId,
-                senderId = senderId,
-                content = content,
-                timestamp = timestamp,
-                readStatus = readStatusMap
-            )
+            return if (messageType == MessageType.VOICE_NOTE) {
+                val voiceNoteDuration = (messageMap["voiceNoteDuration"] as? Long)?.toInt() ?: 0
+                val voiceNoteBase64 = messageMap["voiceNoteBase64"] as? String ?: ""
+
+                // Generate a local file path for the voice note
+                val localPath = if (voiceNoteBase64.isNotEmpty()) {
+                    // Create a unique filename based on message ID
+                    val voiceNoteDir = File(filesDir, "VoiceNotes")
+                    if (!voiceNoteDir.exists()) {
+                        voiceNoteDir.mkdirs()
+                    }
+                    val localFilePath = "${voiceNoteDir.absolutePath}/VN_${id}.3gp"
+
+                    // Save the Base64 data to a local file if it doesn't exist already
+                    val localFile = File(localFilePath)
+                    if (!localFile.exists() && voiceNoteBase64.isNotEmpty()) {
+                        voiceRecorder.saveBase64ToFile(voiceNoteBase64, localFilePath)
+                    }
+
+                    localFilePath
+                } else {
+                    ""
+                }
+
+                Message(
+                    id = id,
+                    chatId = chatId,
+                    senderId = senderId,
+                    content = content,
+                    timestamp = timestamp,
+                    readStatus = readStatusMap,
+                    messageType = messageType,
+                    voiceNoteDuration = voiceNoteDuration,
+                    voiceNoteLocalPath = localPath,
+                    voiceNoteBase64 = voiceNoteBase64
+                )
+            } else {
+                Message(
+                    id = id,
+                    chatId = chatId,
+                    senderId = senderId,
+                    content = content,
+                    timestamp = timestamp,
+                    readStatus = readStatusMap,
+                    messageType = messageType
+                )
+            }
         } catch (e: Exception) {
             Log.e("ChatRoomActivity", "Error creating message from map: ${e.message}")
             return null
         }
     }
+
+    override fun onDestroy() {
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            globalFunctions.setUserOffline(UserSettings.userId)
+        }
+        removeRealtimeMessageListener()
+
+        // Clean up voice notes resources
+        if (isRecording) {
+            voiceRecorder.cancelRecording()
+        }
+
+        // Clean up voice note player in adapter
+        if (::messageAdapter.isInitialized) {
+            messageAdapter.cleanup()
+        }
+
+        super.onDestroy()
+    }
+
 
     private fun removeRealtimeMessageListener() {
         if (resources.getBoolean(R.bool.firebaseOn)) {
@@ -718,5 +849,162 @@ class ChatRoomActivity : AppCompatActivity() {
     }
     fun isMessageSelected(messageId: String): Boolean {
         return selectedMessageIds.contains(messageId)
+    }
+
+
+    private fun setupVoiceRecordingButton() {
+        recordButton.setOnTouchListener { view, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    if (checkRecordPermission()) {
+                        startRecording()
+                    } else {
+                        requestRecordPermission()
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (isRecording) {
+                        stopRecording()
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun startRecording() {
+        isRecording = true
+        val voiceNotePath = voiceRecorder.startRecording()
+
+        // Show recording UI with null safety
+        val recordingLayout = findViewById<LinearLayout>(R.id.recordingLayout)
+        val messageInputLayout = findViewById<LinearLayout>(R.id.messageInputLayout)
+
+        recordingLayout?.visibility = View.VISIBLE
+        messageInputLayout?.visibility = View.GONE
+
+        // Add cancel button listener with null safety
+        findViewById<Button>(R.id.cancelRecordingButton)?.setOnClickListener {
+            cancelRecording()
+        }
+    }
+
+    private fun stopRecording() {
+        if (!isRecording) return
+
+        isRecording = false
+        val (filePath, duration) = voiceRecorder.stopRecording()
+
+        // Hide recording UI and show input UI with null checks
+        val recordingLayout = findViewById<LinearLayout>(R.id.recordingLayout)
+        val messageInputLayout = findViewById<LinearLayout>(R.id.messageInputLayout)
+
+        recordingLayout?.visibility = View.GONE
+        messageInputLayout?.visibility = View.VISIBLE
+
+        // Send voice note message
+        if (duration > 1) { // Only send if recording is longer than 1 second
+            sendVoiceNote(filePath, duration)
+        } else {
+            Toast.makeText(this, "Recording too short", Toast.LENGTH_SHORT).show()
+            // Delete the short recording file
+            val file = File(filePath)
+            if (file.exists()) file.delete()
+        }
+    }
+
+    private fun sendVoiceNote(filePath: String, duration: Int) {
+        val messageId = generateMessageId()
+
+        // Encode the voice note file to Base64 string
+        val base64VoiceNote = voiceRecorder.encodeFileToBase64(filePath)
+
+        // Create readStatus map
+        var map: HashMap<String, Boolean> = HashMap()
+        for (par in chat.participantIds.keys) {
+            map[par] = false
+        }
+
+        val message = Message(
+            id = messageId,
+            chatId = chatId,
+            senderId = currentUserId,
+            content = "Voice Note", // Content is just a placeholder for voice notes
+            timestamp = System.currentTimeMillis(),
+            readStatus = map,
+            messageType = MessageType.VOICE_NOTE,
+            voiceNoteDuration = duration,
+            voiceNoteLocalPath = filePath,
+            voiceNoteBase64 = base64VoiceNote // Store the Base64 data
+        )
+
+        val timestampUpdate = hashMapOf<String, Any>("timestamp" to message.timestamp)
+        val lastMessageUpdate = hashMapOf<String, Any>("lastMessage" to "Voice Note")
+
+        // Update Firebase chat info if enabled
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            database.child("chats").child(message.chatId).updateChildren(timestampUpdate)
+            database.child("chats").child(message.chatId).updateChildren(lastMessageUpdate)
+        }
+
+        // Add message to local list and update UI
+        messageList.add(message)
+        messageAdapter.notifyItemInserted(messageList.size - 1)
+        messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
+
+        // Save locally
+        saveMessagesToLocalStorage()
+
+        // Save to Firebase if enabled
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            saveMessageToFirebase(message, messageId)
+        }
+    }
+
+    private fun cancelRecording() {
+        if (isRecording) {
+            isRecording = false
+            voiceRecorder.cancelRecording()
+
+            // Hide recording UI with null checks
+            val recordingLayout = findViewById<LinearLayout>(R.id.recordingLayout)
+            val messageInputLayout = findViewById<LinearLayout>(R.id.messageInputLayout)
+
+            recordingLayout?.visibility = View.GONE
+            messageInputLayout?.visibility = View.VISIBLE
+        }
+    }
+
+    // Add these permission methods
+    private fun checkRecordPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestRecordPermission() {
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.RECORD_AUDIO),
+            RECORD_AUDIO_PERMISSION_CODE
+        )
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == RECORD_AUDIO_PERMISSION_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Recording permission granted", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Recording permission denied", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 }
