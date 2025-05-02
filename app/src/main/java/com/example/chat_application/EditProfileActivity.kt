@@ -19,6 +19,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import com.example.chat_application.dataclasses.UserSettings
 import com.example.chat_application.services.FirebaseService
 import com.example.chat_application.services.ImageUploadService
 import com.example.chat_application.services.LocalStorageService
@@ -158,7 +159,7 @@ class EditProfileActivity : AppCompatActivity() {
 
             if (imageUrl.isNotEmpty()) {
                 profilePictureUrl = imageUrl
-                globalFunctions.loadImageFromUrl(imageUrl, profileImageView)
+                HelperFunctions.loadImageFromUrl(imageUrl, profileImageView)
 
                 // Try to download and save the image locally for next time
                 ImageUploadService.downloadAndSaveImageLocally(this, imageUrl, userId)

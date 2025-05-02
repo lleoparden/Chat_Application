@@ -1,14 +1,18 @@
-package com.example.chat_application
+package com.example.chat_application.adapters
 
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.example.chat_application.ChatRoomActivity
+import com.example.chat_application.R
+import com.example.chat_application.VoiceNotePlayer
+import com.example.chat_application.dataclasses.Message
+import com.example.chat_application.dataclasses.MessageType
 import com.google.firebase.database.DatabaseReference
 import java.text.SimpleDateFormat
 import java.util.Date

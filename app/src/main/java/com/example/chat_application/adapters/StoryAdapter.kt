@@ -1,15 +1,16 @@
-package com.example.chat_application
+package com.example.chat_application.adapters
 
-import android.annotation.SuppressLint
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
-import com.example.chat_application.StoryAdapter.StoryViewHolder
+import com.example.chat_application.R
+import com.example.chat_application.adapters.StoryAdapter.StoryViewHolder
+import com.example.chat_application.dataclasses.Stories
+import com.example.chat_application.HelperFunctions
 
 
 class StoryAdapter(
@@ -33,7 +34,7 @@ class StoryAdapter(
             try {
                 nameTextView.text = story.displayName
                 storyCountView.text = "${story.stories?.size} stories available"
-                globalFunctions.loadImageFromUrl(story.profilePictureUrl, avatarImageView)
+                HelperFunctions.loadImageFromUrl(story.profilePictureUrl, avatarImageView)
 
                 // Set click listener
                 itemView.setOnClickListener {

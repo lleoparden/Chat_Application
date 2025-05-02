@@ -2,8 +2,6 @@ package com.example.chat_application
 
 import android.app.Activity
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -14,23 +12,19 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.request.RequestOptions
+import com.example.chat_application.dataclasses.Stories
+import com.example.chat_application.dataclasses.Story
+import com.example.chat_application.dataclasses.UserSettings
+import com.example.chat_application.services.ImageUploadService
 import com.github.dhaval2404.imagepicker.ImagePicker
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import okhttp3.*
 import org.json.JSONObject
-import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.IOException
-import java.util.*
-import java.util.concurrent.TimeUnit
 
 private const val TAG = "AddNewStoryActivity"
 
-class AddNewStoryActivity : AppCompatActivity(){
+class AddNewStoryActivity : AppCompatActivity() {
 
     // User data storage for registration process
     private var caption: String = ""
@@ -44,18 +38,12 @@ class AddNewStoryActivity : AppCompatActivity(){
     // Data objects
     private val firebaseEnabled by lazy { resources.getBoolean(R.bool.firebaseOn) }
     private lateinit var db: FirebaseFirestore
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
-        .build()
 
     // State variables
     private var selectedImageUri: Uri? = null
     private var storyPictureUrl: String? = null
     private var localImagePath: String? = null
     private var userId = ""
-    private var isUploadingImage = false
     private lateinit var imagePickLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -125,7 +113,7 @@ class AddNewStoryActivity : AppCompatActivity(){
         )
 
         // Use the asynchronous version of getUserData with callback
-        globalFunctions.getUserData(userId) { userData ->
+        HelperFunctions.getUserData(userId) { userData ->
             if (userData != null) {
                 // Save story locally first - this happens regardless of network status
                 val localSaveSuccess = saveStoryLocally(
@@ -227,13 +215,31 @@ class AddNewStoryActivity : AppCompatActivity(){
                     selectedImageUri = data.data
 
                     // Display the selected image immediately
-                    loadImageIntoView(selectedImageUri)
+                    ImageUploadService.loadImageIntoView(this, selectedImageUri, storyPreview)
 
                     // Save image locally first
-                    saveImageLocally(selectedImageUri!!)
+                    localImagePath = ImageUploadService.saveImageLocally(this, selectedImageUri!!, userId, "story_")
 
                     // Also upload to ImgBB for online access
-                    uploadImageToImgbb(selectedImageUri!!)
+                    val progressBar = findViewById<ProgressBar>(R.id.imageUploadProgressBar)
+                    ImageUploadService.uploadImageToImgbb(
+                        context = this,
+                        imageUri = selectedImageUri!!,
+                        progressBar = progressBar,
+                        callback = object : ImageUploadService.ImageUploadCallback {
+                            override fun onUploadSuccess(imageUrl: String) {
+                                storyPictureUrl = imageUrl
+                            }
+
+                            override fun onUploadFailure(errorMessage: String) {
+                                Toast.makeText(this@AddNewStoryActivity, errorMessage, Toast.LENGTH_SHORT).show()
+                            }
+
+                            override fun onUploadProgress(isUploading: Boolean) {
+                                // This is handled by the progressBar visibility in the service
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -247,126 +253,6 @@ class AddNewStoryActivity : AppCompatActivity(){
             .createIntent { intent: Intent ->
                 imagePickLauncher.launch(intent)
             }
-    }
-
-    private fun loadImageIntoView(uri: Uri?) {
-        if (uri != null) {
-            Glide.with(this)
-                .load(uri)
-                .apply(
-                    RequestOptions()
-                    .placeholder(R.drawable.ic_person)
-                    .error(R.drawable.ic_person)
-                    .diskCacheStrategy(DiskCacheStrategy.NONE))
-                .into(storyPreview)
-        } else {
-            // Set default image
-            storyPreview.setImageResource(R.drawable.ic_person)
-        }
-    }
-
-
-    // ---- Image Handling Methods ----
-
-    private fun saveImageLocally(imageUri: Uri): String? {
-        try {
-            // Create file path for local storage
-            val imageFile = File(filesDir, "profile_${userId}.jpg")
-
-            // Copy image to app's private storage
-            contentResolver.openInputStream(imageUri)?.use { input ->
-                imageFile.outputStream().use { output ->
-                    input.copyTo(output)
-                }
-            }
-
-            // Save the local path
-            localImagePath = imageFile.absolutePath
-            Log.d(TAG, "Image saved locally: $localImagePath")
-            return localImagePath
-        } catch (e: Exception) {
-            Log.e(TAG, "Error saving image locally", e)
-            return null
-        }
-    }
-
-
-    // ---- API Methods ----
-
-    private fun uploadImageToImgbb(imageUri: Uri) {
-
-        isUploadingImage = true
-        Toast.makeText(this, "Uploading image to cloud...", Toast.LENGTH_SHORT).show()
-
-        try {
-            // Read image data
-            val inputStream = contentResolver.openInputStream(imageUri)
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-            inputStream?.close()
-
-            // Convert bitmap to byte array
-            val byteArrayOutputStream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream)
-            val imageBytes = byteArrayOutputStream.toByteArray()
-            val base64Image = Base64.getEncoder().encodeToString(imageBytes)
-
-            // Create form data for ImgBB API
-            val requestBody = MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart("key", globalFunctions.IMGBB_API_KEY)
-                .addFormDataPart("image", base64Image)
-                .build()
-
-            // Create request
-            val request = Request.Builder()
-                .url( globalFunctions.IMGBB_API_URL)
-                .post(requestBody)
-                .build()
-
-            // Execute request asynchronously
-            httpClient.newCall(request).enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    runOnUiThread {
-                        Log.e(TAG, "Failed to upload image to ImgBB", e)
-                        Toast.makeText(applicationContext, "Cloud image upload failed, but local copy saved", Toast.LENGTH_SHORT).show()
-                        isUploadingImage = false
-                    }
-                }
-
-                override fun onResponse(call: Call, response: Response) {
-                    try {
-                        val responseBody = response.body?.string()
-                        val jsonResponse = JSONObject(responseBody)
-
-                        if (jsonResponse.getBoolean("success")) {
-                            val data = jsonResponse.getJSONObject("data")
-                            val imageUrl = data.getString("url")
-
-                            runOnUiThread {
-                                storyPictureUrl = imageUrl
-                                Toast.makeText(applicationContext, "Image uploaded to cloud successfully!", Toast.LENGTH_SHORT).show()
-                                isUploadingImage = false
-                            }
-                        } else {
-                            runOnUiThread {
-                                Toast.makeText(applicationContext, "Cloud upload failed: " + jsonResponse.optString("error", "Unknown error"), Toast.LENGTH_SHORT).show()
-                                isUploadingImage = false
-                            }
-                        }
-                    } catch (e: Exception) {
-                        runOnUiThread {
-                            Log.e(TAG, "Error parsing ImgBB response", e)
-                            Toast.makeText(applicationContext, "Failed to process uploaded image", Toast.LENGTH_SHORT).show()
-                            isUploadingImage = false
-                        }
-                    }
-                }
-            })
-        } catch (e: Exception) {
-            Log.e(TAG, "Error preparing image for upload", e)
-            Toast.makeText(this, "Failed to upload to cloud, but local copy saved", Toast.LENGTH_SHORT).show()
-            isUploadingImage = false
-        }
     }
 
     private fun saveStoryLocally(story: Story, userId: String, userName: String, userProfilePic: String): Boolean {

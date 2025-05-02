@@ -14,7 +14,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.example.chat_application.adapters.UserAdapter
+import com.example.chat_application.dataclasses.Chat
+import com.example.chat_application.dataclasses.UserData
+import com.example.chat_application.dataclasses.UserSettings
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore

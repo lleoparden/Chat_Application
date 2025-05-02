@@ -15,7 +15,7 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.request.RequestOptions
 import com.example.chat_application.R
-import com.example.chat_application.globalFunctions
+import com.example.chat_application.HelperFunctions
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MultipartBody
@@ -144,13 +144,13 @@ object ImageUploadService {
             // Create form data for ImgBB API
             val requestBody = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
-                .addFormDataPart("key", globalFunctions.IMGBB_API_KEY)
+                .addFormDataPart("key", HelperFunctions.IMGBB_API_KEY)
                 .addFormDataPart("image", base64Image)
                 .build()
 
             // Create request
             val request = Request.Builder()
-                .url(globalFunctions.IMGBB_API_URL)
+                .url(HelperFunctions.IMGBB_API_URL)
                 .post(requestBody)
                 .build()
 

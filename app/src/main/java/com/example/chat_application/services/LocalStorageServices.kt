@@ -4,11 +4,11 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
-import com.example.chat_application.Chat
-import com.example.chat_application.ChatAdapter
+import com.example.chat_application.dataclasses.Chat
+import com.example.chat_application.adapters.ChatAdapter
 import com.example.chat_application.ChatManager
-import com.example.chat_application.UserData
-import com.example.chat_application.UserSettings
+import com.example.chat_application.dataclasses.UserData
+import com.example.chat_application.dataclasses.UserSettings
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File

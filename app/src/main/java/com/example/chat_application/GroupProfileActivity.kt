@@ -2,8 +2,6 @@ package com.example.chat_application
 
 import android.app.Activity
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -25,26 +23,17 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.request.RequestOptions
+import com.example.chat_application.dataclasses.Chat
+import com.example.chat_application.dataclasses.UserData
+import com.example.chat_application.dataclasses.UserSettings
 import com.github.dhaval2404.imagepicker.ImagePicker
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.MultipartBody
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.IOException
-import java.util.*
-import java.util.concurrent.TimeUnit
+import com.example.chat_application.services.ImageUploadService
 
 private const val TAG = "GroupProfileActivity"
 
@@ -61,19 +50,13 @@ class GroupProfileActivity : AppCompatActivity() {
     private lateinit var membersRecyclerView: RecyclerView
     private lateinit var startChatButton: Button
     private lateinit var leaveGroupButton: Button
+    private lateinit var progressBar: ProgressBar
 
     // Firebase Components
     private lateinit var firestore: FirebaseFirestore
     private lateinit var firebaseDatabase: FirebaseDatabase
     private lateinit var groupsReference: DatabaseReference
     private val firebaseEnabled by lazy { resources.getBoolean(R.bool.firebaseOn) }
-
-    // HTTP Client for image uploads
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
-        .build()
 
     // Data
     private lateinit var groupChat: Chat
@@ -84,8 +67,6 @@ class GroupProfileActivity : AppCompatActivity() {
     // Image handling
     private var selectedImageUri: Uri? = null
     private var groupPictureUrl: String? = null
-    private var localImagePath: String? = null
-    private var isUploadingImage = false
     private lateinit var imagePickLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -139,7 +120,7 @@ class GroupProfileActivity : AppCompatActivity() {
         membersRecyclerView = findViewById(R.id.membersRecyclerView)
         startChatButton = findViewById(R.id.startChatButton)
         leaveGroupButton = findViewById(R.id.leaveGroupButton)
-
+        progressBar = findViewById(R.id.imageUploadProgressBar) // Make sure to add this ProgressBar to your layout if not already present
 
         // Setup RecyclerView
         membersRecyclerView.layoutManager = LinearLayoutManager(this)
@@ -158,13 +139,33 @@ class GroupProfileActivity : AppCompatActivity() {
                     selectedImageUri = data.data
 
                     // Display the selected image immediately
-                    loadImageIntoView(selectedImageUri)
+                    ImageUploadService.loadImageIntoView(this, selectedImageUri, groupImage)
 
-                    // Save image locally first
-                    saveImageLocally(selectedImageUri!!)
+                    // Create an upload callback
+                    val uploadCallback = object : ImageUploadService.ImageUploadCallback {
+                        override fun onUploadSuccess(imageUrl: String) {
+                            groupPictureUrl = imageUrl
+                            Toast.makeText(applicationContext, "Image uploaded to cloud successfully!", Toast.LENGTH_SHORT).show()
+                            // Save the group details with this new image URL
+                            saveGroupDescription()
+                        }
+
+                        override fun onUploadFailure(errorMessage: String) {
+                            Toast.makeText(applicationContext, errorMessage, Toast.LENGTH_SHORT).show()
+                        }
+
+                        override fun onUploadProgress(isUploading: Boolean) {
+                            progressBar.visibility = if (isUploading) View.VISIBLE else View.GONE
+                        }
+                    }
+
+                    // Save image locally first - use the service
+                    val localPath = ImageUploadService.saveImageLocally(this, selectedImageUri!!, groupChat.id, "group_")
 
                     // Also upload to ImgBB for online access
-                    uploadImageToImgbb(selectedImageUri!!)
+                    if (selectedImageUri != null) {
+                        ImageUploadService.uploadImageToImgbb(this, selectedImageUri!!, progressBar, uploadCallback)
+                    }
                 }
             }
         }
@@ -199,9 +200,8 @@ class GroupProfileActivity : AppCompatActivity() {
         // Check for local image first
         val localImageFile = File(filesDir, "group_${groupChat.id}.jpg")
         if (localImageFile.exists()) {
-            localImagePath = localImageFile.absolutePath
             selectedImageUri = Uri.fromFile(localImageFile)
-            loadImageIntoView(selectedImageUri)
+            ImageUploadService.loadImageIntoView(this, selectedImageUri, groupImage)
         } else {
             // If no local image, try to load from Firebase/URL
             if (firebaseEnabled) {
@@ -212,10 +212,19 @@ class GroupProfileActivity : AppCompatActivity() {
                             val imageUrl = document.getString("groupPictureUrl")
                             if (!imageUrl.isNullOrEmpty()) {
                                 groupPictureUrl = imageUrl
-                                globalFunctions.loadImageFromUrl(imageUrl, groupImage)
+                                HelperFunctions.loadImageFromUrl(imageUrl, groupImage)
 
                                 // Try to download and save the image locally for next time
-                                downloadAndSaveImageLocally(imageUrl)
+                                ImageUploadService.downloadAndSaveImageLocally(
+                                    this,
+                                    imageUrl,
+                                    groupChat.id,
+                                    "group_"
+                                ) { success, localPath ->
+                                    if (success) {
+                                        Log.d(TAG, "Group image downloaded successfully to $localPath")
+                                    }
+                                }
                             }
                         } else {
                             // Try to load from local storage JSON
@@ -251,28 +260,13 @@ class GroupProfileActivity : AppCompatActivity() {
                     val imageUrl = jsonGroup.optString("groupPictureUrl", "")
                     if (imageUrl.isNotEmpty()) {
                         groupPictureUrl = imageUrl
-                        globalFunctions.loadImageFromUrl(imageUrl, groupImage)
+                        HelperFunctions.loadImageFromUrl(imageUrl, groupImage)
                     }
                     return
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error reading local groups file", e)
-        }
-    }
-
-    private fun loadImageIntoView(uri: Uri?) {
-        if (uri != null) {
-            Glide.with(this)
-                .load(uri)
-                .apply(RequestOptions()
-                    .placeholder(R.drawable.ic_person) // Replace with your group placeholder icon
-                    .error(R.drawable.ic_person)
-                    .diskCacheStrategy(DiskCacheStrategy.NONE))
-                .into(groupImage)
-        } else {
-            // Set default image
-            groupImage.setImageResource(R.drawable.ic_person)
         }
     }
 
@@ -434,144 +428,6 @@ class GroupProfileActivity : AppCompatActivity() {
             Log.e(TAG, "Error saving group details to local storage", e)
             Toast.makeText(this, "Failed to save details", Toast.LENGTH_SHORT).show()
         }
-    }
-
-    private fun saveImageLocally(imageUri: Uri): String? {
-        try {
-            // Create file path for local storage
-            val imageFile = File(filesDir, "group_${groupChat.id}.jpg")
-
-            // Copy image to app's private storage
-            contentResolver.openInputStream(imageUri)?.use { input ->
-                imageFile.outputStream().use { output ->
-                    input.copyTo(output)
-                }
-            }
-
-            // Save the local path
-            localImagePath = imageFile.absolutePath
-            Log.d(TAG, "Group image saved locally: $localImagePath")
-            return localImagePath
-        } catch (e: Exception) {
-            Log.e(TAG, "Error saving group image locally", e)
-            return null
-        }
-    }
-
-    private fun uploadImageToImgbb(imageUri: Uri) {
-        // Show upload progress
-
-        isUploadingImage = true
-        Toast.makeText(this, "Uploading image to cloud...", Toast.LENGTH_SHORT).show()
-
-        try {
-            // Read image data
-            val inputStream = contentResolver.openInputStream(imageUri)
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-            inputStream?.close()
-
-            // Convert bitmap to byte array
-            val byteArrayOutputStream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream)
-            val imageBytes = byteArrayOutputStream.toByteArray()
-            val base64Image = Base64.getEncoder().encodeToString(imageBytes)
-
-            // Create form data for ImgBB API
-            val requestBody = MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart("key", globalFunctions.IMGBB_API_KEY)
-                .addFormDataPart("image", base64Image)
-                .build()
-
-            // Create request
-            val request = Request.Builder()
-                .url(globalFunctions.IMGBB_API_URL)
-                .post(requestBody)
-                .build()
-
-            // Execute request asynchronously
-            httpClient.newCall(request).enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    runOnUiThread {
-                        Log.e(TAG, "Failed to upload image to ImgBB", e)
-                        Toast.makeText(applicationContext, "Cloud image upload failed, but local copy saved", Toast.LENGTH_SHORT).show()
-
-                        isUploadingImage = false
-                    }
-                }
-
-                override fun onResponse(call: Call, response: Response) {
-                    try {
-                        val responseBody = response.body?.string()
-                        val jsonResponse = JSONObject(responseBody)
-
-                        if (jsonResponse.getBoolean("success")) {
-                            val data = jsonResponse.getJSONObject("data")
-                            val imageUrl = data.getString("url")
-
-                            runOnUiThread {
-                                groupPictureUrl = imageUrl
-                                Toast.makeText(applicationContext, "Image uploaded to cloud successfully!", Toast.LENGTH_SHORT).show()
-
-                                // Save the group details with this new image URL
-                                saveGroupDescription()
-
-
-                                isUploadingImage = false
-                            }
-                        } else {
-                            runOnUiThread {
-                                Toast.makeText(applicationContext, "Cloud upload failed: " + jsonResponse.optString("error", "Unknown error"), Toast.LENGTH_SHORT).show()
-
-                                isUploadingImage = false
-                            }
-                        }
-                    } catch (e: Exception) {
-                        runOnUiThread {
-                            Log.e(TAG, "Error parsing ImgBB response", e)
-                            Toast.makeText(applicationContext, "Failed to process uploaded image", Toast.LENGTH_SHORT).show()
-
-                            isUploadingImage = false
-                        }
-                    }
-                }
-            })
-        } catch (e: Exception) {
-            Log.e(TAG, "Error preparing image for upload", e)
-            Toast.makeText(this, "Failed to upload to cloud, but local copy saved", Toast.LENGTH_SHORT).show()
-
-            isUploadingImage = false
-        }
-    }
-
-    private fun downloadAndSaveImageLocally(imageUrl: String) {
-        Thread {
-            try {
-                // Create a request
-                val request = Request.Builder()
-                    .url(imageUrl)
-                    .build()
-
-                httpClient.newCall(request).execute().use { response ->
-                    if (response.isSuccessful) {
-                        val inputStream = response.body?.byteStream()
-                        if (inputStream != null) {
-                            // Save to local file
-                            val imageFile = File(filesDir, "group_${groupChat.id}.jpg")
-                            imageFile.outputStream().use { output ->
-                                inputStream.copyTo(output)
-                            }
-
-                            // Update local path
-                            localImagePath = imageFile.absolutePath
-                            Log.d(TAG, "Remote group image downloaded and saved locally: $localImagePath")
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to download group image from URL", e)
-            }
-        }.start()
     }
 
     private fun pickImage() {
@@ -845,9 +701,9 @@ class GroupMemberAdapter(
         fun bind(user: UserData) {
             memberName.text = user.displayName
 
-            // Load profile picture if available - using same approach as UserProfileActivity
+            // Load profile picture if available
             if (user.profilePictureUrl.isNotEmpty()) {
-                globalFunctions.loadImageFromUrl(user.profilePictureUrl, memberAvatar)
+                HelperFunctions.loadImageFromUrl(user.profilePictureUrl, memberAvatar)
             }
 
             itemView.setOnClickListener {

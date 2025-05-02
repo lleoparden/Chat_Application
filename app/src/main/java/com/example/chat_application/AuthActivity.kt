@@ -16,6 +16,8 @@ import android.view.animation.AnimationUtils
 import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.core.view.isVisible
+import com.example.chat_application.dataclasses.UserData
+import com.example.chat_application.dataclasses.UserSettings
 import com.example.chat_application.services.FirebaseService
 import com.example.chat_application.services.LocalStorageService
 import com.hbb20.CountryCodePicker

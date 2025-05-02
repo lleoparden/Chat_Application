@@ -1,4 +1,4 @@
-package com.example.chat_application
+package com.example.chat_application.adapters
 
 import android.icu.text.SimpleDateFormat
 import android.view.LayoutInflater
@@ -6,17 +6,14 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import android.os.Parcelable
 import android.util.Log
 import android.widget.CheckBox
 import android.widget.ImageView
-import androidx.cardview.widget.CardView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
-import com.bumptech.glide.Glide
-import com.bumptech.glide.request.RequestOptions
-import com.bumptech.glide.load.engine.DiskCacheStrategy
-import kotlinx.parcelize.Parcelize
+import com.example.chat_application.R
+import com.example.chat_application.dataclasses.Chat
+import com.example.chat_application.HelperFunctions
 import java.util.*
 
 // Chat adapter for RecyclerView
@@ -168,7 +165,7 @@ class ChatAdapter(
 
         try {
             // Get other participant ID
-            val otherUserId = globalFunctions.determineOtherParticipantId(chat)
+            val otherUserId = HelperFunctions.determineOtherParticipantId(chat)
             Log.d("ChatAdapter", "Other participant ID: $otherUserId")
 
             if (otherUserId == null || otherUserId.isEmpty()) {
@@ -178,7 +175,7 @@ class ChatAdapter(
             }
 
             // First check if we can get cached data immediately
-            val cachedUserData = globalFunctions.getUserData(holder.itemView.context, otherUserId)
+            val cachedUserData = HelperFunctions.getUserData(holder.itemView.context, otherUserId)
             if (cachedUserData != null) {
                 Log.d("ChatAdapter", "Cached user data found for $otherUserId")
 
@@ -191,7 +188,10 @@ class ChatAdapter(
                 // Set profile picture if available in cache
                 if (!cachedUserData.profilePictureUrl.isNullOrEmpty()) {
                     Log.d("ChatAdapter", "Loading profile picture from cache: ${cachedUserData.profilePictureUrl}")
-                    globalFunctions.loadImageFromUrl(cachedUserData.profilePictureUrl, holder.avatarImageView)
+                    HelperFunctions.loadImageFromUrl(
+                        cachedUserData.profilePictureUrl,
+                        holder.avatarImageView
+                    )
                 } else {
                     Log.w("ChatAdapter", "Empty profile picture URL in cached data for $otherUserId")
                     holder.avatarImageView.setImageResource(R.drawable.ic_person)
@@ -202,22 +202,34 @@ class ChatAdapter(
 
                 // Use the correct getUserData method with callback to fetch latest
                 Log.d("ChatAdapter", "Fetching user data for ID: $otherUserId")
-                globalFunctions.getUserData(otherUserId) { userData ->
-                    Log.d("ChatAdapter", "User data callback received for $otherUserId: ${userData != null}")
+                HelperFunctions.getUserData(otherUserId) { userData ->
+                    Log.d(
+                        "ChatAdapter",
+                        "User data callback received for $otherUserId: ${userData != null}"
+                    )
 
                     if (userData != null) {
                         // Make sure we're on the UI thread when updating the views
                         holder.avatarImageView.post {
                             // Update display name if available
                             if (!userData.displayName.isNullOrEmpty()) {
-                                Log.d("ChatAdapter", "Setting name from API: ${userData.displayName}")
+                                Log.d(
+                                    "ChatAdapter",
+                                    "Setting name from API: ${userData.displayName}"
+                                )
                                 holder.nameTextView.text = userData.displayName
                             }
 
                             // Update profile picture if available
                             if (!userData.profilePictureUrl.isNullOrEmpty()) {
-                                Log.d("ChatAdapter", "Loading profile picture from URL: ${userData.profilePictureUrl}")
-                                globalFunctions.loadImageFromUrl(userData.profilePictureUrl, holder.avatarImageView)
+                                Log.d(
+                                    "ChatAdapter",
+                                    "Loading profile picture from URL: ${userData.profilePictureUrl}"
+                                )
+                                HelperFunctions.loadImageFromUrl(
+                                    userData.profilePictureUrl,
+                                    holder.avatarImageView
+                                )
                             }
                         }
                     }
@@ -270,11 +282,11 @@ class ChatAdapter(
         holder.avatarImageView.setImageResource(R.drawable.ic_person)
 
         // Try to load group profile picture
-        globalFunctions.getGroupPfp(chat.id) { url ->
+        HelperFunctions.getGroupPfp(chat.id) { url ->
             if (url != null) {
                 // Make sure we're on the UI thread when updating the ImageView
                 holder.avatarImageView.post {
-                    globalFunctions.loadImageFromUrl(url, holder.avatarImageView)
+                    HelperFunctions.loadImageFromUrl(url, holder.avatarImageView)
                 }
             }
         }
