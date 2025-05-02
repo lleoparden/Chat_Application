@@ -17,9 +17,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.chat_application.adapters.ChatAdapter
+import com.example.chat_application.dataclasses.Chat
+import com.example.chat_application.dataclasses.UserSettings
 import com.example.chat_application.services.FirebaseService
 import com.example.chat_application.services.LocalStorageService
-import com.facebook.shimmer.ShimmerFrameLayout  // Added import
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import java.io.File

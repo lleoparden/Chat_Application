@@ -10,11 +10,7 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
-import com.example.chat_application.AuthActivity
-import com.example.chat_application.ChatWallpaperActivity
-import com.example.chat_application.EditProfileActivity
-import com.example.chat_application.HelpActivity
-import com.example.chat_application.UserSettings
+import com.example.chat_application.dataclasses.UserSettings
 import java.io.File
 
 class SettingsActivity : AppCompatActivity() {

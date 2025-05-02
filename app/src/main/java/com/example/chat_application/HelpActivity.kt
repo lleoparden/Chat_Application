@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import com.example.chat_application.dataclasses.UserSettings
 import com.google.android.material.snackbar.Snackbar
 
 class HelpActivity : AppCompatActivity() {

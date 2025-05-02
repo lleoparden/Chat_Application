@@ -2,8 +2,6 @@ package com.example.chat_application
 
 import android.content.ContentValues.TAG
 import android.content.Intent
-import android.media.AudioDescriptor
-import android.media.Image
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
@@ -13,9 +11,8 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.request.RequestOptions
+import com.example.chat_application.dataclasses.Chat
+import com.example.chat_application.dataclasses.UserSettings
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
@@ -243,7 +240,7 @@ class UserProfileActivity : AppCompatActivity() {
         displayDescription.text = description
         displayStatus.text = Status
         if (imageUrl.isNotEmpty()) {
-            globalFunctions.loadImageFromUrl(imageUrl,profileImage)
+            HelperFunctions.loadImageFromUrl(imageUrl,profileImage)
         }
     }
 

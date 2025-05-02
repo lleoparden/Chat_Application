@@ -23,6 +23,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.chat_application.dataclasses.Chat
+import com.example.chat_application.dataclasses.UserData
+import com.example.chat_application.dataclasses.UserSettings
 import com.github.dhaval2404.imagepicker.ImagePicker
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
@@ -209,7 +212,7 @@ class GroupProfileActivity : AppCompatActivity() {
                             val imageUrl = document.getString("groupPictureUrl")
                             if (!imageUrl.isNullOrEmpty()) {
                                 groupPictureUrl = imageUrl
-                                globalFunctions.loadImageFromUrl(imageUrl, groupImage)
+                                HelperFunctions.loadImageFromUrl(imageUrl, groupImage)
 
                                 // Try to download and save the image locally for next time
                                 ImageUploadService.downloadAndSaveImageLocally(
@@ -257,7 +260,7 @@ class GroupProfileActivity : AppCompatActivity() {
                     val imageUrl = jsonGroup.optString("groupPictureUrl", "")
                     if (imageUrl.isNotEmpty()) {
                         groupPictureUrl = imageUrl
-                        globalFunctions.loadImageFromUrl(imageUrl, groupImage)
+                        HelperFunctions.loadImageFromUrl(imageUrl, groupImage)
                     }
                     return
                 }
@@ -700,7 +703,7 @@ class GroupMemberAdapter(
 
             // Load profile picture if available
             if (user.profilePictureUrl.isNotEmpty()) {
-                globalFunctions.loadImageFromUrl(user.profilePictureUrl, memberAvatar)
+                HelperFunctions.loadImageFromUrl(user.profilePictureUrl, memberAvatar)
             }
 
             itemView.setOnClickListener {

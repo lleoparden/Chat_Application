@@ -1,6 +1,6 @@
 package com.example.chat_application
 
-import kotlinx.parcelize.Parcelize
+import com.example.chat_application.dataclasses.Chat
 import java.util.*
 
 // Binary Search Tree Node for name-based searching
@@ -38,7 +38,7 @@ class ChatManager {
             // For direct chats, update the display name based on the other participant
             if (chat.type == "direct") {
                 // Find the other participant's ID (not the current user)
-                val otherUserId = globalFunctions.determineOtherParticipantId(chat)
+                val otherUserId = HelperFunctions.determineOtherParticipantId(chat)
 
                 // If we have the other user's display name in our map, update it
                 if (otherUserId != null && userMap.containsKey(otherUserId)) {

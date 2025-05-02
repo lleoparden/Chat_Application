@@ -5,9 +5,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import android.os.Build
-import android.animation.ObjectAnimator
-import android.animation.ValueAnimator
 import android.view.MotionEvent
 import android.graphics.Rect
 import android.os.Bundle
@@ -26,20 +23,21 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.chat_application.adapters.MessageAdapter
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.auth.User
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import kotlinx.coroutines.*
-import androidx.lifecycle.lifecycleScope
-import com.bumptech.glide.Glide
-import com.google.android.gms.tasks.Tasks
+import com.example.chat_application.dataclasses.Chat
+import com.example.chat_application.dataclasses.Message
+import com.example.chat_application.dataclasses.MessageType
+import com.example.chat_application.dataclasses.UserData
+import com.example.chat_application.dataclasses.UserSettings
 
 class ChatRoomActivity : AppCompatActivity() {
 
@@ -106,7 +104,7 @@ class ChatRoomActivity : AppCompatActivity() {
 
         if (resources.getBoolean(R.bool.firebaseOn)) {
             val db = FirebaseFirestore.getInstance()
-            globalFunctions.setUserOnline(UserSettings.userId, db)
+            HelperFunctions.setUserOnline(UserSettings.userId, db)
         }
     }
 
@@ -131,7 +129,7 @@ class ChatRoomActivity : AppCompatActivity() {
         chatId = chat.id
 
         // Determine the other participant's ID
-        otherParticipantId = globalFunctions.determineOtherParticipantId(chat).toString()
+        otherParticipantId = HelperFunctions.determineOtherParticipantId(chat).toString()
 
         // Initialize UI elements
         initializeViews()
@@ -150,21 +148,21 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun initializeProfileImage() {
 
         if (chat.type == "direct") {
-            val user: UserData? = globalFunctions.getUserData(this@ChatRoomActivity, otherParticipantId)
+            val user: UserData? = HelperFunctions.getUserData(this@ChatRoomActivity, otherParticipantId)
 
             if (user != null) {
-                globalFunctions.loadImageFromUrl(user.profilePictureUrl, profileImageView)
+                HelperFunctions.loadImageFromUrl(user.profilePictureUrl, profileImageView)
                 nameView.text =user.displayName
             }
             if(nameView.text.isEmpty()){
                 nameView.text =chat.getEffectiveDisplayName()
             }
         }else{
-            globalFunctions.getGroupPfp(chat.id) { url ->
+            HelperFunctions.getGroupPfp(chat.id) { url ->
                 if (url != null) {
                     // Make sure we're on the UI thread when updating the ImageView
                     profileImageView.post {
-                        globalFunctions.loadImageFromUrl(url, profileImageView)
+                        HelperFunctions.loadImageFromUrl(url, profileImageView)
                         // Set contact name in the top bar
                     }
                 }
@@ -822,7 +820,7 @@ class ChatRoomActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         if (resources.getBoolean(R.bool.firebaseOn)) {
-            globalFunctions.setUserOffline(UserSettings.userId)
+            HelperFunctions.setUserOffline(UserSettings.userId)
         }
         removeRealtimeMessageListener()
 

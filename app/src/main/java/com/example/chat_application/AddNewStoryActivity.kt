@@ -12,11 +12,13 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import com.example.chat_application.dataclasses.Stories
+import com.example.chat_application.dataclasses.Story
+import com.example.chat_application.dataclasses.UserSettings
 import com.example.chat_application.services.ImageUploadService
 import com.github.dhaval2404.imagepicker.ImagePicker
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
@@ -111,7 +113,7 @@ class AddNewStoryActivity : AppCompatActivity() {
         )
 
         // Use the asynchronous version of getUserData with callback
-        globalFunctions.getUserData(userId) { userData ->
+        HelperFunctions.getUserData(userId) { userData ->
             if (userData != null) {
                 // Save story locally first - this happens regardless of network status
                 val localSaveSuccess = saveStoryLocally(

@@ -9,6 +9,9 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
+import com.example.chat_application.dataclasses.Stories
+import com.example.chat_application.dataclasses.Story
+import com.example.chat_application.dataclasses.UserSettings
 import com.google.firebase.firestore.FirebaseFirestore
 
 private const val TAG = "ViewStoryActivity"
@@ -138,7 +141,7 @@ class ViewStoryActivity : AppCompatActivity() {
     }
 
     private fun loadStoryInfoIntoView() {
-        globalFunctions.loadImageFromUrl(viewedStory.profilePictureUrl, pfpImage)
+        HelperFunctions.loadImageFromUrl(viewedStory.profilePictureUrl, pfpImage)
         accName.text = viewedStory.displayName
 
         // Load the first valid story
@@ -161,7 +164,7 @@ class ViewStoryActivity : AppCompatActivity() {
         }
 
         // Load image
-        globalFunctions.loadImageFromUrl(currentStory.imageurl, storyImage)
+        HelperFunctions.loadImageFromUrl(currentStory.imageurl, storyImage)
 
         // Update time display
         updateTimeDisplay(currentStory)

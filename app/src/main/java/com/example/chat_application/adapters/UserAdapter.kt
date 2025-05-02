@@ -1,4 +1,4 @@
-package com.example.chat_application
+package com.example.chat_application.adapters
 
 import android.util.Log
 import android.view.LayoutInflater
@@ -7,6 +7,9 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.example.chat_application.R
+import com.example.chat_application.dataclasses.UserData
+import com.example.chat_application.HelperFunctions
 
 class UserAdapter(
     private val users: List<UserData>,
@@ -42,7 +45,7 @@ class UserAdapter(
                 nameTextView.text = user.displayName
                 phoneTextView.text = user.phoneNumber
                 statusTextView.text = user.userStatus
-                globalFunctions.loadImageFromUrl(user.profilePictureUrl,profileImageView)
+                HelperFunctions.loadImageFromUrl(user.profilePictureUrl, profileImageView)
 
 
                 // Show chat status by checking the set instead of a property on UserData

@@ -6,11 +6,12 @@ import android.widget.ImageView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.request.RequestOptions
+import com.example.chat_application.dataclasses.Chat
+import com.example.chat_application.dataclasses.UserData
+import com.example.chat_application.dataclasses.UserSettings
 import com.google.firebase.firestore.FirebaseFirestore
-import org.json.JSONArray
-import java.io.File
 
-object globalFunctions {
+object HelperFunctions {
 
 
     const val IMGBB_API_URL = "https://api.imgbb.com/1/upload"

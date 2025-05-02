@@ -10,14 +10,14 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import com.google.firebase.Firebase
 import android.util.Log
+import com.example.chat_application.adapters.StoryAdapter
+import com.example.chat_application.dataclasses.Stories
+import com.example.chat_application.dataclasses.Story
+import com.example.chat_application.dataclasses.UserSettings
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.firestore
-import org.json.JSONArray
-import java.io.File
 
 
 class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener {
@@ -95,7 +95,7 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
     private fun loadStories() {
         // Show loading indicator if you have one
 
-        globalFunctions.getAllUserIds() { userIds ->
+        HelperFunctions.getAllUserIds() { userIds ->
             if (userIds == null || userIds.isEmpty()) {
                 Log.e(TAG, "Failed to get user IDs or list is empty")
                 Toast.makeText(this, "Failed to load users", Toast.LENGTH_SHORT).show()
