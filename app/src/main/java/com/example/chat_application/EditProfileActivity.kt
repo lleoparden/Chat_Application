@@ -3,8 +3,6 @@ package com.example.chat_application
 import android.app.Activity
 import android.content.ContentValues
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -21,25 +19,13 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.request.RequestOptions
 import com.example.chat_application.services.FirebaseService
+import com.example.chat_application.services.ImageUploadService
 import com.example.chat_application.services.LocalStorageService
 import com.github.dhaval2404.imagepicker.ImagePicker
 import com.google.android.material.textfield.TextInputEditText
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.MultipartBody
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
 import org.json.JSONObject
-import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.IOException
-import java.util.Base64
-import java.util.concurrent.TimeUnit
 
 private const val TAG = "EditProfileActivity"
 
@@ -56,18 +42,12 @@ class EditProfileActivity : AppCompatActivity() {
 
     // Data objects
     private val firebaseEnabled by lazy { resources.getBoolean(R.bool.firebaseOn) }
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
-        .build()
 
     // State variables
     private var selectedImageUri: Uri? = null
     private var profilePictureUrl: String? = null
     private var localImagePath: String? = null
     private var userId = ""
-    private var isUploadingImage = false
     private lateinit var imagePickLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,17 +59,16 @@ class EditProfileActivity : AppCompatActivity() {
         // Initialize UI components and setup launchers
         initializeViews()
         setupImagePickerLauncher()
+
         // Initialize services
         LocalStorageService.initialize(this, ContentValues.TAG)
 
         if (firebaseEnabled) {
-            FirebaseService.initialize(this,TAG,firebaseEnabled)
+            FirebaseService.initialize(this, TAG, firebaseEnabled)
         }
 
         // Get current user ID
         userId = UserSettings.userId
-
-
 
         // Set click listeners
         setupClickListeners()
@@ -131,13 +110,31 @@ class EditProfileActivity : AppCompatActivity() {
                     selectedImageUri = data.data
 
                     // Display the selected image immediately
-                    loadImageIntoView(selectedImageUri)
+                    ImageUploadService.loadImageIntoView(this, selectedImageUri, profileImageView)
 
                     // Save image locally first
-                    saveImageLocally(selectedImageUri!!)
+                    localImagePath = ImageUploadService.saveImageLocally(this, selectedImageUri!!, userId)
 
                     // Also upload to ImgBB for online access
-                    uploadImageToImgbb(selectedImageUri!!)
+                    ImageUploadService.uploadImageToImgbb(
+                        this,
+                        selectedImageUri!!,
+                        imageUploadProgressBar,
+                        object : ImageUploadService.ImageUploadCallback {
+                            override fun onUploadSuccess(imageUrl: String) {
+                                profilePictureUrl = imageUrl
+                            }
+
+                            override fun onUploadFailure(errorMessage: String) {
+                                Toast.makeText(this@EditProfileActivity,
+                                    errorMessage, Toast.LENGTH_SHORT).show()
+                            }
+
+                            override fun onUploadProgress(isUploading: Boolean) {
+                                // This can be used to update UI elements based on upload state
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -147,9 +144,9 @@ class EditProfileActivity : AppCompatActivity() {
         progressIndicator.visibility = View.VISIBLE
         loadInfoIntoViews()
     }
-    private fun loadInfoIntoViews(){
-        FirebaseService.loadUserFromFirebase(userId) { user ->
 
+    private fun loadInfoIntoViews() {
+        FirebaseService.loadUserFromFirebase(userId) { user ->
             nameEditText.setText(user.displayName)
             statusEditText.setText(user.userStatus)
             descriptionEditText.setText(user.userDescription)
@@ -158,20 +155,21 @@ class EditProfileActivity : AppCompatActivity() {
             // Check for local image first - we may have saved it locally previously
             val localImageFile = File(filesDir, "profile_${userId}.jpg")
             val imageUrl = user.profilePictureUrl
+
             if (imageUrl.isNotEmpty()) {
                 profilePictureUrl = imageUrl
                 globalFunctions.loadImageFromUrl(imageUrl, profileImageView)
 
                 // Try to download and save the image locally for next time
-                downloadAndSaveImageLocally(imageUrl)
-            }else {
+                ImageUploadService.downloadAndSaveImageLocally(this, imageUrl, userId)
+            } else if (localImageFile.exists()) {
                 localImagePath = localImageFile.absolutePath
                 selectedImageUri = Uri.fromFile(localImageFile)
-                loadImageIntoView(selectedImageUri)
+                ImageUploadService.loadImageIntoView(this, selectedImageUri, profileImageView)
             }
 
+            progressIndicator.visibility = View.GONE
         }
-        progressIndicator.visibility = View.GONE
     }
 
     private fun pickImage() {
@@ -184,23 +182,6 @@ class EditProfileActivity : AppCompatActivity() {
             }
     }
 
-    private fun loadImageIntoView(uri: Uri?) {
-        if (uri != null) {
-            Glide.with(this)
-                .load(uri)
-                .apply(RequestOptions()
-                    .placeholder(R.drawable.ic_person)
-                    .error(R.drawable.ic_person)
-                    .diskCacheStrategy(DiskCacheStrategy.NONE))
-                .into(profileImageView)
-        } else {
-            // Set default image
-            profileImageView.setImageResource(R.drawable.ic_person)
-        }
-    }
-
-
-
     private fun saveProfile() {
         val displayName = nameEditText.text.toString().trim()
         val status = statusEditText.text.toString().trim()
@@ -212,7 +193,7 @@ class EditProfileActivity : AppCompatActivity() {
         }
 
         // Don't proceed if image is still uploading
-        if (isUploadingImage) {
+        if (ImageUploadService.isUploadInProgress()) {
             Toast.makeText(this, "Please wait for image upload to complete", Toast.LENGTH_SHORT).show()
             return
         }
@@ -225,15 +206,13 @@ class EditProfileActivity : AppCompatActivity() {
             "displayName" to displayName,
             "userStatus" to status,
             "userDescription" to description,
-            "profilePictureUrl" to profilePictureUrl.toString()
+            "profilePictureUrl" to (profilePictureUrl ?: "")
         )
 
-
-        FirebaseService.updateUserinFirebase(userId,data) {
+        FirebaseService.updateUserinFirebase(userId, data) {
             if (it) {
                 // Update in chat list
                 updateUserInChatsList(displayName)
-
             }
         }
 
@@ -246,16 +225,15 @@ class EditProfileActivity : AppCompatActivity() {
             profilePictureUrl.toString(),
             phoneTextView.text.toString(),
         )
+
         if (flag) {
             // Also update in chat list if applicable
             updateUserInChatsList(displayName)
-
             finalizeProfileSave()
         } else {
             progressIndicator.visibility = View.GONE
             saveButton.visibility = View.VISIBLE
         }
-
     }
 
     private fun navigateBack() {
@@ -268,36 +246,6 @@ class EditProfileActivity : AppCompatActivity() {
     override fun onBackPressed() {
         navigateBack()
     }
-
-    // ---- Image Handling Methods ----
-
-    private fun saveImageLocally(imageUri: Uri): String? {
-        try {
-            // Create file path for local storage
-            val imageFile = File(filesDir, "profile_${userId}.jpg")
-
-            // Copy image to app's private storage
-            contentResolver.openInputStream(imageUri)?.use { input ->
-                imageFile.outputStream().use { output ->
-                    input.copyTo(output)
-                }
-            }
-
-            // Save the local path
-            localImagePath = imageFile.absolutePath
-            Log.d(TAG, "Image saved locally: $localImagePath")
-            return localImagePath
-        } catch (e: Exception) {
-            Log.e(TAG, "Error saving image locally", e)
-            return null
-        }
-    }
-
-    // ---- Local Storage Methods ----
-
-
-
-
 
     private fun updateUserInChatsList(displayName: String) {
         try {
@@ -316,125 +264,6 @@ class EditProfileActivity : AppCompatActivity() {
             Log.e(TAG, "Error updating user in chats list", e)
         }
     }
-
-    // ---- Firebase Methods ----
-
-
-    // ---- API Methods ----
-
-    private fun uploadImageToImgbb(imageUri: Uri) {
-        // Show upload progress
-        imageUploadProgressBar.visibility = View.VISIBLE
-        isUploadingImage = true
-        Toast.makeText(this, "Uploading image to cloud...", Toast.LENGTH_SHORT).show()
-
-        try {
-            // Read image data
-            val inputStream = contentResolver.openInputStream(imageUri)
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-            inputStream?.close()
-
-            // Convert bitmap to byte array
-            val byteArrayOutputStream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream)
-            val imageBytes = byteArrayOutputStream.toByteArray()
-            val base64Image = Base64.getEncoder().encodeToString(imageBytes)
-
-            // Create form data for ImgBB API
-            val requestBody = MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart("key", globalFunctions.IMGBB_API_KEY)
-                .addFormDataPart("image", base64Image)
-                .build()
-
-            // Create request
-            val request = Request.Builder()
-                .url( globalFunctions.IMGBB_API_URL)
-                .post(requestBody)
-                .build()
-
-            // Execute request asynchronously
-            httpClient.newCall(request).enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-                    runOnUiThread {
-                        Log.e(TAG, "Failed to upload image to ImgBB", e)
-                        Toast.makeText(applicationContext, "Cloud image upload failed, but local copy saved", Toast.LENGTH_SHORT).show()
-                        imageUploadProgressBar.visibility = View.GONE
-                        isUploadingImage = false
-                    }
-                }
-
-                override fun onResponse(call: Call, response: Response) {
-                    try {
-                        val responseBody = response.body?.string()
-                        val jsonResponse = JSONObject(responseBody)
-
-                        if (jsonResponse.getBoolean("success")) {
-                            val data = jsonResponse.getJSONObject("data")
-                            val imageUrl = data.getString("url")
-
-                            runOnUiThread {
-                                profilePictureUrl = imageUrl
-                                Toast.makeText(applicationContext, "Image uploaded to cloud successfully!", Toast.LENGTH_SHORT).show()
-                                imageUploadProgressBar.visibility = View.GONE
-                                isUploadingImage = false
-                            }
-                        } else {
-                            runOnUiThread {
-                                Toast.makeText(applicationContext, "Cloud upload failed: " + jsonResponse.optString("error", "Unknown error"), Toast.LENGTH_SHORT).show()
-                                imageUploadProgressBar.visibility = View.GONE
-                                isUploadingImage = false
-                            }
-                        }
-                    } catch (e: Exception) {
-                        runOnUiThread {
-                            Log.e(TAG, "Error parsing ImgBB response", e)
-                            Toast.makeText(applicationContext, "Failed to process uploaded image", Toast.LENGTH_SHORT).show()
-                            imageUploadProgressBar.visibility = View.GONE
-                            isUploadingImage = false
-                        }
-                    }
-                }
-            })
-        } catch (e: Exception) {
-            Log.e(TAG, "Error preparing image for upload", e)
-            Toast.makeText(this, "Failed to upload to cloud, but local copy saved", Toast.LENGTH_SHORT).show()
-            imageUploadProgressBar.visibility = View.GONE
-            isUploadingImage = false
-        }
-    }
-
-    private fun downloadAndSaveImageLocally(imageUrl: String) {
-        Thread {
-            try {
-                // Create a request
-                val request = Request.Builder()
-                    .url(imageUrl)
-                    .build()
-
-                httpClient.newCall(request).execute().use { response ->
-                    if (response.isSuccessful) {
-                        val inputStream = response.body?.byteStream()
-                        if (inputStream != null) {
-                            // Save to local file
-                            val imageFile = File(filesDir, "profile_${userId}.jpg")
-                            imageFile.outputStream().use { output ->
-                                inputStream.copyTo(output)
-                            }
-
-                            // Update local path
-                            localImagePath = imageFile.absolutePath
-                            Log.d(TAG, "Remote image downloaded and saved locally: $localImagePath")
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to download image from URL", e)
-            }
-        }.start()
-    }
-
-    // ---- Utility Methods ----
 
     private fun finalizeProfileSave() {
         Toast.makeText(this, "✅ Profile updated", Toast.LENGTH_SHORT).show()
