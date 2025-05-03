@@ -58,7 +58,8 @@ class SettingsActivity : AppCompatActivity() {
             finish()
         }
         findViewById<LinearLayout>(R.id.chatHistorySettingItem).setOnClickListener {
-            clearAllChatFiles()
+            startActivity(Intent(this, ChatHistoryActivity::class.java))
+            finish()
         }
         findViewById<LinearLayout>(R.id.signOutSettingItem).setOnClickListener {
             logout()

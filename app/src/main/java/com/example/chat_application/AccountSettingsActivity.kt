@@ -1,85 +1,261 @@
 package com.example.chat_application
 
+import android.app.Activity
+import android.content.ContentValues
 import android.content.Intent
-import android.content.SharedPreferences
+import android.net.Uri
 import android.os.Bundle
-import android.widget.Button
-import android.widget.EditText
-import android.widget.Switch
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
+import android.view.View
+import android.widget.ImageView
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.SwitchCompat
 import androidx.appcompat.widget.Toolbar
+import com.example.chat_application.dataclasses.UserSettings
+import com.example.chat_application.services.FirebaseService
+import com.example.chat_application.services.ImageUploadService
+import com.example.chat_application.services.LocalStorageService
+import com.github.dhaval2404.imagepicker.ImagePicker
+import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
+import com.google.firebase.auth.FirebaseAuth
+import java.io.File
+import java.util.regex.Pattern
+
+private const val TAG = "AccountSettingsActivity"
 
 class AccountSettingsActivity : AppCompatActivity() {
-
+    private lateinit var profileImageView: ImageView
     private lateinit var nameEditText: TextInputEditText
     private lateinit var phoneEditText: TextInputEditText
     private lateinit var passwordEditText: TextInputEditText
-    private lateinit var readReceiptsSwitch: SwitchCompat
-    private lateinit var saveButton: Button
-    private lateinit var sharedPreferences: SharedPreferences
+    private lateinit var readReceiptsSwitch: SwitchMaterial
+    private lateinit var saveButton: TextView
+    private lateinit var progressIndicator: ProgressBar
+    private lateinit var imageUploadProgressBar: ProgressBar
+    private val firebaseEnabled by lazy { resources.getBoolean(R.bool.firebaseOn) }
+    private var selectedImageUri: Uri? = null
+    private var profilePictureUrl: String? = null
+    private var localImagePath: String? = null
+    private var userId = ""
+    private lateinit var imagePickLauncher: androidx.activity.result.ActivityResultLauncher<Intent>
+
+    companion object {
+        private const val PHONE_PATTERN = "^\\+?[1-9]\\d{1,14}\$"
+        private const val MIN_PASSWORD_LENGTH = 6
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(UserSettings.theme)
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContentView(R.layout.account_settings)
+        initializeViews()
+        setupImagePickerLauncher()
+        LocalStorageService.initialize(this, ContentValues.TAG)
+        if (firebaseEnabled) {
+            FirebaseService.initialize(this, TAG, firebaseEnabled)
+        }
+        userId = UserSettings.userId
+        setupClickListeners()
+        loadUserData()
+    }
 
-        // Initialize views
+    private fun initializeViews() {
+        profileImageView = findViewById(R.id.profileImageView)
         nameEditText = findViewById(R.id.nameEditText)
         phoneEditText = findViewById(R.id.phoneEditText)
         passwordEditText = findViewById(R.id.passwordEditText)
         readReceiptsSwitch = findViewById(R.id.readReceiptsSwitch)
         saveButton = findViewById(R.id.saveButton)
+        progressIndicator = findViewById(R.id.progressIndicator)
+        imageUploadProgressBar = findViewById(R.id.imageUploadProgressBar)
+        imageUploadProgressBar.visibility = View.GONE
+    }
 
-        // Initialize SharedPreferences
-        sharedPreferences = getSharedPreferences("UserSettings", MODE_PRIVATE)
+    private fun setupClickListeners() {
+        findViewById<ImageView>(R.id.editImageButton).setOnClickListener { pickImage() }
+        profileImageView.setOnClickListener { pickImage() }
+        saveButton.setOnClickListener { saveProfile() }
+        val toolbar = findViewById<Toolbar>(R.id.toolbar)
+        toolbar.setNavigationOnClickListener { navigateBack() }
+    }
 
-        val backButton = findViewById<Toolbar>(R.id.toolbar)
-
-        backButton.setNavigationOnClickListener {
-            val intent = Intent(this, SettingsActivity::class.java)
-            startActivity(intent)
-            overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
-        }
-
-        // Load saved data if available
-        loadSavedData()
-
-        // Handle the Save button click
-        saveButton.setOnClickListener {
-            saveAccountSettings()
+    private fun setupImagePickerLauncher() {
+        imagePickLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val data = result.data
+                if (data != null && data.data != null) {
+                    selectedImageUri = data.data
+                    ImageUploadService.loadImageIntoView(this, selectedImageUri, profileImageView)
+                    localImagePath = ImageUploadService.saveImageLocally(this, selectedImageUri!!, userId)
+                    ImageUploadService.uploadImageToImgbb(
+                        this,
+                        selectedImageUri!!,
+                        imageUploadProgressBar,
+                        object : ImageUploadService.ImageUploadCallback {
+                            override fun onUploadSuccess(imageUrl: String) {
+                                profilePictureUrl = imageUrl
+                            }
+                            override fun onUploadFailure(errorMessage: String) {
+                                Toast.makeText(this@AccountSettingsActivity, errorMessage, Toast.LENGTH_SHORT).show()
+                            }
+                            override fun onUploadProgress(isUploading: Boolean) {}
+                        }
+                    )
+                }
+            }
         }
     }
 
-    private fun saveAccountSettings() {
-        val name = nameEditText.text.toString()
-        val phone = phoneEditText.text.toString()
-        val password = passwordEditText.text.toString()
-        val readReceiptsEnabled = readReceiptsSwitch.isChecked
-
-        // Save settings in SharedPreferences
-        val editor = sharedPreferences.edit()
-        editor.putString("name", name)
-        editor.putString("phone", phone)
-        editor.putString("password", password)
-        editor.putBoolean("readReceipts", readReceiptsEnabled)
-        editor.apply()
-
-        // Show success message
-        Toast.makeText(this, "Settings saved successfully", Toast.LENGTH_SHORT).show()
+    private fun loadUserData() {
+        progressIndicator.visibility = View.VISIBLE
+        FirebaseService.loadUserFromFirebase(userId) { user ->
+            nameEditText.setText(user.displayName)
+            phoneEditText.setText(user.phoneNumber)
+            readReceiptsSwitch.isChecked = user.online ?: true
+            val localImageFile = File(filesDir, "profile_${userId}.jpg")
+            val imageUrl = user.profilePictureUrl
+            if (imageUrl.isNotEmpty()) {
+                profilePictureUrl = imageUrl
+                HelperFunctions.loadImageFromUrl(imageUrl, profileImageView)
+                ImageUploadService.downloadAndSaveImageLocally(this, imageUrl, userId)
+            } else if (localImageFile.exists()) {
+                localImagePath = localImageFile.absolutePath
+                selectedImageUri = Uri.fromFile(localImageFile)
+                ImageUploadService.loadImageIntoView(this, selectedImageUri, profileImageView)
+            }
+            progressIndicator.visibility = View.GONE
+        }
     }
 
-    private fun loadSavedData() {
-        val savedName = sharedPreferences.getString("name", "")
-        val savedPhone = sharedPreferences.getString("phone", "")
-        val savedPassword = sharedPreferences.getString("password", "")
-        val savedReadReceipts = sharedPreferences.getBoolean("readReceipts", true)
+    private fun pickImage() {
+        ImagePicker.with(this)
+            .cropSquare()
+            .compress(512)
+            .maxResultSize(512, 512)
+            .createIntent { intent ->
+                imagePickLauncher.launch(intent)
+            }
+    }
 
-        // Load saved data into UI components
-        nameEditText.setText(savedName)
-        phoneEditText.setText(savedPhone)
-        passwordEditText.setText(savedPassword)
-        readReceiptsSwitch.isChecked = savedReadReceipts
+    private fun saveProfile() {
+        val name = nameEditText.text.toString().trim()
+        val phone = phoneEditText.text.toString().trim()
+        val password = passwordEditText.text.toString().trim()
+        val readReceipts = readReceiptsSwitch.isChecked
+        if (!validateInputs(name, phone, password)) return
+        if (ImageUploadService.isUploadInProgress()) {
+            Toast.makeText(this, "Please wait for image upload to complete", Toast.LENGTH_SHORT).show()
+            return
+        }
+        progressIndicator.visibility = View.VISIBLE
+        saveButton.visibility = View.GONE
+        Toast.makeText(this, "Saving settings...", Toast.LENGTH_SHORT).show()
+        if (password.isNotEmpty()) {
+            FirebaseAuth.getInstance().currentUser?.updatePassword(password)?.addOnSuccessListener {
+                Log.d(TAG, "Password updated successfully")
+            }?.addOnFailureListener {
+                Log.e(TAG, "Password update failed", it)
+                Toast.makeText(this, "Failed to update password", Toast.LENGTH_SHORT).show()
+            }
+        }
+        val data = hashMapOf<String, Any>(
+            "displayName" to name,
+            "phoneNumber" to phone,
+            "readReceipts" to readReceipts,
+            "profilePictureUrl" to (profilePictureUrl ?: "")
+        )
+        FirebaseService.updateUserinFirebase(userId, data) { success ->
+            if (success) {
+                updateUserInChatsList(name)
+            }
+        }
+        val flag = LocalStorageService.updateUserToLocalStorage(
+            name,
+            "",
+            "",
+            userId,
+            localImagePath.toString(),
+            profilePictureUrl.toString(),
+            phone
+        )
+        if (flag) {
+            updateUserInChatsList(name)
+            finalizeProfileSave()
+        } else {
+            progressIndicator.visibility = View.GONE
+            saveButton.visibility = View.VISIBLE
+            Toast.makeText(this, "Failed to save locally", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun validateInputs(name: String, phone: String, password: String): Boolean {
+        var isValid = true
+        if (name.isEmpty()) {
+            nameEditText.error = "Name is required"
+            nameEditText.announceForAccessibility("Name is required")
+            isValid = false
+        }
+        if (phone.isEmpty()) {
+            phoneEditText.error = "Phone number is required"
+            phoneEditText.announceForAccessibility("Phone number is required")
+            isValid = false
+        } else if (!Pattern.matches(PHONE_PATTERN, phone)) {
+            phoneEditText.error = "Invalid phone number"
+            phoneEditText.announceForAccessibility("Invalid phone number")
+            isValid = false
+        }
+        if (password.isNotEmpty() && password.length < MIN_PASSWORD_LENGTH) {
+            passwordEditText.error = "Password must be at least $MIN_PASSWORD_LENGTH characters"
+            passwordEditText.announceForAccessibility("Password must be at least $MIN_PASSWORD_LENGTH characters")
+            isValid = false
+        }
+        return isValid
+    }
+
+    private fun navigateBack() {
+        finish()
+    }
+
+    override fun onBackPressed() {
+        navigateBack()
+        super.onBackPressed()
+    }
+
+    private fun updateUserInChatsList(displayName: String) {
+        try {
+            val usersFile = File(filesDir, "users.json")
+            if (usersFile.exists()) {
+                val content = usersFile.readText()
+                if (content.isNotEmpty()) {
+                    val jsonObject = org.json.JSONObject(content)
+                    jsonObject.put(userId, displayName)
+                    usersFile.writeText(jsonObject.toString())
+                    Log.d(TAG, "Updated user display name in users.json")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating user in chats list", e)
+        }
+    }
+
+    private fun finalizeProfileSave() {
+        Toast.makeText(this, "✅ Settings updated", Toast.LENGTH_SHORT).show()
+        Handler(Looper.getMainLooper()).postDelayed({
+            navigateBack()
+        }, 1200)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        FirebaseService.cleanup()
     }
 }

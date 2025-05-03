@@ -89,6 +89,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var chat : Chat
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
         setupThemeAndLayout(savedInstanceState)
         voiceRecorder = VoiceRecorder(this)
         setupKeyboardBehavior()

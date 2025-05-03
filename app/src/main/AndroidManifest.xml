@@ -64,7 +64,9 @@
         <activity android:name=".AccountSettingsActivity" android:exported="true" />
         <activity android:name=".AddNewGroupActivity" android:exported="true" />
         <activity android:name=".GroupProfileActivity" android:exported="true" />
-
+        <activity
+            android:name=".ChatHistoryActivity"
+            android:exported="true" />
     </application>
 
 </manifest>
