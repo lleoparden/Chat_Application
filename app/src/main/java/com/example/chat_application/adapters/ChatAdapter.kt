@@ -175,66 +175,11 @@ class ChatAdapter(
             }
 
             // First check if we can get cached data immediately
-            val cachedUserData = HelperFunctions.getUserData(holder.itemView.context, otherUserId)
-            if (cachedUserData != null) {
-                Log.d("ChatAdapter", "Cached user data found for $otherUserId")
+           var userdata = HelperFunctions.loadUserById(otherUserId,holder.chatCardView.context)
+            HelperFunctions.loadImageFromUrl(userdata?.profilePictureUrl.toString(),holder.avatarImageView)
+            holder.nameTextView.text = userdata?.displayName.toString()
 
-                // Always set the display name if available in cache
-                if (!cachedUserData.displayName.isNullOrEmpty()) {
-                    Log.d("ChatAdapter", "Setting name from cache: ${cachedUserData.displayName}")
-                    holder.nameTextView.text = cachedUserData.displayName
-                }
 
-                // Set profile picture if available in cache
-                if (!cachedUserData.profilePictureUrl.isNullOrEmpty()) {
-                    Log.d("ChatAdapter", "Loading profile picture from cache: ${cachedUserData.profilePictureUrl}")
-                    HelperFunctions.loadImageFromUrl(
-                        cachedUserData.profilePictureUrl,
-                        holder.avatarImageView
-                    )
-                } else {
-                    Log.w("ChatAdapter", "Empty profile picture URL in cached data for $otherUserId")
-                    holder.avatarImageView.setImageResource(R.drawable.ic_person)
-                }
-            } else {
-                // Set default immediately, then try to load asynchronously
-                holder.avatarImageView.setImageResource(R.drawable.ic_person)
-
-                // Use the correct getUserData method with callback to fetch latest
-                Log.d("ChatAdapter", "Fetching user data for ID: $otherUserId")
-                HelperFunctions.getUserData(otherUserId) { userData ->
-                    Log.d(
-                        "ChatAdapter",
-                        "User data callback received for $otherUserId: ${userData != null}"
-                    )
-
-                    if (userData != null) {
-                        // Make sure we're on the UI thread when updating the views
-                        holder.avatarImageView.post {
-                            // Update display name if available
-                            if (!userData.displayName.isNullOrEmpty()) {
-                                Log.d(
-                                    "ChatAdapter",
-                                    "Setting name from API: ${userData.displayName}"
-                                )
-                                holder.nameTextView.text = userData.displayName
-                            }
-
-                            // Update profile picture if available
-                            if (!userData.profilePictureUrl.isNullOrEmpty()) {
-                                Log.d(
-                                    "ChatAdapter",
-                                    "Loading profile picture from URL: ${userData.profilePictureUrl}"
-                                )
-                                HelperFunctions.loadImageFromUrl(
-                                    userData.profilePictureUrl,
-                                    holder.avatarImageView
-                                )
-                            }
-                        }
-                    }
-                }
-            }
         } catch (e: Exception) {
             Log.e("ChatAdapter", "Exception in profile picture loading process: ${e.message}", e)
             holder.avatarImageView.setImageResource(R.drawable.ic_person)

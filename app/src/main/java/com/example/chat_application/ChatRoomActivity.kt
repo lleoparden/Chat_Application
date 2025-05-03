@@ -148,7 +148,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun initializeProfileImage() {
 
         if (chat.type == "direct") {
-            val user: UserData? = HelperFunctions.getUserData(this@ChatRoomActivity, otherParticipantId)
+            var user = HelperFunctions.loadUserById(otherParticipantId, this)
 
             if (user != null) {
                 HelperFunctions.loadImageFromUrl(user.profilePictureUrl, profileImageView)

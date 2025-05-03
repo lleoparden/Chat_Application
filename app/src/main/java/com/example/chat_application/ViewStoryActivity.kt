@@ -141,9 +141,12 @@ class ViewStoryActivity : AppCompatActivity() {
     }
 
     private fun loadStoryInfoIntoView() {
-        HelperFunctions.loadImageFromUrl(viewedStory.profilePictureUrl, pfpImage)
-        accName.text = viewedStory.displayName
-
+        val userdata = HelperFunctions.loadUserById(viewedStory.uid, this)
+        // This should always be non-null because we've filtered the stories
+        if (userdata != null) {
+            HelperFunctions.loadImageFromUrl(viewedStory.profilePictureUrl, pfpImage)
+            accName.text = userdata.displayName
+        }
         // Load the first valid story
         if (filteredStories.isNotEmpty()) {
             loadCurrentStory()

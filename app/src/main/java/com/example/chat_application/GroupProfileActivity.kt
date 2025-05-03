@@ -450,59 +450,36 @@ class GroupProfileActivity : AppCompatActivity() {
     }
 
     private fun loadGroupMember(userId: String) {
-        if (firebaseEnabled) {
-            firestore.collection("users").document(userId)
-                .get()
-                .addOnSuccessListener { document ->
-                    if (document != null && document.exists()) {
-                        val user = UserData(
-                            uid = userId,
-                            displayName = document.getString("displayName") ?: userId,
-                            phoneNumber = document.getString("phoneNumber") ?: "",
-                            profilePictureUrl = document.getString("profilePictureUrl") ?: ""
-                        )
-                        addMemberToList(user)
-                    } else {
-                        // If not found in Firebase, add a basic user
-                        addMemberToList(UserData(uid = userId, displayName = userId))
-                    }
-                }
-                .addOnFailureListener { e ->
-                    Log.e(TAG, "Error loading user data", e)
-                    // Add a basic user on failure
-                    addMemberToList(UserData(uid = userId, displayName = userId))
-                }
-        } else {
-            // Try to get from local storage
-            try {
-                val usersFile = File(filesDir, "local_users.json")
-                if (usersFile.exists()) {
-                    val fileContent = usersFile.readText()
-                    val jsonArray = JSONArray(fileContent)
-
-                    for (i in 0 until jsonArray.length()) {
-                        val jsonUser = jsonArray.getJSONObject(i)
-                        if (jsonUser.getString("uid") == userId) {
-                            val user = UserData(
-                                uid = userId,
-                                displayName = jsonUser.getString("displayName"),
-                                phoneNumber = jsonUser.getString("phoneNumber"),
-                                profilePictureUrl = jsonUser.optString("profilePictureUrl", "")
-                            )
-                            addMemberToList(user)
-                            return
+        // Try to get from local storage
+            var userdata = HelperFunctions.loadUserById(userId, this)
+            if (userdata != null) {
+                addMemberToList(userdata)
+                return
+            }else{
+                if (firebaseEnabled) {
+                    firestore.collection("users").document(userId)
+                        .get()
+                        .addOnSuccessListener { document ->
+                            if (document != null && document.exists()) {
+                                val user = UserData(
+                                    uid = userId,
+                                    displayName = document.getString("displayName") ?: userId,
+                                    phoneNumber = document.getString("phoneNumber") ?: "",
+                                    profilePictureUrl = document.getString("profilePictureUrl") ?: ""
+                                )
+                                addMemberToList(user)
+                            } else {
+                                // If not found in Firebase, add a basic user
+                                addMemberToList(UserData(uid = userId, displayName = userId))
+                            }
                         }
-                    }
+                        .addOnFailureListener { e ->
+                            Log.e(TAG, "Error loading user data", e)
+                            // Add a basic user on failure
+                            addMemberToList(UserData(uid = userId, displayName = userId))
+                        }
                 }
-
-                // If not found, add basic user
-                addMemberToList(UserData(uid = userId, displayName = userId))
-
-            } catch (e: Exception) {
-                Log.e(TAG, "Error reading local users file", e)
-                addMemberToList(UserData(uid = userId, displayName = userId))
             }
-        }
     }
 
     private fun addMemberToList(user: UserData) {

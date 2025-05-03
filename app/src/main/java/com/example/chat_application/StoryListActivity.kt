@@ -175,7 +175,8 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
                     // Update UI when all users are processed
                     if (loadedUsers >= totalUsers) {
                         runOnUiThread {
-                            storyAdapter.notifyDataSetChanged()
+                            // Update the adapter with new stories and filter based on local_user.json
+                            storyAdapter.updateStories(storiesList, this@StoryListActivity)
                             // Hide loading indicator if you have one
                         }
                     }
@@ -187,7 +188,8 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
                     // Update UI when all users are processed, even if some failed
                     if (loadedUsers >= totalUsers) {
                         runOnUiThread {
-                            storyAdapter.notifyDataSetChanged()
+                            // Update the adapter with new stories and filter based on local_user.json
+                            storyAdapter.updateStories(storiesList, this@StoryListActivity)
                             // Hide loading indicator if you have one
                         }
                     }
@@ -197,8 +199,11 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
 
     private fun setupRecyclerView() {
         storyRecyclerView.layoutManager = LinearLayoutManager(this)
-        storyAdapter = StoryAdapter(storiesList, this)
+        // Initialize the adapter with empty list first
+        storyAdapter = StoryAdapter(emptyList(), this)
         storyRecyclerView.adapter = storyAdapter
+        // Initialize filtered stories with current context to filter based on local_user.json
+        storyAdapter.initializeFilteredStories(this)
     }
 
     //region Firebase

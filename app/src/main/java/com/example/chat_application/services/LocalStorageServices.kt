@@ -23,7 +23,8 @@ import java.io.FileWriter
 object LocalStorageService {
     // Constants
     private const val CHATS_FILE = "chats.json"
-    private const val USERS_FILE = "local_users.json"
+    private const val USERS_FILE = "users.json"
+    private const val USER_USERS_FILE = "local_user.json"
     private const val PREFS_NAME = "ChatAppPrefs"
     private const val USER_ID_KEY = "userId"
 
@@ -31,20 +32,22 @@ object LocalStorageService {
     private lateinit var context: Context
     private lateinit var tag :String
     private lateinit var localUsersFile: File
+    private lateinit var usersFile: File
 
     /**
      * Initializes the local storage service
      */
     fun initialize(context: Context,Tag :String) {
         LocalStorageService.context = context
-        localUsersFile = File(context.filesDir, USERS_FILE)
+        usersFile = File(context.filesDir, USERS_FILE)
+        localUsersFile = File(context.filesDir, USER_USERS_FILE)
         tag= Tag
 
-        if (!localUsersFile.exists()) {
+        if (!usersFile.exists()) {
             try {
-                localUsersFile.createNewFile()
+                usersFile.createNewFile()
                 saveUsersToJson(emptyList())
-                Log.d(tag, "Created new local users file at: ${localUsersFile.absolutePath}")
+                Log.d(tag, "Created new local users file at: ${usersFile.absolutePath}")
             } catch (e: Exception) {
                 Log.e(tag, "Error creating local users file", e)
             }
@@ -59,12 +62,12 @@ object LocalStorageService {
      * Retrieves all locally stored users
      */
     private fun getLocalUsers(): List<UserData> {
-        if (!localUsersFile.exists() || localUsersFile.length() == 0L) {
+        if (!usersFile.exists() || usersFile.length() == 0L) {
             return emptyList()
         }
 
         return try {
-            val fileContent = FileReader(localUsersFile).use { it.readText() }
+            val fileContent = FileReader(usersFile).use { it.readText() }
 
             // If file is empty or not proper JSON array, return empty list
             if (fileContent.isBlank() || !fileContent.trim().startsWith("[")) {
@@ -120,7 +123,7 @@ object LocalStorageService {
                 jsonArray.put(jsonUser)
             }
 
-            FileWriter(localUsersFile).use { writer ->
+            FileWriter(usersFile).use { writer ->
                 writer.write(jsonArray.toString())
             }
         } catch (e: Exception) {
@@ -143,6 +146,51 @@ object LocalStorageService {
         }
 
         saveUsersToJson(users)
+    }
+
+    fun saveContactsAsUserToLocalStorage(usersData: List<UserData>) {
+        Log.d(tag, "Starting saveContactsAsUserToLocalStorage with ${usersData.size} users")
+
+        try {
+            val jsonArray = JSONArray()
+            Log.d(tag, "Created JSON array for storage")
+
+            usersData.forEach { userData ->
+                Log.d(tag, "Processing user for storage: ${userData.uid} (${userData.displayName})")
+                val jsonUser = JSONObject().apply {
+                    put("uid", userData.uid)
+                    put("displayName", userData.displayName)
+                    put("phoneNumber", userData.phoneNumber)
+                    put("password", userData.password)
+                    put("userDescription", userData.userDescription)
+                    put("userStatus", userData.userStatus)
+                    put("online", userData.online)
+                    put("lastSeen", userData.lastSeen)
+                    put("profilePictureUrl", userData.profilePictureUrl)
+                }
+                jsonArray.put(jsonUser)
+            }
+
+            Log.d(tag, "Attempting to write ${jsonArray.length()} users to file: ${localUsersFile.absolutePath}")
+
+            FileWriter(localUsersFile).use { writer ->
+                writer.write(jsonArray.toString())
+                Log.d(tag, "Successfully wrote ${jsonArray.length()} users to local storage file")
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Error saving users to local storage", e)
+            Log.e(tag, "Exception details: ${e.message}")
+            e.printStackTrace()
+        }
+
+        // Verify file was created and contains data
+        try {
+            val fileExists = localUsersFile.exists()
+            val fileSize = localUsersFile.length()
+            Log.d(tag, "Storage file exists: $fileExists, size: $fileSize bytes")
+        } catch (e: Exception) {
+            Log.e(tag, "Error checking saved file status", e)
+        }
     }
 
     /**
@@ -197,8 +245,8 @@ object LocalStorageService {
 
      fun updateUserToLocalStorage(displayName: String, status: String, description: String,userId: String,localImagePath:String,profilePictureUrl:String,phoneNumber: String,) : Boolean{
         try {
-            val fileContent = if (localUsersFile.exists() && localUsersFile.readText().isNotBlank()) {
-                localUsersFile.readText()
+            val fileContent = if (usersFile.exists() && usersFile.readText().isNotBlank()) {
+                usersFile.readText()
             } else {
                 "[]"
             }
@@ -253,7 +301,7 @@ object LocalStorageService {
             }
 
             // Write updated JSON to file
-            localUsersFile.writeText(jsonArray.toString())
+            usersFile.writeText(jsonArray.toString())
 
             return true
             
@@ -267,13 +315,13 @@ object LocalStorageService {
 
     fun loadUserFromLocalStorage(userId: String,callback: (UserData) -> Unit) {
         try {
-            if (!localUsersFile.exists() || localUsersFile.readText().isBlank()) {
+            if (!usersFile.exists() || usersFile.readText().isBlank()) {
                 Log.e(tag, "Local Users File Not Found or Empty")
                 Toast.makeText(context, "User Data Not Found", Toast.LENGTH_SHORT).show()
                 return
             }
             var user : UserData
-            val fileContent = localUsersFile.readText()
+            val fileContent = usersFile.readText()
             if (fileContent.trim().startsWith("[")) {
                 val jsonArray = JSONArray(fileContent)
                 for (i in 0 until jsonArray.length()) {

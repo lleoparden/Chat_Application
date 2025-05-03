@@ -59,7 +59,8 @@ class UserProfileActivity : AppCompatActivity() {
         isOwnProfile = currentUserId == viewingUserId
 
         initializeViews()
-        loadUserData()
+        updateUIWithUserData()
+
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         toolbar.title = if (isOwnProfile) "My Profile" else "User Profile"
 
@@ -169,7 +170,7 @@ class UserProfileActivity : AppCompatActivity() {
     // Convert JSONObject to Chat object
     private fun chatFromJson(jsonObject: JSONObject): Chat {
         val participantIdsArray = jsonObject.getJSONArray("participantIds")
-        val participantsList = hashMapOf<String,Boolean>()
+        val participantsList = hashMapOf<String, Boolean>()
 
         for (i in 0 until participantIdsArray.length()) {
             participantsList[participantIdsArray.getString(i)] = true
@@ -227,20 +228,15 @@ class UserProfileActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateUIWithUserData(
-        displayName: String,
-        phoneNumber: String,
-        description: String,
-        Status: String,
-        imageUrl: String
-    ) {
-        displayNameText.text = displayName
-        name = displayName
-        displayNumber.text = phoneNumber
-        displayDescription.text = description
-        displayStatus.text = Status
-        if (imageUrl.isNotEmpty()) {
-            HelperFunctions.loadImageFromUrl(imageUrl,profileImage)
+    private fun updateUIWithUserData() {
+        var userdata = HelperFunctions.loadUserById(viewingUserId, this)
+        if (userdata != null) {
+            displayNameText.text = userdata.displayName
+            name = userdata.displayName
+            displayNumber.text = userdata.phoneNumber
+            displayDescription.text = userdata.userDescription
+            displayStatus.text = userdata.userStatus
+            HelperFunctions.loadImageFromUrl(userdata.profilePictureUrl, profileImage)
         }
     }
 
@@ -256,82 +252,6 @@ class UserProfileActivity : AppCompatActivity() {
 
     }
 
-    private fun loadUserData() {
-        if (firebaseEnabled) {
-            loadUserFromFirebase()
-        } else
-            loadUserFromLocalStorage()
-    }
-
-    private fun loadUserFromFirebase() {
-        Toast.makeText(this, "id:${viewingUserId}", Toast.LENGTH_SHORT).show()
-        db.collection("users").document(viewingUserId)
-            .get()
-            .addOnSuccessListener { document ->
-                if (document != null && document.exists()) {
-                    updateUIWithUserData(
-                        displayName = document.getString("displayName") ?: "",
-                        phoneNumber = document.getString("phoneNumber") ?: "",
-                        description = document.getString("userDescription") ?: "",
-                        Status = document.getString("userStatus") ?: "",
-                        imageUrl= document.getString("profilePictureUrl") ?: ""
-
-                    )
-                } else {
-                    // If not found in Firebase, try local
-                    Log.d(TAG, "User not found in Firebase, trying local storage")
-                    Toast.makeText(this, "User Not Found remotely", Toast.LENGTH_SHORT).show()
-                    loadUserFromLocalStorage()
-                }
-            }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "Error loading user data from Firebase", e)
-                Toast.makeText(this, "Failed to load profile", Toast.LENGTH_SHORT).show()
-                loadUserFromLocalStorage() // Fallback to local
-            }
-    }
-
-    private fun loadUserFromLocalStorage() {
-        try {
-            val localUsersFile = File(filesDir, "local_users.json")
-            if (!localUsersFile.exists()) {
-                Log.e(TAG, "Local Users File Not Found")
-                Toast.makeText(this, "User Data Not Found", Toast.LENGTH_SHORT).show()
-                return
-            }
-            val fileContent = localUsersFile.readText()
-            if (fileContent.isBlank()) {
-                Log.e(TAG, "Local Users File Is Empty")
-                return
-            }
-
-            if (fileContent.trim().startsWith("[")) {
-                val jsonArray = JSONArray(fileContent)
-
-                for (i in 0 until jsonArray.length()) {
-                    val jsonUser = jsonArray.getJSONObject(i)
-                    if (jsonUser.getString("uid") == viewingUserId) {
-                        updateUIWithUserData(
-                            displayName = jsonUser.getString("displayName"),
-                            phoneNumber = jsonUser.getString("phoneNumber"),
-                            description = jsonUser.getString("description"),
-                            Status = jsonUser.getString("Status"),
-                            imageUrl= jsonUser.getString("profilePictureUrl")?:""
-                        )
-                        return
-                    }
-                }
-            }
-
-            Log.e(TAG, "User Not Found In Local Storage")
-            Toast.makeText(this, "User Not Found locally", Toast.LENGTH_SHORT).show()
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error Reading Local Users File", e)
-            Toast.makeText(this, "Error Loading User Data", Toast.LENGTH_SHORT).show()
-        }
-
-    }
 
     private fun saveChatToFirebase(chat: Chat) {
         if (!resources.getBoolean(R.bool.firebaseOn)) {

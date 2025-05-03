@@ -42,6 +42,7 @@ class AddNewGroupActivity : AppCompatActivity(), UserAdapter.OnUserClickListener
     private lateinit var userAdapter: UserAdapter
     private lateinit var selectedMemberAdapter: SelectedMemberAdapter
     private val usersList = mutableListOf<UserData>()
+    private val localUsersList = mutableListOf<UserData>()
     private val selectedUsers = mutableListOf<UserData>()
 
     // Firebase Components
@@ -65,6 +66,7 @@ class AddNewGroupActivity : AppCompatActivity(), UserAdapter.OnUserClickListener
 
         initViews()
         setupUI()
+        loadLocalUsers()
         showEmptyState("Search for users to add to your group")
         Log.i(TAG, "onCreate: Activity setup complete")
     }
@@ -135,10 +137,14 @@ class AddNewGroupActivity : AppCompatActivity(), UserAdapter.OnUserClickListener
                         usersList.clear()
                         userAdapter.notifyDataSetChanged()
                         showEmptyState("Search for users to add to your group")
+                    } else if (firebaseEnabled && isFullPhoneNumber(query)) {
+                        // Search using Firebase for full phone numbers
+                        Log.d(TAG, "Full phone number detected, searching Firebase")
+                        searchUsersByPhoneOnFirebase(query)
                     } else {
-                        // Search with any input, regardless of length
-                        Log.d(TAG, "Initiating search for: '$query'")
-                        searchUsersByPhone(query)
+                        // Search local users for any query
+                        Log.d(TAG, "Searching local users")
+                        searchLocalUsersByPhone(query)
                     }
                 }
             })
@@ -155,8 +161,109 @@ class AddNewGroupActivity : AppCompatActivity(), UserAdapter.OnUserClickListener
         }
     }
 
-    private fun searchUsersByPhone(phoneQuery: String) {
-        Log.i(TAG, "searchUsersByPhone: Searching for users with phone: '$phoneQuery'")
+
+    private fun isFullPhoneNumber(query: String): Boolean {
+        // Check if the number consists of exactly 11 digits
+        return query.all { it.isDigit() } && query.length == 11 ||
+                // Or if it starts with "+" followed by exactly 10 digits
+                (query.startsWith("+") && query.drop(1).all { it.isDigit() } && query.length == 11)
+    }
+
+    private fun loadLocalUsers() {
+        Log.d(TAG, "loadLocalUsers: Loading users from local JSON file")
+        try {
+            progressIndicator.visibility = View.VISIBLE
+
+            // Load from internal files directory instead of assets
+            val file = File(filesDir, "local_user.json")
+
+            if (!file.exists()) {
+                Log.e(TAG, "loadLocalUsers: local_user.json not found in files directory: ${file.absolutePath}")
+                // Create default users if the file doesn't exist
+                progressIndicator.visibility = View.GONE
+                return
+            }
+
+            Log.d(TAG, "loadLocalUsers: Reading file from: ${file.absolutePath}")
+
+            // Read from local_user.json in internal files directory
+            val jsonString = file.readText()
+
+            val jsonArray = JSONArray(jsonString)
+
+            // Parse JSON and create UserData objects
+            for (i in 0 until jsonArray.length()) {
+                val userObject = jsonArray.getJSONObject(i)
+
+                val userData = UserData(
+                    uid = userObject.getString("uid"),
+                    displayName = userObject.getString("displayName"),
+                    phoneNumber = userObject.getString("phoneNumber"),
+                    password = userObject.optString("password", ""),
+                    userDescription = userObject.optString("userDescription", ""),
+                    userStatus = userObject.optString("userStatus", ""),
+                    online = userObject.optBoolean("online", false),
+                    lastSeen = userObject.optString("lastSeen", ""),
+                    profilePictureUrl = userObject.optString("profilePictureUrl", "")
+                )
+
+                localUsersList.add(userData)
+            }
+
+            Log.d(TAG, "loadLocalUsers: Loaded ${localUsersList.size} users from local file")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "loadLocalUsers: Error loading local users", e)
+        } finally {
+            progressIndicator.visibility = View.GONE
+        }
+    }
+
+    private fun searchLocalUsersByPhone(phoneQuery: String) {
+        Log.i(TAG, "searchLocalUsersByPhone: Searching local users with phone: '$phoneQuery'")
+        try {
+            // Show loading indicator
+            progressIndicator.visibility = View.VISIBLE
+            emptyResultsTextView.visibility = View.GONE
+
+            // Clear any existing users
+            usersList.clear()
+
+            // Get current user ID
+            val currentUserId = UserSettings.userId
+            if (currentUserId == null) {
+                Log.e(TAG, "searchLocalUsersByPhone: Current user ID is null")
+                progressIndicator.visibility = View.GONE
+                return
+            }
+
+            // Search for users whose phone number contains the query
+            val results = localUsersList.filter {
+                it.uid != currentUserId && // Exclude current user
+                        it.phoneNumber.contains(phoneQuery) // Phone contains query
+            }
+
+            Log.d(TAG, "searchLocalUsersByPhone: Found ${results.size} matching users")
+
+            if (results.isNotEmpty()) {
+                usersList.addAll(results)
+                userAdapter.notifyDataSetChanged()
+                emptyResultsTextView.visibility = View.GONE
+            } else {
+                showEmptyState("No users found with this phone number")
+            }
+
+            progressIndicator.visibility = View.GONE
+
+        } catch (e: Exception) {
+            Log.e(TAG, "searchLocalUsersByPhone: Error searching local users", e)
+            progressIndicator.visibility = View.GONE
+            showEmptyState("An error occurred while searching")
+        }
+    }
+
+    private fun searchUsersByPhoneOnFirebase(phoneQuery: String) {
+        Log.i(TAG, "searchUsersByPhoneOnFirebase: Searching for users with phone: '$phoneQuery'")
         try {
             // Show loading indicator
             progressIndicator.visibility = View.VISIBLE
@@ -168,168 +275,100 @@ class AddNewGroupActivity : AppCompatActivity(), UserAdapter.OnUserClickListener
             // Get current user ID
             val currentUserId = UserSettings.userId
             if (currentUserId == null) {
-                Log.e(TAG, "searchUsersByPhone: Current user ID is null")
+                Log.e(TAG, "searchUsersByPhoneOnFirebase: Current user ID is null")
                 return
             }
-            Log.d(TAG, "searchUsersByPhone: Current user ID: $currentUserId")
+            Log.d(TAG, "searchUsersByPhoneOnFirebase: Current user ID: $currentUserId")
 
-            if (firebaseEnabled) {
-                searchUsersInFirebase(phoneQuery, currentUserId)
-            } else {
-                searchUsersInLocalStorage(phoneQuery, currentUserId)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "searchUsersByPhone: Unexpected error", e)
-            progressIndicator.visibility = View.GONE
-            showEmptyState("An unexpected error occurred")
-        }
-    }
+            // Try multiple phone number formats to increase chances of finding a match
+            val phoneQueries = listOf(
+                phoneQuery,                     // Original input
+                "+$phoneQuery",                 // With + prefix
+                "+2$phoneQuery",                // With country code +2
+                "+20$phoneQuery",
+                phoneQuery.replace("+", "")     // Without + if it exists
+            )
 
-    private fun searchUsersInFirebase(phoneQuery: String, currentUserId: String) {
-        // Try multiple phone number formats to increase chances of finding a match
-        val phoneQueries = listOf(
-            phoneQuery,                     // Original input
-            "+$phoneQuery",                 // With + prefix
-            "+2$phoneQuery",                // With country code +2
-            "+20$phoneQuery",
-            phoneQuery.replace("+", "")     // Without + if it exists
-        )
+            var queriesCompleted = 0
+            var totalUsersFound = 0
 
-        var queriesCompleted = 0
-        var totalUsersFound = 0
+            for (formattedQuery in phoneQueries) {
+                firestore.collection("users")
+                    .whereGreaterThanOrEqualTo("phoneNumber", formattedQuery)
+                    .whereLessThanOrEqualTo("phoneNumber", formattedQuery + "\uf8ff")
+                    .limit(10)
+                    .get()
+                    .addOnSuccessListener { documents ->
+                        queriesCompleted++
+                        Log.d(TAG, "Query for '$formattedQuery' found ${documents.size()} documents")
 
-        for (formattedQuery in phoneQueries) {
-            firestore.collection("users")
-                .whereGreaterThanOrEqualTo("phoneNumber", formattedQuery)
-                .whereLessThanOrEqualTo("phoneNumber", formattedQuery + "\uf8ff")
-                .limit(10)
-                .get()
-                .addOnSuccessListener { documents ->
-                    queriesCompleted++
-                    Log.d(TAG, "Query for '$formattedQuery' found ${documents.size()} documents")
+                        if (!documents.isEmpty) {
+                            for (document in documents) {
+                                try {
+                                    // Create UserData object
+                                    val userData = UserData(
+                                        uid = document.getString("uid") ?: document.id,
+                                        displayName = document.getString("displayName") ?: "",
+                                        phoneNumber = document.getString("phoneNumber") ?: "",
+                                        password = document.getString("password") ?: "",
+                                        userDescription = document.getString("userDescription") ?: "",
+                                        userStatus = document.getString("userStatus") ?: "",
+                                        online = when (val onlineValue = document.get("online")) {
+                                            is Boolean -> onlineValue
+                                            is String -> onlineValue.equals("true", ignoreCase = true)
+                                            else -> false
+                                        },
+                                        lastSeen = document.getLong("lastSeen")?.toString() ?: "",
+                                        profilePictureUrl = document.getString("profilePictureUrl") ?: ""
+                                    )
 
-                    if (!documents.isEmpty) {
-                        for (document in documents) {
-                            try {
-                                // Create UserData object
-                                val userData = UserData(
-                                    uid = document.getString("uid") ?: document.id,
-                                    displayName = document.getString("displayName") ?: "",
-                                    phoneNumber = document.getString("phoneNumber") ?: "",
-                                    password = document.getString("password") ?: "",
-                                    userDescription = document.getString("userDescription") ?: "",
-                                    userStatus = document.getString("userStatus") ?: "",
-                                    online = when (val onlineValue = document.get("online")) {
-                                        is Boolean -> onlineValue
-                                        is String -> onlineValue.equals("true", ignoreCase = true)
-                                        else -> false
-                                    },
-                                    lastSeen = document.getLong("lastSeen")?.toString() ?: "",
-                                    profilePictureUrl = document.getString("profilePictureUrl") ?: ""
-                                )
-
-                                // Add users that are not the current user and not already in the list
-                                if (userData.uid != currentUserId &&
-                                    !usersList.any { it.uid == userData.uid } &&
-                                    !selectedUsers.any { it.uid == userData.uid }) {
-                                    usersList.add(userData)
-                                    totalUsersFound++
-                                    Log.d(TAG, "Added user: ${userData.displayName}")
+                                    // Add users that are not the current user, not already in the list,
+                                    // and not already selected
+                                    if (userData.uid != currentUserId &&
+                                        !usersList.any { it.uid == userData.uid } &&
+                                        !selectedUsers.any { it.uid == userData.uid }) {
+                                        usersList.add(userData)
+                                        totalUsersFound++
+                                        Log.d(TAG, "Added user: ${userData.displayName}")
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Error parsing user document: ${document.id}", e)
                                 }
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Error parsing user document: ${document.id}", e)
+                            }
+
+                            // Update adapter with newly found users
+                            userAdapter.notifyDataSetChanged()
+                        }
+
+                        // Check if all queries are complete
+                        if (queriesCompleted == phoneQueries.size) {
+                            progressIndicator.visibility = View.GONE
+
+                            if (totalUsersFound == 0) {
+                                showEmptyState("No users found with this phone number")
+                            } else {
+                                emptyResultsTextView.visibility = View.GONE
                             }
                         }
-
-                        // Update adapter with newly found users
-                        userAdapter.notifyDataSetChanged()
                     }
+                    .addOnFailureListener { exception ->
+                        queriesCompleted++
+                        Log.e(TAG, "Error searching for '$formattedQuery'", exception)
 
-                    // Check if all queries are complete
-                    if (queriesCompleted == phoneQueries.size) {
-                        progressIndicator.visibility = View.GONE
+                        // Check if all queries are complete
+                        if (queriesCompleted == phoneQueries.size) {
+                            progressIndicator.visibility = View.GONE
 
-                        if (totalUsersFound == 0) {
-                            showEmptyState("No users found with this phone number")
-                        } else {
-                            emptyResultsTextView.visibility = View.GONE
+                            if (totalUsersFound == 0) {
+                                showEmptyState("No users found with this phone number")
+                            }
                         }
                     }
-                }
-                .addOnFailureListener { exception ->
-                    queriesCompleted++
-                    Log.e(TAG, "Error searching for '$formattedQuery'", exception)
-
-                    // Check if all queries are complete
-                    if (queriesCompleted == phoneQueries.size) {
-                        progressIndicator.visibility = View.GONE
-
-                        if (totalUsersFound == 0) {
-                            showEmptyState("No users found with this phone number")
-                        }
-                    }
-                }
-        }
-    }
-
-    private fun searchUsersInLocalStorage(phoneQuery: String, currentUserId: String) {
-        try {
-            val usersFile = File(filesDir, "local_users.json")
-            if (!usersFile.exists()) {
-                Log.d(TAG, "Local users file not found")
-                progressIndicator.visibility = View.GONE
-                showEmptyState("No users found")
-                return
             }
-
-            val fileContent = usersFile.readText()
-            val jsonArray = JSONArray(fileContent)
-            var foundUsers = 0
-
-            for (i in 0 until jsonArray.length()) {
-                val jsonUser = jsonArray.getJSONObject(i)
-                val phoneNumber = jsonUser.optString("phoneNumber", "")
-
-                if (phoneNumber.contains(phoneQuery, ignoreCase = true)) {
-                    val userId = jsonUser.getString("uid")
-
-                    // Skip current user and already selected users
-                    if (userId == currentUserId ||
-                        selectedUsers.any { it.uid == userId } ||
-                        usersList.any { it.uid == userId }) {
-                        continue
-                    }
-
-                    val userData = UserData(
-                        uid = userId,
-                        displayName = jsonUser.optString("displayName", "User"),
-                        phoneNumber = phoneNumber,
-                        password = jsonUser.optString("password", ""),
-                        userDescription = jsonUser.optString("userDescription", ""),
-                        userStatus = jsonUser.optString("userStatus", ""),
-                        online = jsonUser.optBoolean("online", false),
-                        lastSeen = jsonUser.optString("lastSeen", ""),
-                        profilePictureUrl = jsonUser.optString("profilePictureUrl", "")
-                    )
-
-                    usersList.add(userData)
-                    foundUsers++
-                }
-            }
-
-            progressIndicator.visibility = View.GONE
-
-            if (foundUsers > 0) {
-                userAdapter.notifyDataSetChanged()
-                emptyResultsTextView.visibility = View.GONE
-            } else {
-                showEmptyState("No users found with this phone number")
-            }
-
         } catch (e: Exception) {
-            Log.e(TAG, "Error searching users in local storage", e)
+            Log.e(TAG, "searchUsersByPhoneOnFirebase: Unexpected error", e)
             progressIndicator.visibility = View.GONE
-            showEmptyState("Error searching for users")
+            showEmptyState("An unexpected error occurred")
         }
     }
 
@@ -422,9 +461,9 @@ class AddNewGroupActivity : AppCompatActivity(), UserAdapter.OnUserClickListener
             // Generate a unique ID for the group
             val groupId = UUID.randomUUID().toString()
 
-            // Create participant IDs list (including current user)
-            val participantIds = HashMap<String,Boolean>()
-            participantIds[UserSettings.userId] =true // Add current user
+            // Create participant IDs map (including current user)
+            val participantIds = HashMap<String, Boolean>()
+            participantIds[UserSettings.userId ?: ""] = true // Add current user
             for (user in selectedUsers) {
                 participantIds[user.uid] = true
             }
@@ -507,12 +546,12 @@ class AddNewGroupActivity : AppCompatActivity(), UserAdapter.OnUserClickListener
                 put("unreadCount", groupChat.unreadCount)
                 put("type", groupChat.type)
 
-                // Add participant IDs
-                val participantsArray = JSONArray()
-                for (id in groupChat.participantIds) {
-                    participantsArray.put(id)
+                // Create participantIds as a JSONObject with boolean values
+                val participantsJson = JSONObject()
+                for ((id, value) in groupChat.participantIds) {
+                    participantsJson.put(id, value)
                 }
-                put("participantIds", participantsArray)
+                put("participantIds", participantsJson)
             }
 
             // Add to chats array

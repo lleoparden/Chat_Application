@@ -1,5 +1,6 @@
 package com.example.chat_application
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import android.widget.ImageView
@@ -10,6 +11,8 @@ import com.example.chat_application.dataclasses.Chat
 import com.example.chat_application.dataclasses.UserData
 import com.example.chat_application.dataclasses.UserSettings
 import com.google.firebase.firestore.FirebaseFirestore
+import org.json.JSONArray
+import java.io.File
 
 object HelperFunctions {
 
@@ -17,7 +20,8 @@ object HelperFunctions {
     const val IMGBB_API_URL = "https://api.imgbb.com/1/upload"
     const val IMGBB_API_KEY = "38328309adada9acb189c19a81befaa6"
 
-    private const val TAG = "GlobalFunctions"
+    private const val TAG = "HelperFunctions"
+    @SuppressLint("StaticFieldLeak")
     private val db = FirebaseFirestore.getInstance()
 
     // Cache for storing recently fetched user data
@@ -58,6 +62,15 @@ object HelperFunctions {
                 if (document != null && document.exists()) {
                     try {
                         Log.d(TAG, "Document exists for $userId: ${document.data}")
+
+                        // Handle lastSeen safely - get as Long if possible, otherwise use empty string
+                        val lastSeen = try {
+                            document.getLong("lastSeen")?.toString() ?: ""
+                        } catch (e: Exception) {
+                            Log.w(TAG, "lastSeen is not a number for $userId, using empty string")
+                            ""
+                        }
+
                         val userData = UserData(
                             uid = userId,
                             displayName = document.getString("displayName") ?: "",
@@ -65,8 +78,12 @@ object HelperFunctions {
                             password = document.getString("password") ?: "",
                             userDescription = document.getString("userDescription") ?: "",
                             userStatus = document.getString("userStatus") ?: "",
-                            online = document.getBoolean("online") ?: false,
-                            lastSeen = document.getLong("lastSeen").toString(),
+                            online = when (val onlineValue = document.get("online")) {
+                                is Boolean -> onlineValue
+                                is String -> onlineValue.equals("true", ignoreCase = true)
+                                else -> false
+                            },
+                            lastSeen = lastSeen,
                             profilePictureUrl = document.getString("profilePictureUrl") ?: ""
                         )
 
@@ -198,5 +215,51 @@ object HelperFunctions {
 
         // Get the other user's ID (the key that's not the current user's ID)
         return participantIds.keys.firstOrNull { it != currentUserId }
+    }
+
+
+    fun loadUserById(userId: String,context: Context): UserData? {
+        val file = File(context.filesDir, "local_user.json")
+
+        if (!file.exists()) {
+            Log.e(TAG, "loadUserById: local_user.json not found in files directory: ${file.absolutePath}")
+            return null
+        }
+
+        Log.d(TAG, "loadUserById: Reading file from: ${file.absolutePath}")
+
+        try {
+            // Read from local_user.json in internal files directory
+            val jsonString = file.readText()
+            val jsonArray = JSONArray(jsonString)
+
+            // Search for user with matching ID
+            for (i in 0 until jsonArray.length()) {
+                val userObject = jsonArray.getJSONObject(i)
+
+                if (userObject.getString("uid") == userId) {
+                    // User found, create and return UserData object
+                    return UserData(
+                        uid = userObject.getString("uid"),
+                        displayName = userObject.getString("displayName"),
+                        phoneNumber = userObject.getString("phoneNumber"),
+                        password = userObject.optString("password", ""),
+                        userDescription = userObject.optString("userDescription", ""),
+                        userStatus = userObject.optString("userStatus", ""),
+                        online = userObject.optBoolean("online", false),
+                        lastSeen = userObject.optString("lastSeen", ""),
+                        profilePictureUrl = userObject.optString("profilePictureUrl", "")
+                    )
+                }
+            }
+
+            // User not found
+            Log.d(TAG, "loadUserById: User with ID $userId not found")
+            return null
+
+        } catch (e: Exception) {
+            Log.e(TAG, "loadUserById: Error reading or parsing user data", e)
+            return null
+        }
     }
 }

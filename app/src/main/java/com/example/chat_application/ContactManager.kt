@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.chat_application.dataclasses.UserData
+import com.example.chat_application.dataclasses.UserSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -172,6 +173,14 @@ class ContactManager(private val context: Context) {
 
         // Process each user
         for (user in users) {
+            // Check if this is the current user
+            if (user.uid == UserSettings.userId) {
+                // For the current user, set display name as "me"
+                val updatedUser = user.copy(displayName = "me")
+                processedUsers.add(updatedUser)
+                continue  // Skip to the next user
+            }
+
             // Generate phone number variants for this user
             val phoneVariants = generatePhoneNumberVariants(user.phoneNumber)
 

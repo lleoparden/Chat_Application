@@ -25,6 +25,7 @@ import com.hbb20.CountryCodePicker
 class AuthActivity : AppCompatActivity() {
     // Current view state tracking
     private var currentView = "AUTH" // AUTH, LOGIN, SIGNUP
+    private val TAG = "AUTHActivity"
 
     // User data storage for registration process
     private var userName: String = ""
@@ -60,6 +61,8 @@ class AuthActivity : AppCompatActivity() {
 
     private val firebaseEnabled by lazy { resources.getBoolean(R.bool.firebaseOn) }
 
+    private lateinit var contactManager: ContactManager
+
 
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,6 +76,9 @@ class AuthActivity : AppCompatActivity() {
         if (firebaseEnabled) {
             FirebaseService.initialize(this,TAG,firebaseEnabled)
         }
+
+        contactManager = ContactManager(this)
+        contactManager.checkAndRequestContactsPermission(this)
 
         //Initialize Animations
         initializeAnimations()
@@ -433,12 +439,20 @@ class AuthActivity : AppCompatActivity() {
     }
 
     private fun formatPhoneNumber(phoneNumber: String): String {
-        // This is just a simple example - adjust to your requirements
+        // Use the CCP's selected country code if available
+        val ccp = findViewById<CountryCodePicker?>(R.id.ccp)
         var formattedNumber = phoneNumber
 
-        // If doesn't start with +, assume it's a local number and add country code
+        // If doesn't start with +, assume it's a local number and add appropriate country code
         if (!formattedNumber.startsWith("+")) {
-            formattedNumber = "+2$formattedNumber" // Assuming US (+1), change as needed
+            if (ccp != null) {
+                // Get selected country code from CCP
+                val countryCode = ccp.selectedCountryCode
+                formattedNumber = "+$countryCode$formattedNumber"
+            } else {
+                // Fallback to Egypt code if CCP not available
+                formattedNumber = "+2$formattedNumber"
+            }
         }
 
         return formattedNumber
@@ -525,8 +539,72 @@ class AuthActivity : AppCompatActivity() {
 
     private fun navigateToMainActivity(userId: String) {
         UserSettings.userId = userId
+        loadAndProcessUsers()
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
         finish() // Close AuthActivity so user can't go back
+    }
+
+    var users = mutableListOf<UserData>()
+
+    // Load all users asynchronously
+    private fun loadAndProcessUsers() {
+        Log.d(TAG, "Starting loadAndProcessUsers operation")
+        // Clear any existing data
+        users.clear()
+        Log.d(TAG, "Users list cleared, now fetching user IDs from Firebase")
+
+        HelperFunctions.getAllUserIds { userIds ->
+            if (userIds != null && userIds.isNotEmpty()) {
+                Log.d(TAG, "Received ${userIds.size} user IDs from Firebase")
+
+                // Keep track of how many users we've processed
+                val totalUsers = userIds.size
+                var loadedUsers = 0
+
+                Log.d(TAG, "Beginning to fetch individual user data for $totalUsers users")
+
+                // For each user ID, fetch the user data
+                for (userId in userIds) {
+                    Log.d(TAG, "Requesting user data for ID: $userId")
+
+                    HelperFunctions.getUserData(userId) { userData ->
+                        // Check if we got valid user data
+                        if (userData != null) {
+                            Log.d(TAG, "Received valid user data for ${userData.displayName} (ID: ${userData.uid})")
+                            // Add this user to our list
+                            users.add(userData)
+                        } else {
+                            Log.w(TAG, "Received null user data for ID: $userId")
+                        }
+
+                        // Increment our counter
+                        loadedUsers++
+                        Log.d(TAG, "Processed $loadedUsers/$totalUsers users")
+
+                        // If we've processed all users, now we can process them
+                        if (loadedUsers == totalUsers) {
+                            Log.d(TAG, "All $totalUsers users loaded, found ${users.size} valid users")
+
+                            // All users are loaded, now process them
+                            Log.d(TAG, "Starting contact processing with removeNonContacts=true")
+                            val processedUsers = contactManager.processUsersToContact(users, true)
+                            Log.d(TAG, "Contact processing complete. Started with ${users.size} users, ended with ${processedUsers.size} matching contacts")
+
+                            Log.d(TAG, "Saving processed users to local storage")
+                            LocalStorageService.saveContactsAsUserToLocalStorage(processedUsers)
+                            Log.d(TAG, "Local storage save operation completed")
+                        }
+                    }
+                }
+            } else {
+                // Handle the case where there are no users or an error occurred
+                if (userIds == null) {
+                    Log.e(TAG, "Error loading user IDs - received null list from Firebase")
+                } else {
+                    Log.w(TAG, "No users found in Firebase (empty list returned)")
+                }
+            }
+        }
     }
 }

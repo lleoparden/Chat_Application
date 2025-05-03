@@ -19,6 +19,11 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.File
+import java.io.InputStreamReader
 
 class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener {
     private val TAG = "AddNewChatActivity"
@@ -33,15 +38,11 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
     // Data Components
     private lateinit var userAdapter: UserAdapter
     private val usersList = mutableListOf<UserData>()
-
-    // Track users that already have chats - we'll use this set instead of modifying UserData
-    private val existingChatUserIds = mutableSetOf<String>()
+    private val localUsersList = mutableListOf<UserData>()
 
     // Firebase Components
     private lateinit var firestore: FirebaseFirestore
     private lateinit var auth: FirebaseAuth
-
-    lateinit var contactManager : ContactManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d(TAG, "onCreate: Starting activity")
@@ -55,20 +56,14 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
         firestore = FirebaseFirestore.getInstance()
         auth = FirebaseAuth.getInstance()
 
-
-        contactManager = ContactManager(this)
-        contactManager.checkAndRequestContactsPermission(this)
-
         initViews()
         setupUI()
-        // Load existing chats to know which users already have conversations
-        loadExistingChats()
+        loadLocalUsers()
         showEmptyState("Enter a phone number to search for users")
         Log.i(TAG, "onCreate: Activity setup complete")
     }
 
     private fun initViews() {
-        // Same as your original code
         Log.d(TAG, "initViews: Finding view references")
         try {
             searchEditText = findViewById(R.id.searchEditText)
@@ -91,9 +86,9 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
     private fun setupUI() {
         Log.d(TAG, "setupUI: Configuring UI components")
         try {
-            // Setup RecyclerView with our customized adapter that uses existingChatUserIds
+            // Setup RecyclerView
             usersRecyclerView.layoutManager = LinearLayoutManager(this)
-            userAdapter = UserAdapter(usersList, existingChatUserIds, this)
+            userAdapter = UserAdapter(usersList, emptySet(), this)
             usersRecyclerView.adapter = userAdapter
             Log.d(TAG, "setupUI: RecyclerView configured")
 
@@ -101,6 +96,7 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
                 startActivity(Intent(this, AddNewGroupActivity::class.java))
                 finish()
             }
+
             searchEditText.addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -114,10 +110,14 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
                         usersList.clear()
                         userAdapter.notifyDataSetChanged()
                         showEmptyState("Enter a phone number to search for users")
+                    } else if (isFullPhoneNumber(query)) {
+                        // Search using Firebase for full phone numbers
+                        Log.d(TAG, "Full phone number detected, searching Firebase")
+                        searchUsersByPhoneOnFirebase(query)
                     } else {
-                        // Search with any input, regardless of length
-                        Log.d(TAG, "Initiating search for: '$query'")
-                        searchUsersByPhone(query)
+                        // Search using local JSON for partial numbers
+                        Log.d(TAG, "Partial number, searching local database")
+                        searchLocalUsersByPhone(query)
                     }
                 }
             })
@@ -128,51 +128,65 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
         }
     }
 
-
-    private fun loadExistingChats() {
-        Log.d(TAG, "loadExistingChats: Loading existing chats")
-        val currentUserId = UserSettings.userId ?: return
-
-        progressIndicator.visibility = View.VISIBLE
-
-        // Query chats where the current user is a participant
-        firestore.collection("chats")
-            .whereArrayContains("participants", currentUserId)
-            .get()
-            .addOnSuccessListener { chatDocuments ->
-                Log.d(TAG, "loadExistingChats: Found ${chatDocuments.size()} existing chats")
-
-                for (chatDoc in chatDocuments) {
-                    try {
-                        // Get the participant list
-                        val participants = chatDoc.get("participants") as? List<*> ?: continue
-
-                        // Find the other user ID (not the current user)
-                        for (participantId in participants) {
-                            if (participantId != currentUserId) {
-                                existingChatUserIds.add(participantId.toString())
-                                Log.d(TAG, "Added existing chat user: $participantId")
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error processing chat document: ${chatDoc.id}", e)
-                    }
-                }
-                progressIndicator.visibility = View.GONE
-
-                // Refresh adapter if there are already users in the list
-                if (usersList.isNotEmpty()) {
-                    userAdapter.notifyDataSetChanged()
-                }
-            }
-            .addOnFailureListener { e ->
-                Log.e(TAG, "Error loading existing chats", e)
-                progressIndicator.visibility = View.GONE
-            }
+    private fun isFullPhoneNumber(query: String): Boolean {
+        // Check if the number consists of exactly 11 digits
+        return query.all { it.isDigit() } && query.length == 11 ||
+                // Or if it starts with "+" followed by exactly 10 digits
+                (query.startsWith("+") && query.drop(1).all { it.isDigit() } && query.length == 11)
     }
 
-    private fun searchUsersByPhone(phoneQuery: String) {
-        Log.i(TAG, "searchUsersByPhone: Searching for users with phone: '$phoneQuery'")
+    private fun loadLocalUsers() {
+        Log.d(TAG, "loadLocalUsers: Loading users from local JSON file")
+        try {
+            progressIndicator.visibility = View.VISIBLE
+
+            // Load from internal files directory instead of assets
+            val file = File(filesDir, "local_user.json")
+
+            if (!file.exists()) {
+                Log.e(TAG, "loadLocalUsers: local_user.json not found in files directory: ${file.absolutePath}")
+                // Create default users if the file doesn't exist
+                progressIndicator.visibility = View.GONE
+                return
+            }
+
+            Log.d(TAG, "loadLocalUsers: Reading file from: ${file.absolutePath}")
+
+            // Read from local_user.json in internal files directory
+            val jsonString = file.readText()
+
+            val jsonArray = JSONArray(jsonString)
+
+            // Parse JSON and create UserData objects
+            for (i in 0 until jsonArray.length()) {
+                val userObject = jsonArray.getJSONObject(i)
+
+                val userData = UserData(
+                    uid = userObject.getString("uid"),
+                    displayName = userObject.getString("displayName"),
+                    phoneNumber = userObject.getString("phoneNumber"),
+                    password = userObject.optString("password", ""),
+                    userDescription = userObject.optString("userDescription", ""),
+                    userStatus = userObject.optString("userStatus", ""),
+                    online = userObject.optBoolean("online", false),
+                    lastSeen = userObject.optString("lastSeen", ""),
+                    profilePictureUrl = userObject.optString("profilePictureUrl", "")
+                )
+
+                localUsersList.add(userData)
+            }
+
+            Log.d(TAG, "loadLocalUsers: Loaded ${localUsersList.size} users from local file")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "loadLocalUsers: Error loading local users", e)
+        } finally {
+            progressIndicator.visibility = View.GONE
+        }
+    }
+
+    private fun searchLocalUsersByPhone(phoneQuery: String) {
+        Log.i(TAG, "searchLocalUsersByPhone: Searching local users with phone: '$phoneQuery'")
         try {
             // Show loading indicator
             progressIndicator.visibility = View.VISIBLE
@@ -184,10 +198,53 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
             // Get current user ID
             val currentUserId = UserSettings.userId
             if (currentUserId == null) {
-                Log.e(TAG, "searchUsersByPhone: Current user ID is null")
+                Log.e(TAG, "searchLocalUsersByPhone: Current user ID is null")
+                progressIndicator.visibility = View.GONE
                 return
             }
-            Log.d(TAG, "searchUsersByPhone: Current user ID: $currentUserId")
+
+            // Search for users whose phone number contains the query
+            val results = localUsersList.filter {
+                it.uid != currentUserId && // Exclude current user
+                        it.phoneNumber.contains(phoneQuery) // Phone contains query
+            }
+
+            Log.d(TAG, "searchLocalUsersByPhone: Found ${results.size} matching users")
+
+            if (results.isNotEmpty()) {
+                usersList.addAll(results)
+                userAdapter.notifyDataSetChanged()
+                emptyResultsTextView.visibility = View.GONE
+            } else {
+                showEmptyState("No users found with this phone number")
+            }
+
+            progressIndicator.visibility = View.GONE
+
+        } catch (e: Exception) {
+            Log.e(TAG, "searchLocalUsersByPhone: Error searching local users", e)
+            progressIndicator.visibility = View.GONE
+            showEmptyState("An error occurred while searching")
+        }
+    }
+
+    private fun searchUsersByPhoneOnFirebase(phoneQuery: String) {
+        Log.i(TAG, "searchUsersByPhoneOnFirebase: Searching for users with phone: '$phoneQuery'")
+        try {
+            // Show loading indicator
+            progressIndicator.visibility = View.VISIBLE
+            emptyResultsTextView.visibility = View.GONE
+
+            // Clear any existing users
+            usersList.clear()
+
+            // Get current user ID
+            val currentUserId = UserSettings.userId
+            if (currentUserId == null) {
+                Log.e(TAG, "searchUsersByPhoneOnFirebase: Current user ID is null")
+                return
+            }
+            Log.d(TAG, "searchUsersByPhoneOnFirebase: Current user ID: $currentUserId")
 
             // Try multiple phone number formats to increase chances of finding a match
             val phoneQueries = listOf(
@@ -214,7 +271,7 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
                         if (!documents.isEmpty) {
                             for (document in documents) {
                                 try {
-                                    // Create UserData object using the existing class definition
+                                    // Create UserData object
                                     val userData = UserData(
                                         uid = document.getString("uid") ?: "",
                                         displayName = document.getString("displayName") ?: "",
@@ -236,19 +293,13 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
                                         !usersList.any { it.uid == userData.uid }) {
                                         usersList.add(userData)
                                         totalUsersFound++
-
-                                        val hasChat = existingChatUserIds.contains(userData.uid)
-                                        Log.d(TAG, "Added user: ${userData.displayName}, has chat: $hasChat")
+                                        Log.d(TAG, "Added user: ${userData.displayName}")
                                     }
                                 } catch (e: Exception) {
                                     Log.e(TAG, "Error parsing user document: ${document.id}", e)
                                 }
                             }
 
-                            val userListUpdated =contactManager.processUsersToContact(usersList,true)
-
-                            usersList.clear()
-                            usersList.addAll(userListUpdated)
                             // Update adapter with newly found users
                             userAdapter.notifyDataSetChanged()
                         }
@@ -279,7 +330,7 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
                     }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "searchUsersByPhone: Unexpected error", e)
+            Log.e(TAG, "searchUsersByPhoneOnFirebase: Unexpected error", e)
             progressIndicator.visibility = View.GONE
             showEmptyState("An unexpected error occurred")
         }
@@ -298,7 +349,6 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
             val intent = Intent(this, UserProfileActivity::class.java).apply {
                 putExtra("USER_ID", user.uid)
                 putExtra("came_from", "AddNewChat")
-                putExtra("HAS_EXISTING_CHAT", existingChatUserIds.contains(user.uid))
             }
             startActivity(intent)
         } catch (e: Exception) {
