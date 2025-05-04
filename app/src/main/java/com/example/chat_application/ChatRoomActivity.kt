@@ -340,32 +340,48 @@ class ChatRoomActivity : AppCompatActivity() {
     }
 
     private fun setupKeyboardBehavior() {
-        // Set window flags for keyboard adjustments
+        // Set window flags to adjust resize for keyboard
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
 
-        // Add keyboard visibility listener
+        // Get the root view for detecting layout changes
         val rootView: View = findViewById(android.R.id.content)
+
+        // Define default bottom padding - replace with your own value
+        val defaultBottomPadding = 80.dpToPx()
+
+        // Reference to message input layout
+        val messageInputLayout: View = findViewById(R.id.messageInputLayout)
+
         rootView.viewTreeObserver.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
-            private val r = Rect()
+            private val rect = Rect()
             private var lastVisibleHeight = 0
+            private var initialHeight = 0
 
             override fun onGlobalLayout() {
-                // Calculate visible height
-                rootView.getWindowVisibleDisplayFrame(r)
-                val visibleHeight = r.height()
+                // Get current visible frame
+                rootView.getWindowVisibleDisplayFrame(rect)
+                val visibleHeight = rect.height()
+
+                // Initialize height on first run
+                if (initialHeight == 0) {
+                    initialHeight = visibleHeight
+                }
 
                 // Detect keyboard visibility changes
                 if (lastVisibleHeight != 0 && lastVisibleHeight != visibleHeight) {
-                    val isKeyboardVisible = lastVisibleHeight > visibleHeight
+                    val isKeyboardVisible = visibleHeight < initialHeight * 0.85 // More reliable detection
 
                     if (isKeyboardVisible) {
-                        // When keyboard is visible, adjust padding to accommodate keyboard
-                        val keyboardHeight = lastVisibleHeight - visibleHeight
+                        // Calculate keyboard height as a percentage of screen height for better adaptation
+                        val keyboardHeight = initialHeight - visibleHeight
+                        val safeKeyboardPadding = keyboardHeight + (defaultBottomPadding / 2)
+
+                        // Apply padding to accommodate keyboard
                         messagesRecyclerView.setPadding(
                             messagesRecyclerView.paddingLeft,
                             messagesRecyclerView.paddingTop,
                             messagesRecyclerView.paddingRight,
-                            keyboardHeight+30
+                            safeKeyboardPadding+150
                         )
                     } else {
                         // Reset padding when keyboard is hidden
@@ -373,37 +389,36 @@ class ChatRoomActivity : AppCompatActivity() {
                             messagesRecyclerView.paddingLeft,
                             messagesRecyclerView.paddingTop,
                             messagesRecyclerView.paddingRight,
-                            30
+                            defaultBottomPadding
                         )
                     }
 
-                    // Scroll to bottom after layout adjustment
-                    messagesRecyclerView.post {
+                    // Smooth scroll to bottom after layout adjustment with small delay
+                    messagesRecyclerView.postDelayed({
                         if (messageList.isNotEmpty()) {
-                            messagesRecyclerView.scrollToPosition(messageList.size - 1)
+                            messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
                         }
-                    }
+                    }, 100)
                 }
 
                 lastVisibleHeight = visibleHeight
             }
         })
+
+        // Helper extension function for dp to pixel conversion
+        fun Int.dpToPx(): Int {
+            val density = resources.displayMetrics.density
+            return (this * density).toInt()
+        }
     }
 
-    private fun resetRecyclerViewHeight() {
-        // Reset to MATCH_PARENT
-        val params = messagesRecyclerView.layoutParams
-        params.height = ViewGroup.LayoutParams.MATCH_PARENT
-        messagesRecyclerView.layoutParams = params
+        // Helper extension function if needed
+        fun Int.dpToPx(): Int {
+            val density = resources.displayMetrics.density
+            return (this * density).toInt()
+        }
 
-        // Add bottom padding for spacing
-        messagesRecyclerView.setPadding(
-            messagesRecyclerView.paddingLeft,
-            messagesRecyclerView.paddingTop,
-            messagesRecyclerView.paddingRight,
-            (35 * resources.displayMetrics.density).toInt()
-        )
-    }
+
 
     private fun setupClickListeners() {
         backBtn.setOnClickListener {

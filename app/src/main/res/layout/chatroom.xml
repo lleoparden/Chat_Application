@@ -148,12 +148,11 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:padding="8dp"
-        android:layout_marginBottom="?attr/actionBarSize"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior"
-        app:layout_anchor="@id/appBarLayout"
-        app:layout_anchorGravity="bottom" />
-
+        android:paddingTop="8dp"
+        android:paddingBottom="80dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
     <!-- Message input area - fixed at bottom -->
     <LinearLayout
         android:id="@+id/messageInputLayout"
