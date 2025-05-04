@@ -8,7 +8,9 @@ import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.example.chat_application.ChatRoomActivity
+import com.example.chat_application.HelperFunctions
 import com.example.chat_application.R
 import com.example.chat_application.VoiceNotePlayer
 import com.example.chat_application.dataclasses.Message
@@ -30,16 +32,28 @@ class MessageAdapter(
     private val RECEIVED_TEXT = 2
     private val SENT_VOICE_NOTE = 3
     private val RECEIVED_VOICE_NOTE = 4
+    private val SENT_IMAGE = 5
+    private val RECEIVED_IMAGE = 6
 
     private val voiceNotePlayer = VoiceNotePlayer()
 
     override fun getItemViewType(position: Int): Int {
         val message = messageList[position]
         return when {
+            // Text messages
             message.senderId == currentUserId && message.messageType == MessageType.TEXT -> SENT_TEXT
             message.senderId != currentUserId && message.messageType == MessageType.TEXT -> RECEIVED_TEXT
+
+            // Voice notes
             message.senderId == currentUserId && message.messageType == MessageType.VOICE_NOTE -> SENT_VOICE_NOTE
-            else -> RECEIVED_VOICE_NOTE
+            message.senderId != currentUserId && message.messageType == MessageType.VOICE_NOTE -> RECEIVED_VOICE_NOTE
+
+            // Image messages
+            message.senderId == currentUserId && message.messageType == MessageType.IMAGE -> SENT_IMAGE
+            message.senderId != currentUserId && message.messageType == MessageType.IMAGE -> RECEIVED_IMAGE
+
+            // Default to text if unknown
+            else -> SENT_TEXT
         }
     }
 
@@ -60,10 +74,20 @@ class MessageAdapter(
                     .inflate(R.layout.message_sent_voice_note, parent, false)
                 SentVoiceNoteHolder(view)
             }
-            else -> {
+            RECEIVED_VOICE_NOTE -> {
                 val view = LayoutInflater.from(parent.context)
                     .inflate(R.layout.message_received_voice_note, parent, false)
                 ReceivedVoiceNoteHolder(view)
+            }
+            SENT_IMAGE -> {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.message_sent_image, parent, false)
+                SentImageMessageHolder(view)
+            }
+            else -> { // RECEIVED_IMAGE
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.message_received_image, parent, false)
+                ReceivedImageMessageHolder(view)
             }
         }
     }
@@ -80,6 +104,8 @@ class MessageAdapter(
             is ReceivedTextMessageHolder -> holder.bind(message, position)
             is SentVoiceNoteHolder -> holder.bind(message, position)
             is ReceivedVoiceNoteHolder -> holder.bind(message, position)
+            is SentImageMessageHolder -> holder.bind(message, position)
+            is ReceivedImageMessageHolder -> holder.bind(message, position)
         }
     }
 
@@ -110,7 +136,7 @@ class MessageAdapter(
         }
     }
 
-    // Text message holders
+    // TEXT MESSAGE HOLDERS
     inner class SentTextMessageHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val messageText: TextView = itemView.findViewById(R.id.messageTextView)
         private val timeText: TextView = itemView.findViewById(R.id.timeTextView)
@@ -156,7 +182,7 @@ class MessageAdapter(
         }
     }
 
-    // Voice note holders
+    // VOICE NOTE HOLDERS
     inner class SentVoiceNoteHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val timeText: TextView = itemView.findViewById(R.id.timeTextView)
         private val statusImage: ImageView = itemView.findViewById(R.id.statusImageView)
@@ -218,6 +244,83 @@ class MessageAdapter(
                     durationText,
                     playPauseButton
                 )
+            }
+
+            handleMessageSelection(itemView, message, position)
+        }
+    }
+
+    // IMAGE MESSAGE HOLDERS
+    inner class SentImageMessageHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val imageView: ImageView = itemView.findViewById(R.id.imageMessageView)
+        private val timeText: TextView = itemView.findViewById(R.id.timeTextView)
+        private val statusImage: ImageView = itemView.findViewById(R.id.statusImageView)
+
+        fun bind(message: Message, position: Int) {
+            timeText.text = formatTime(message.timestamp)
+
+            // Load image using Glide or your preferred image loading library
+            Glide.with(itemView.context)
+                .load(message.content)
+                .placeholder(R.drawable.ic_image) // Create a placeholder drawable
+                .error(R.drawable.ic_error_image) // Create an error drawable
+                .into(imageView)
+
+            // Set status icon based on read status
+            val isRead = message.readStatus.any { (userId, status) ->
+                userId != currentUserId && status
+            }
+
+            statusImage.setImageResource(
+                if (isRead) android.R.drawable.ic_menu_view
+                else android.R.drawable.ic_menu_send
+            )
+
+            // Handle image click to show full screen
+            imageView.setOnClickListener {
+                // Only handle click if not in selection mode
+                if ((itemView.context as? ChatRoomActivity)?.isInSelectionMode == false) {
+                    // Open full screen image viewer
+                    // You can implement this later
+                }
+            }
+
+            handleMessageSelection(itemView, message, position)
+        }
+    }
+
+    inner class ReceivedImageMessageHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val imageView: ImageView = itemView.findViewById(R.id.imageMessageView)
+        private val timeText: TextView = itemView.findViewById(R.id.timeTextView)
+        private val profileImage: ImageView = itemView.findViewById(R.id.profileImageView)
+
+        fun bind(message: Message, position: Int) {
+            timeText.text = formatTime(message.timestamp)
+
+            // Load image using Glide or your preferred image loading library
+            Glide.with(itemView.context)
+                .load(message.content)
+                .placeholder(R.drawable.ic_image) // Create a placeholder drawable
+                .error(R.drawable.ic_error_image) // Create an error drawable
+                .into(imageView)
+
+            // Mark as read
+            if (message.readStatus[currentUserId] != true) {
+                message.readStatus[currentUserId] = true
+
+                val readStatusUpdates = HashMap<String, Any>()
+                readStatusUpdates["readStatus/${currentUserId}"] = true
+
+                database.child("messages").child(message.chatId).child(message.id).updateChildren(readStatusUpdates)
+            }
+
+            // Handle image click to show full screen
+            imageView.setOnClickListener {
+                // Only handle click if not in selection mode
+                if ((itemView.context as? ChatRoomActivity)?.isInSelectionMode == false) {
+                    // Open full screen image viewer
+                    // You can implement this later
+                }
             }
 
             handleMessageSelection(itemView, message, position)

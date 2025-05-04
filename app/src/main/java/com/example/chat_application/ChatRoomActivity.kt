@@ -2,6 +2,7 @@ package com.example.chat_application
 
 import android.content.Intent
 import android.Manifest
+import android.app.Activity
 import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -38,6 +39,13 @@ import com.example.chat_application.dataclasses.Message
 import com.example.chat_application.dataclasses.MessageType
 import com.example.chat_application.dataclasses.UserData
 import com.example.chat_application.dataclasses.UserSettings
+import android.net.Uri
+import android.widget.ImageView
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
+import com.github.dhaval2404.imagepicker.ImagePicker
+import com.example.chat_application.services.ImageUploadService
 
 class ChatRoomActivity : AppCompatActivity() {
 
@@ -51,7 +59,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var nameView: TextView
     private lateinit var inputLayout: LinearLayout
 
-    private var isInSelectionMode = false
+    var isInSelectionMode = false
     private val selectedMessageIds = mutableSetOf<String>()
     private lateinit var normalToolbarContent: View
     private lateinit var selectionToolbarContent: View
@@ -68,6 +76,16 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var recordStateText: TextView
     private var isRecording = false
     private val RECORD_AUDIO_PERMISSION_CODE = 101
+
+
+    private lateinit var imagePickerLauncher: ActivityResultLauncher<Intent>
+    private lateinit var imageButton: ImageButton
+    private var isImageUploading = false
+    private lateinit var imagePreviewLayout: LinearLayout
+    private lateinit var previewImageView: ImageView
+    private lateinit var cancelImageButton: Button
+    private lateinit var confirmImageButton: Button
+    private var selectedImageUri: Uri? = null
 
     // Data & Adapters
     private lateinit var messageAdapter: MessageAdapter
@@ -91,6 +109,7 @@ class ChatRoomActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setupThemeAndLayout(savedInstanceState)
         voiceRecorder = VoiceRecorder(this)
+        setupImagePickerLauncher()
         setupKeyboardBehavior()
         initializeComponents()
         setupClickListeners()
@@ -188,9 +207,16 @@ class ChatRoomActivity : AppCompatActivity() {
         recordingLayout = findViewById(R.id.recordingLayout)
         recordStateText = findViewById(R.id.recordStateText)
 
+        imageButton = findViewById(R.id.imageButton)
+        imagePreviewLayout = findViewById(R.id.imagePreviewLayout)
+        previewImageView = findViewById(R.id.previewImageView)
+        cancelImageButton = findViewById(R.id.cancelImageButton)
+        confirmImageButton = findViewById(R.id.confirmImageButton)
+
+
         // Initially hide recording UI
         findViewById<LinearLayout>(R.id.recordingLayout).visibility = View.GONE
-
+        imagePreviewLayout.visibility = View.GONE
 
 
         // New views for selection mode
@@ -395,6 +421,23 @@ class ChatRoomActivity : AppCompatActivity() {
         }
 
         setupVoiceRecordingButton()
+
+        imageButton.setOnClickListener {
+            pickImage()
+        }
+
+        cancelImageButton.setOnClickListener {
+            hideImagePreview()
+        }
+
+        confirmImageButton.setOnClickListener {
+            // If there's a selected image, upload it
+            selectedImageUri?.let { uri ->
+                uploadAndSendImage(uri)
+            }
+        }
+
+
 
         profileImageView.setOnClickListener {
             if (chat.type == "group") {
@@ -1005,4 +1048,129 @@ class ChatRoomActivity : AppCompatActivity() {
             }
         }
     }
+
+    // Sending Images --------------------------->
+
+    private fun setupImagePickerLauncher() {
+        imagePickerLauncher = registerForActivityResult(StartActivityForResult()) { result: ActivityResult ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                val data = result.data
+                if (data != null && data.data != null) {
+                    // Get the selected image URI
+                    selectedImageUri = data.data
+
+                    // Show image preview
+                    showImagePreview(selectedImageUri!!)
+                }
+            }
+        }
+    }
+
+    private fun showImagePreview(imageUri: Uri) {
+        try {
+            // Load the image into the preview
+            previewImageView.setImageURI(imageUri)
+
+            // Hide the normal input layout and show the preview layout
+            inputLayout.visibility = View.GONE
+            imagePreviewLayout.visibility = View.VISIBLE
+        } catch (e: Exception) {
+            Log.e("ChatRoomActivity", "Error showing image preview: ${e.message}")
+            Toast.makeText(this, "Failed to preview image", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun hideImagePreview() {
+        // Clear the selected image
+        selectedImageUri = null
+
+        // Hide preview layout and show the normal input layout
+        imagePreviewLayout.visibility = View.GONE
+        inputLayout.visibility = View.VISIBLE
+    }
+
+    private fun uploadAndSendImage(imageUri: Uri) {
+
+
+        // Hide the preview
+        imagePreviewLayout.visibility = View.GONE
+        inputLayout.visibility = View.VISIBLE
+
+        // Upload to ImgBB
+        isImageUploading = true
+        ImageUploadService.uploadImageToImgbb(
+            this,
+            imageUri,
+            null, // You could add a progress bar specifically for image uploads
+            object : ImageUploadService.ImageUploadCallback {
+                override fun onUploadSuccess(imageUrl: String) {
+                    // Send the image URL as a message
+                    sendImageMessage(imageUrl)
+                    isImageUploading = false
+                    selectedImageUri = null
+                }
+
+                override fun onUploadFailure(errorMessage: String) {
+                    Toast.makeText(this@ChatRoomActivity,
+                        "Failed to upload image: $errorMessage",
+                        Toast.LENGTH_SHORT).show()
+                    isImageUploading = false
+                    selectedImageUri = null
+                }
+
+                override fun onUploadProgress(isUploading: Boolean) {
+                    // You could update UI based on upload state
+                }
+            }
+        )
+    }
+
+    private fun pickImage() {
+        ImagePicker.with(this)
+            .compress(1024)         // Compress image size
+            .maxResultSize(1080, 1080) // Maximum result size
+            .createIntent { intent: Intent ->
+                imagePickerLauncher.launch(intent)
+            }
+    }
+
+    private fun sendImageMessage(imageUrl: String) {
+        val messageId = generateMessageId()
+
+        var map: HashMap<String, Boolean> = HashMap()
+        for (par in chat.participantIds.keys) {
+            map[par] = false
+        }
+
+        val message = Message(
+            id = messageId,
+            chatId = chatId,
+            senderId = currentUserId,
+            content = imageUrl,
+            timestamp = System.currentTimeMillis(),
+            readStatus = map,
+            messageType = MessageType.IMAGE // You'll need to add IMAGE to your MessageType enum
+        )
+
+        val timestampUpdate = hashMapOf<String, Any>("timestamp" to message.timestamp)
+        val lastMessageUpdate = hashMapOf<String, Any>("lastMessage" to "📷 Image")
+
+        database.child("chats").child(message.chatId).updateChildren(timestampUpdate)
+        database.child("chats").child(message.chatId).updateChildren(lastMessageUpdate)
+
+        // Add message to local list and update UI immediately
+        messageList.add(message)
+        messageAdapter.notifyItemInserted(messageList.size - 1)
+        messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
+
+        // Save locally immediately
+        saveMessagesToLocalStorage()
+
+        // Send to Firebase if enabled
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            saveMessageToFirebase(message, messageId)
+        }
+
+    }
+
 }
