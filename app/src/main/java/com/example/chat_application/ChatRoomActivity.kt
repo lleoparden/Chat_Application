@@ -37,13 +37,13 @@ import java.io.File
 import com.example.chat_application.dataclasses.Chat
 import com.example.chat_application.dataclasses.Message
 import com.example.chat_application.dataclasses.MessageType
-import com.example.chat_application.dataclasses.UserData
 import com.example.chat_application.dataclasses.UserSettings
 import android.net.Uri
 import android.widget.ImageView
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
+import com.example.chat_application.dataclasses.UserData
 import com.github.dhaval2404.imagepicker.ImagePicker
 import com.example.chat_application.services.ImageUploadService
 
@@ -164,10 +164,11 @@ class ChatRoomActivity : AppCompatActivity() {
         chatMessagesFile = File(filesDir, "messages_${chatId}.json")
     }
 
+    lateinit var user: UserData
     private fun initializeProfileImage() {
 
         if (chat.type == "direct") {
-            var user = HelperFunctions.loadUserById(otherParticipantId, this)
+            user = HelperFunctions.loadUserById(otherParticipantId, this)!!
 
             if (user != null) {
                 HelperFunctions.loadImageFromUrl(user.profilePictureUrl, profileImageView)
@@ -358,36 +359,35 @@ class ChatRoomActivity : AppCompatActivity() {
                     val isKeyboardVisible = lastVisibleHeight > visibleHeight
 
                     if (isKeyboardVisible) {
-                        adjustRecyclerViewHeight()
+                        // When keyboard is visible, adjust padding to accommodate keyboard
+                        val keyboardHeight = lastVisibleHeight - visibleHeight
+                        messagesRecyclerView.setPadding(
+                            messagesRecyclerView.paddingLeft,
+                            messagesRecyclerView.paddingTop,
+                            messagesRecyclerView.paddingRight,
+                            keyboardHeight+30
+                        )
                     } else {
-                        resetRecyclerViewHeight()
+                        // Reset padding when keyboard is hidden
+                        messagesRecyclerView.setPadding(
+                            messagesRecyclerView.paddingLeft,
+                            messagesRecyclerView.paddingTop,
+                            messagesRecyclerView.paddingRight,
+                            30
+                        )
+                    }
+
+                    // Scroll to bottom after layout adjustment
+                    messagesRecyclerView.post {
+                        if (messageList.isNotEmpty()) {
+                            messagesRecyclerView.scrollToPosition(messageList.size - 1)
+                        }
                     }
                 }
 
                 lastVisibleHeight = visibleHeight
             }
         })
-    }
-
-    private fun adjustRecyclerViewHeight() {
-        // Get position of input layout
-        val location = IntArray(2)
-        inputLayout.getLocationOnScreen(location)
-        val inputY = location[1]
-
-        // Apply padding
-        val density: Float = resources.displayMetrics.density
-        val paddingBottom = (100 * density).toInt()
-
-        // Calculate and set new height
-        val newHeight = inputY - paddingBottom
-
-        val params = messagesRecyclerView.layoutParams
-        params.height = newHeight
-        messagesRecyclerView.layoutParams = params
-
-        // Scroll to bottom
-        messagesRecyclerView.scrollToPosition(messageList.size - 1)
     }
 
     private fun resetRecyclerViewHeight() {

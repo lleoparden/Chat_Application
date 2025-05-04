@@ -57,10 +57,8 @@
                     android:layout_height="32dp"
                     android:layout_marginStart="16dp"
                     android:clipToOutline="true"
-                    android:adjustViewBounds="true"
-                    android:background="@null"
+                    android:background="@drawable/circle_background"
                     android:scaleType="fitCenter"
-                    android:src="@drawable/circle_background"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toEndOf="@id/backButton"
                     app:layout_constraintTop_toTopOf="parent" />
@@ -148,11 +146,13 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/messagesRecyclerView"
         android:layout_width="match_parent"
-        android:layout_height="682dp"
-        android:layout_marginBottom="?attr/actionBarSize"
+        android:layout_height="match_parent"
         android:clipToPadding="false"
         android:padding="8dp"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+        android:layout_marginBottom="?attr/actionBarSize"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        app:layout_anchor="@id/appBarLayout"
+        app:layout_anchorGravity="bottom" />
 
     <!-- Message input area - fixed at bottom -->
     <LinearLayout

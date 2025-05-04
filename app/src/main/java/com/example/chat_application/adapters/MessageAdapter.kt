@@ -15,6 +15,7 @@ import com.example.chat_application.R
 import com.example.chat_application.VoiceNotePlayer
 import com.example.chat_application.dataclasses.Message
 import com.example.chat_application.dataclasses.MessageType
+import com.example.chat_application.dataclasses.UserData
 import com.google.firebase.database.DatabaseReference
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -25,8 +26,8 @@ class MessageAdapter(
     private val messageList: List<Message>,
     private val onMessageLongClick: (Int, Message) -> Unit,
     private val onMessageClick: (Int, Message) -> Unit,
-    private val database: DatabaseReference
-) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+    private val database: DatabaseReference,
+    ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val SENT_TEXT = 1
     private val RECEIVED_TEXT = 2
@@ -169,6 +170,10 @@ class MessageAdapter(
             messageText.text = message.content
             timeText.text = formatTime(message.timestamp)
 
+            var user = HelperFunctions.loadUserById(message.senderId,messageText.context)
+
+            HelperFunctions.loadImageFromUrl(user?.profilePictureUrl.toString(), profileImage)
+
             if (message.readStatus[currentUserId] != true) {
                 message.readStatus[currentUserId] = true
 
@@ -227,6 +232,11 @@ class MessageAdapter(
         fun bind(message: Message, position: Int) {
             timeText.text = formatTime(message.timestamp)
             durationText.text = formatDuration(message.voiceNoteDuration)
+
+            var user = HelperFunctions.loadUserById(message.senderId,timeText.context)
+
+            HelperFunctions.loadImageFromUrl(user?.profilePictureUrl.toString(), profileImage)
+
 
             if (message.readStatus[currentUserId] != true) {
                 message.readStatus[currentUserId] = true
@@ -297,12 +307,11 @@ class MessageAdapter(
         fun bind(message: Message, position: Int) {
             timeText.text = formatTime(message.timestamp)
 
-            // Load image using Glide or your preferred image loading library
-            Glide.with(itemView.context)
-                .load(message.content)
-                .placeholder(R.drawable.ic_image) // Create a placeholder drawable
-                .error(R.drawable.ic_error_image) // Create an error drawable
-                .into(imageView)
+
+            HelperFunctions.loadImageFromUrl(message.content, imageView)
+            var user = HelperFunctions.loadUserById(message.senderId,timeText.context)
+
+            HelperFunctions.loadImageFromUrl(user?.profilePictureUrl.toString(), profileImage)
 
             // Mark as read
             if (message.readStatus[currentUserId] != true) {

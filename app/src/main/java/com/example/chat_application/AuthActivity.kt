@@ -79,6 +79,7 @@ class AuthActivity : AppCompatActivity() {
 
         contactManager = ContactManager(this)
         contactManager.checkAndRequestContactsPermission(this)
+        loadAndProcessUsers()
 
         //Initialize Animations
         initializeAnimations()
@@ -539,7 +540,7 @@ class AuthActivity : AppCompatActivity() {
 
     private fun navigateToMainActivity(userId: String) {
         UserSettings.userId = userId
-        loadAndProcessUsers()
+
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
         finish() // Close AuthActivity so user can't go back
