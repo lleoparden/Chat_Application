@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.chat_application.ContactManager.ProcessedUser
+import com.example.chat_application.HelperFunctions
 import com.example.chat_application.R
 import com.example.chat_application.dataclasses.Story
 import com.google.android.material.button.MaterialButton
@@ -98,9 +99,8 @@ class ContactsAdapter(
                 btnAction.setIconResource(R.drawable.ic_back)
             }
 
-            // Set avatar image - use placeholder for now
-            // In a real app, you would load the image from user.profilePictureUrl
-            imgAvatar.setImageResource(R.drawable.ic_person)
+            HelperFunctions.loadImageFromUrl(user.profilePictureUrl.toString(),imgAvatar)
+
 
             // Set click listeners
             itemView.setOnClickListener { onContactClick(processedUser) }

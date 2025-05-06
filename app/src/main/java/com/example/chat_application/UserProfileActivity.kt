@@ -113,7 +113,10 @@ class UserProfileActivity : AppCompatActivity() {
                 name = profileUserName,
                 lastMessage = "",
                 timestamp = System.currentTimeMillis(),
-                unreadCount = 0,
+                unreadCount = hashMapOf(
+                    profileUserId to 0,
+                    currentUserId to 0
+                ),
                 participantIds = hashMapOf(
                     profileUserId to true,
                     currentUserId to true
@@ -176,16 +179,28 @@ class UserProfileActivity : AppCompatActivity() {
             participantsList[participantIdsArray.getString(i)] = true
         }
 
+        // Parse unreadCount as Map<String, Int>
+        val unreadCountMap = mutableMapOf<String, Int>()
+        if (jsonObject.has("unreadCount")) {
+            val unreadCountJson = jsonObject.getJSONObject("unreadCount")
+            val keys = unreadCountJson.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                unreadCountMap[key] = unreadCountJson.getInt(key)
+            }
+        }
+
         return Chat(
             id = jsonObject.getString("id"),
             name = jsonObject.getString("name"),
             lastMessage = jsonObject.optString("lastMessage", ""),
             timestamp = jsonObject.optLong("timestamp", 0),
-            unreadCount = jsonObject.optInt("unreadCount", 0),
+            unreadCount = unreadCountMap,
             participantIds = participantsList,
             type = jsonObject.optString("type", "direct")
         )
     }
+
 
     // Open existing chat
     private fun openExistingChat(chat: Chat) {

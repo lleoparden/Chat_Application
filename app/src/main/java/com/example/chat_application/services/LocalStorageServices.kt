@@ -387,12 +387,25 @@ object LocalStorageService {
                 val participantIds = HashMap<String,Boolean>()
 
                 for (j in 0 until participantIdsJsonArray.length()) {
-                    participantIds[participantIdsJsonArray.toString()] = true;
+                    val participantId = participantIdsJsonArray.getString(j)
+                    participantIds[participantId] = true
                 }
+
 
                 // Get displayName if it exists, otherwise default to empty string
                 val displayName = if (chatObject.has("displayName"))
                     chatObject.getString("displayName") else ""
+
+                val unreadCount = mutableMapOf<String, Int>()
+                if (chatObject.has("unreadCount")) {
+                    val unreadCountJson = chatObject.getJSONObject("unreadCount")
+                    val keys = unreadCountJson.keys()
+                    while (keys.hasNext()) {
+                        val key = keys.next()
+                        unreadCount[key] = unreadCountJson.getInt(key)
+                    }
+                }
+
 
                 val chat = Chat(
                     id = chatObject.getString("id"),
@@ -400,7 +413,7 @@ object LocalStorageService {
                     displayName = displayName,
                     lastMessage = chatObject.getString("lastMessage"),
                     timestamp = chatObject.getLong("timestamp"),
-                    unreadCount = chatObject.getInt("unreadCount"),
+                    unreadCount = unreadCount,
                     participantIds = participantIds,
                     type = chatObject.getString("type")
                 )
@@ -453,7 +466,12 @@ object LocalStorageService {
                 put("displayName", chat.displayName)
                 put("lastMessage", chat.lastMessage)
                 put("timestamp", chat.timestamp)
-                put("unreadCount", chat.unreadCount)
+                val unreadCountJson = JSONObject()
+                for ((userId, count) in chat.unreadCount) {
+                    unreadCountJson.put(userId, count)
+                }
+                put("unreadCount", unreadCountJson)
+
 
                 // Create a JSONArray for participantIds
                 val participantIdsArray = JSONArray()

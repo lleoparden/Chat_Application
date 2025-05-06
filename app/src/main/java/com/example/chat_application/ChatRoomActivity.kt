@@ -46,6 +46,8 @@ import androidx.activity.result.contract.ActivityResultContracts.StartActivityFo
 import com.example.chat_application.dataclasses.UserData
 import com.github.dhaval2404.imagepicker.ImagePicker
 import com.example.chat_application.services.ImageUploadService
+import com.google.firebase.database.MutableData
+import com.google.firebase.database.Transaction
 
 class ChatRoomActivity : AppCompatActivity() {
 
@@ -144,7 +146,7 @@ class ChatRoomActivity : AppCompatActivity() {
 
         // Set up chat info
         chat = intent.getParcelableExtra<Chat>("CHAT_OBJECT")
-            ?: Chat(id = "", name = "Chat", lastMessage = "", timestamp = 0, unreadCount = 0)
+            ?: Chat(id = "", name = "Chat", lastMessage = "", timestamp = 0)
         chatId = chat.id
 
         // Determine the other participant's ID
@@ -513,14 +515,41 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun sendMessage(textMessage: String) {
         val messageId = generateMessageId()
 
-        var map: HashMap<String, Boolean>
-
-        map = HashMap()
+        var map: HashMap<String, Boolean> = HashMap()
 
         for (par in chat.participantIds.keys) {
-            map[par] = false
+            if (par != currentUserId) {
+                map[par] = false
+            }
         }
 
+        // Increment unread counts for all other participants
+        for (participantId in chat.participantIds.keys) {
+            if (participantId != currentUserId) {
+                // Get the current unread count reference
+                val unreadCountRef = database.child("chats").child(chatId)
+                    .child("unreadCount").child(participantId)
+
+                // Use a transaction to safely increment the counter
+                unreadCountRef.runTransaction(object : Transaction.Handler {
+                    override fun doTransaction(mutableData: MutableData): Transaction.Result {
+                        val count = mutableData.getValue(Int::class.java) ?: 0
+                        mutableData.value = count + 1
+                        return Transaction.success(mutableData)
+                    }
+
+                    override fun onComplete(
+                        databaseError: DatabaseError?,
+                        committed: Boolean,
+                        dataSnapshot: DataSnapshot?
+                    ) {
+                        if (databaseError != null) {
+                            Log.e("Firebase", "Error updating unread count: ${databaseError.message}")
+                        }
+                    }
+                })
+            }
+        }
 
         val message = Message(
             id = messageId,

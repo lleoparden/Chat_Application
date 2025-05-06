@@ -1,11 +1,12 @@
 package com.example.chat_application
 
+import android.annotation.SuppressLint
 import android.content.ContentValues
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
@@ -20,10 +21,12 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.chat_application.adapters.ChatAdapter
 import com.example.chat_application.dataclasses.Chat
 import com.example.chat_application.dataclasses.UserSettings
+import com.example.chat_application.dataclasses.UserSettings.userId
 import com.example.chat_application.services.FirebaseService
 import com.example.chat_application.services.LocalStorageService
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.firebase.database.FirebaseDatabase
 import java.io.File
 
 
@@ -220,6 +223,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         updateSelectionCount()
     }
 
+    @SuppressLint("SetTextI18n")
     private fun updateSelectionCount() {
         val count = selectedChatIds.size
         selectionCountTextView.text = "$count selected"
@@ -284,13 +288,13 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         if (isSearchVisible) {
             searchContainer.visibility = View.VISIBLE
             searchBar.requestFocus()
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
             imm.showSoftInput(searchBar, InputMethodManager.SHOW_IMPLICIT)
         } else {
             searchContainer.visibility = View.GONE
             searchBar.text.clear()
             // Hide keyboard
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
             imm.hideSoftInputFromWindow(searchBar.windowToken, 0)
 
 
@@ -370,11 +374,28 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         if (isInSelectionMode) {
             toggleChatSelection(chat)
         } else {
-            val intent = Intent(this, ChatRoomActivity::class.java).apply {
-                putExtra("CHAT_OBJECT", chat)
-            }
             if (firebaseEnabled) {
                 FirebaseService.saveChatsToFirebase(chatManager)
+
+                if (firebaseEnabled) {
+                    val unreadCountRef = FirebaseDatabase.getInstance()
+                        .getReference("chats")
+                        .child(chat.id)
+                        .child("unreadCount")
+                        .child(userId)
+
+                    // Set the unread count to 0
+                    unreadCountRef.setValue(0)
+                        .addOnSuccessListener {
+                            Log.d("Firebase", "Unread count reset successfully for chat: ${chat.id}")
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("Firebase", "Failed to reset unread count: ${e.message}")
+                        }
+                }
+            }
+            val intent = Intent(this, ChatRoomActivity::class.java).apply {
+                putExtra("CHAT_OBJECT", chat)
             }
             startActivity(intent)
         }

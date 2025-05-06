@@ -209,7 +209,16 @@ object FirebaseService {
             val displayName = chatSnapshot.child("displayName").getValue(String::class.java) ?: ""
             val lastMessage = chatSnapshot.child("lastMessage").getValue(String::class.java) ?: ""
             val timestamp = chatSnapshot.child("timestamp").getValue(Long::class.java) ?: 0L
-            val unreadCount = chatSnapshot.child("unreadCount").getValue(Int::class.java) ?: 0
+            val unreadCountSnapshot = chatSnapshot.child("unreadCount")
+            val unreadCount = mutableMapOf<String, Int>()
+            for (entry in unreadCountSnapshot.children) {
+                val userId = entry.key
+                val count = entry.getValue(Int::class.java) ?: 0
+                if (userId != null) {
+                    unreadCount[userId] = count
+                }
+            }
+
             val type = chatSnapshot.child("type").getValue(String::class.java) ?: "direct"
 
             // Get participant IDs

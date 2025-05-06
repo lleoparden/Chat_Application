@@ -464,9 +464,16 @@ class AddNewGroupActivity : AppCompatActivity(), UserAdapter.OnUserClickListener
 
             // Create participant IDs map (including current user)
             val participantIds = HashMap<String, Boolean>()
-            participantIds[UserSettings.userId ?: ""] = true // Add current user
+            val currentUserId = UserSettings.userId ?: ""
+            participantIds[currentUserId] = true // Add current user
             for (user in selectedUsers) {
                 participantIds[user.uid] = true
+            }
+
+            // Create unread count map for each participant, initialized to 0
+            val unreadCount = mutableMapOf<String, Int>()
+            for (participantId in participantIds.keys) {
+                unreadCount[participantId] = 0
             }
 
             // Create Chat object
@@ -476,10 +483,11 @@ class AddNewGroupActivity : AppCompatActivity(), UserAdapter.OnUserClickListener
                 displayName = groupName,
                 lastMessage = "Group created",
                 timestamp = System.currentTimeMillis(),
-                unreadCount = 0,
+                unreadCount = unreadCount,
                 participantIds = participantIds,
                 type = "group" // Mark as a group chat
             )
+
 
             if (firebaseEnabled) {
                 saveGroupToRealtimeDb(groupChat)

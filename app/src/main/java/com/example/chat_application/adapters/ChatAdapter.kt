@@ -14,6 +14,8 @@ import androidx.core.content.ContextCompat
 import com.example.chat_application.R
 import com.example.chat_application.dataclasses.Chat
 import com.example.chat_application.HelperFunctions
+import com.example.chat_application.dataclasses.UserSettings
+import com.example.chat_application.dataclasses.UserSettings.userId
 import java.util.*
 
 // Chat adapter for RecyclerView
@@ -153,11 +155,14 @@ class ChatAdapter(
         holder.timeTextView.text = sdf.format(Date(chat.timestamp))
 
         // Show unread count if any
-        if (chat.unreadCount > 0) {
-            holder.unreadCountTextView.visibility = View.VISIBLE
-            holder.unreadCountTextView.text = if (chat.unreadCount > 99) "99+" else chat.unreadCount.toString()
-        } else {
-            holder.unreadCountTextView.visibility = View.GONE
+        val unread = chat.unreadCount[userId]
+        if (unread != null) {
+            if (unread > 0) {
+                holder.unreadCountTextView.visibility = View.VISIBLE
+                holder.unreadCountTextView.text = if (unread > 99) "99+" else unread.toString()
+            } else {
+                holder.unreadCountTextView.visibility = View.GONE
+            }
         }
 
         // Load profile picture with extensive logging
@@ -216,11 +221,14 @@ class ChatAdapter(
         holder.timeTextView.text = sdf.format(Date(chat.timestamp))
 
         // Show unread count if any
-        if (chat.unreadCount > 0) {
-            holder.unreadCountTextView.visibility = View.VISIBLE
-            holder.unreadCountTextView.text = if (chat.unreadCount > 99) "99+" else chat.unreadCount.toString()
-        } else {
-            holder.unreadCountTextView.visibility = View.GONE
+        val unread = chat.unreadCount[userId]
+        if (unread != null) {
+            if (unread > 0) {
+                holder.unreadCountTextView.visibility = View.VISIBLE
+                holder.unreadCountTextView.text = if (unread > 99) "99+" else unread.toString()
+            } else {
+                holder.unreadCountTextView.visibility = View.GONE
+            }
         }
 
         // Set default group avatar
