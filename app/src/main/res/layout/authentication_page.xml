@@ -146,7 +146,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="256dp"
         android:fontFamily="sans-serif-light"
-        android:text="Welcome to Name"
+        android:text="Welcome to Bubble"
         android:textColor="?attr/AuthText"
         android:textSize="32sp"
         android:textStyle="bold|italic"

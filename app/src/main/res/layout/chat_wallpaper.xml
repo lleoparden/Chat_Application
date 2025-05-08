@@ -16,7 +16,7 @@
             ns0:layout_height="?attr/actionBarSize"
             ns0:background="?attr/generalTitleBar"
             ns1:navigationIcon="@drawable/ic_back"
-            ns1:title="Chat Wallpaper"
+            ns1:title="Theme"
             ns1:titleTextColor="?attr/generalText"/>
 
     </com.google.android.material.appbar.AppBarLayout>
@@ -37,7 +37,7 @@
             <TextView
                 ns0:layout_width="match_parent"
                 ns0:layout_height="wrap_content"
-                ns0:layout_marginBottom="12dp"
+                ns0:layout_marginBottom="5dp"
                 ns0:text="Theme"
                 ns0:textColor="?attr/generalText"
                 ns0:textSize="19sp"
@@ -47,7 +47,7 @@
                 ns0:id="@+id/themeRadioGroup"
                 ns0:layout_width="match_parent"
                 ns0:layout_height="wrap_content"
-                ns0:layout_marginBottom="15dp"
+                ns0:layout_marginBottom="5dp"
                 ns0:orientation="vertical">
 
                 <RadioButton
@@ -91,8 +91,7 @@
             <LinearLayout
                 ns0:id="@+id/galleryWallpaper"
                 ns0:layout_width="match_parent"
-                ns0:layout_height="468dp"
-                ns0:layout_marginTop="20dp"
+                ns0:layout_height="495dp"
                 ns0:layout_marginBottom="24dp"
                 ns0:gravity="center"
                 ns0:orientation="vertical">
@@ -120,11 +119,19 @@
                     ns0:text="Select from Gallery"
                     ns0:textColor="@color/black" />
 
+                <Button
+                    ns0:id="@+id/removeWallpaper"
+                    ns0:layout_width="121dp"
+                    ns0:layout_height="39dp"
+                    ns0:backgroundTint="?attr/generalButton"
+                    ns0:textColor="@color/black"
+                    ns0:text="Remove" />
+
                 <TextView
                     ns0:id="@+id/noWallpaperSelected"
                     ns0:layout_width="wrap_content"
                     ns0:layout_height="wrap_content"
-                    ns0:layout_marginTop="8dp"
+                    ns0:layout_marginTop="4dp"
                     ns0:text="No wallpaper selected"
                     ns0:textColor="@android:color/darker_gray"
                     ns0:textSize="14sp" />

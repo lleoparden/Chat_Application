@@ -208,6 +208,7 @@ class AuthActivity : AppCompatActivity() {
         val logInButton = findViewById<Button>(R.id.logInButton)
         val switchLayout = findViewById<TextView>(R.id.switchSignInButton)
         val loginLayout = findViewById<LinearLayout>(R.id.logInLayout)
+        val welcomeBack = findViewById<TextView>(R.id.welcomeBack)
 
         //Initialize BG Items
         initializeBackGround()
@@ -225,6 +226,7 @@ class AuthActivity : AppCompatActivity() {
             password.startAnimation(fadeInFastAnim)
             logInButton.startAnimation(fadeInFastAnim)
             switchLayout.startAnimation(fadeInFastAnim)
+            welcomeBack.startAnimation(fadeInFastAnim)
             bottomrightbg.isVisible = false
             bottomleftbg.isVisible = false
             ballbottomleft.isVisible = false
@@ -327,6 +329,7 @@ class AuthActivity : AppCompatActivity() {
         val signUpButton = findViewById<Button>(R.id.signUpButton)
         val switchLayout = findViewById<TextView>(R.id.switchSignInButton)
         val signupLayout = findViewById<LinearLayout>(R.id.signUpLayout)
+        val helloThere = findViewById<TextView>(R.id.helloThere)
 
         password.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -372,6 +375,8 @@ class AuthActivity : AppCompatActivity() {
             password.startAnimation(fadeInFastAnim)
             signUpButton.startAnimation(fadeInFastAnim)
             switchLayout.startAnimation(fadeInFastAnim)
+            helloThere.startAnimation(fadeInFastAnim)
+            ccp.startAnimation(fadeInFastAnim)
             bottomrightbg.isVisible = false
             bottomleftbg.isVisible = false
             ballbottomleft.isVisible = false

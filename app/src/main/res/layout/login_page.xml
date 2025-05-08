@@ -130,10 +130,22 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.688">
 
+        <TextView
+            android:id="@+id/welcomeBack"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="30dp"
+            android:text="Welcome back!"
+            android:textAlignment="center"
+            android:textColor="?attr/generalText"
+            android:textSize="32sp"
+            android:textStyle="bold|italic" />
+
         <EditText
             android:id="@+id/signInPhone"
             android:layout_width="wrap_content"
             android:layout_height="38dp"
+            android:layout_marginTop="20dp"
             android:layout_marginBottom="30dp"
             android:background="@drawable/border"
             android:ems="10"
@@ -188,6 +200,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_bias="0.723" />
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

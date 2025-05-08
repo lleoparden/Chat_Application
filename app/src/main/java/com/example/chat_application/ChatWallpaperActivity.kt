@@ -40,8 +40,10 @@ class ChatWallpaperActivity : AppCompatActivity() {
     private lateinit var systemThemeRadio: RadioButton
     private lateinit var selectedWallpaperPreview: ImageView
     private lateinit var selectFromGalleryButton: Button
+    private lateinit var removeWallpaper: Button
     private lateinit var noWallpaperSelected: TextView
     private lateinit var sharedPreferences: SharedPreferences
+
 
     private var selectedWallpaperUri: Uri? = null
     private lateinit var auth: FirebaseAuth
@@ -86,6 +88,7 @@ class ChatWallpaperActivity : AppCompatActivity() {
         selectedWallpaperPreview = findViewById(R.id.selectedWallpaperPreview)
         selectFromGalleryButton = findViewById(R.id.selectFromGalleryButton)
         noWallpaperSelected = findViewById(R.id.noWallpaperSelected)
+        removeWallpaper = findViewById(R.id.removeWallpaper)
     }
 
     private fun loadSavedPreferences() {

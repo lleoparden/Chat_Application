@@ -89,12 +89,6 @@
                             android:text="My Profile"
                             android:textSize="16sp" />
 
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:src="@drawable/ic_back"
-                            app:tint="?attr/generalText"
-                            android:contentDescription="Chevron" />
                     </LinearLayout>
 
                     <View
@@ -117,7 +111,7 @@
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:src="@drawable/ic_back"
+                            android:src="@drawable/accountpng"
                             app:tint="?attr/generalText"
                             android:contentDescription="Account" />
 
@@ -129,12 +123,6 @@
                             android:text="Account"
                             android:textSize="16sp" />
 
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:src="@drawable/ic_back"
-                            app:tint="?attr/generalText"
-                            android:contentDescription="Chevron" />
                     </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -179,7 +167,7 @@
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:src="@drawable/ic_back"
+                            android:src="@drawable/themepng"
                             app:tint="?attr/generalText"
                             android:contentDescription="Chat Background" />
 
@@ -188,15 +176,9 @@
                             android:layout_height="wrap_content"
                             android:layout_marginStart="16dp"
                             android:layout_weight="1"
-                            android:text="Chat Wallpaper"
+                            android:text="Theme"
                             android:textSize="16sp" />
 
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:src="@drawable/ic_back"
-                            app:tint="?attr/generalText"
-                            android:contentDescription="Chevron" />
                     </LinearLayout>
 
                     <View
@@ -219,7 +201,7 @@
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:src="@drawable/ic_back"
+                            android:src="@drawable/historypng"
                             app:tint="?attr/generalText"
                             android:contentDescription="Chat History" />
 
@@ -231,12 +213,6 @@
                             android:text="Chat History"
                             android:textSize="16sp" />
 
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:src="@drawable/ic_back"
-                            app:tint="?attr/generalText"
-                            android:contentDescription="Chevron" />
                     </LinearLayout>
 
                     <View
@@ -289,7 +265,7 @@
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:src="@drawable/ic_back"
+                            android:src="@drawable/notificationpng"
                             app:tint="?attr/generalText"
                             android:contentDescription="Notifications" />
 
@@ -330,7 +306,7 @@
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:src="@drawable/ic_back"
+                            android:src="@drawable/soundpng"
                             app:tint="?attr/generalText"
                             android:contentDescription="Sounds" />
 
@@ -402,7 +378,7 @@
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:src="@drawable/ic_back"
+                            android:src="@drawable/helppng"
                             app:tint="?attr/generalText"
                             android:contentDescription="Help" />
 
@@ -414,12 +390,6 @@
                             android:text="Help"
                             android:textSize="16sp" />
 
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:src="@drawable/ic_back"
-                            app:tint="?attr/generalText"
-                            android:contentDescription="Chevron" />
                     </LinearLayout>
 
                     <View
@@ -442,7 +412,7 @@
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:src="@drawable/ic_back"
+                            android:src="@drawable/invitepng"
                             app:tint="?attr/generalText"
                             android:contentDescription="Invite Friends" />
 
@@ -454,12 +424,6 @@
                             android:text="Invite Friends"
                             android:textSize="16sp" />
 
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:src="@drawable/ic_back"
-                            app:tint="?attr/generalText"
-                            android:contentDescription="Chevron" />
                     </LinearLayout>
 
                     <View
@@ -482,7 +446,7 @@
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:src="@drawable/ic_back"
+                            android:src="@drawable/aboutpng"
                             app:tint="?attr/generalText"
                             android:contentDescription="About" />
 
@@ -494,12 +458,6 @@
                             android:text="About"
                             android:textSize="16sp" />
 
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:src="@drawable/ic_back"
-                            app:tint="?attr/generalText"
-                            android:contentDescription="Chevron" />
                     </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -528,7 +486,7 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:src="@drawable/ic_back"
+                        android:src="@drawable/singoutpng"
                         app:tint="?attr/generalText"
                         android:contentDescription="Sign Out" />
 

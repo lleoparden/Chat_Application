@@ -129,9 +129,20 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.688">
 
+        <TextView
+            android:id="@+id/helloThere"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="40dp"
+            android:text="Hello there!"
+            android:textAlignment="center"
+            android:textColor="?attr/generalText"
+            android:textSize="32sp"
+            android:textStyle="bold|italic" />
+
         <EditText
             android:id="@+id/signUpName"
-            android:layout_width="wrap_content"
+            android:layout_width="232dp"
             android:layout_height="37dp"
             android:layout_marginBottom="30dp"
             android:background="@drawable/border"
@@ -161,9 +172,10 @@
                 app:ccp_defaultNameCode="US"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
+
             <EditText
                 android:id="@+id/signInPhone"
-                android:layout_width="wrap_content"
+                android:layout_width="150dp"
                 android:layout_height="39dp"
                 android:background="@null"
                 android:ems="8"
@@ -174,7 +186,7 @@
 
         <EditText
             android:id="@+id/signInPassword"
-            android:layout_width="wrap_content"
+            android:layout_width="228dp"
             android:layout_height="37dp"
             android:layout_marginBottom="15dp"
             android:background="@drawable/border"
@@ -199,5 +211,6 @@
             android:layout_marginTop="20dp"
             android:backgroundTint="?attr/AuthButton"
             android:text="Sign Up" />
+
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

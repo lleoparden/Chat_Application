@@ -29,14 +29,15 @@
                 android:id="@+id/titleTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:text="Za3boot chat"
+                android:layout_marginStart="24dp"
+                android:text="Bubble"
                 android:textColor="?attr/generalText"
-                android:textSize="20sp"
-                android:textStyle="bold"
+                android:textSize="26sp"
+                android:textStyle="bold | italic"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_bias="0.517" />
 
             <ImageView
                 android:id="@+id/searchButton"
