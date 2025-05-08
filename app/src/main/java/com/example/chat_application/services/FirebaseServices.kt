@@ -12,6 +12,7 @@ import android.widget.Toast
 import com.example.chat_application.dataclasses.Chat
 import com.example.chat_application.adapters.ChatAdapter
 import com.example.chat_application.ChatManager
+import com.example.chat_application.HelperFunctions
 import com.example.chat_application.dataclasses.UserData
 import com.example.chat_application.dataclasses.UserSettings
 import com.google.firebase.database.ChildEventListener
@@ -744,19 +745,33 @@ object FirebaseService {
     }
 
     fun loadUserFromFirebase(
-        userId:String,
+        userId: String,
         callback: (UserData) -> Unit
     ) {
+        Log.d(tag, "Starting to load user data for userId: $userId")
+
         if (!firebaseEnabled) {
+            Log.d(tag, "Firebase disabled, using local storage for user: $userId")
             LocalStorageService.loadUserFromLocalStorage(userId) { user ->
+                Log.d(tag, "User data loaded from local storage: ${user.displayName}")
                 callback(user)
             }
             return // prevent continuing to Firebase
         }
 
+        Log.d(tag, "Fetching user data from Firebase for userId: $userId")
         firestore.collection("users").document(userId).get()
             .addOnSuccessListener { document ->
                 if (document != null && document.exists()) {
+                    Log.d(tag, "Firebase document found for user: $userId")
+
+                    val lastSeen = try {
+                        document.getLong("lastSeen")?.toString() ?: ""
+                    } catch (e: Exception) {
+                        Log.w(tag, "lastSeen is not a number for $userId, using empty string")
+                        ""
+                    }
+
                     val userData = UserData(
                         uid = userId,
                         displayName = document.getString("displayName") ?: "",
@@ -764,22 +779,31 @@ object FirebaseService {
                         password = document.getString("password") ?: "",
                         userDescription = document.getString("userDescription") ?: "",
                         userStatus = document.getString("userStatus") ?: "",
-                        online = document.getBoolean("online") ?: false,
-                        lastSeen = document.getLong("lastSeen")?.toString() ?: "",
+                        online = when (val onlineValue = document.get("online")) {
+                            is Boolean -> onlineValue
+                            is String -> onlineValue.equals("true", ignoreCase = true)
+                            else -> false
+                        },
+                        lastSeen = lastSeen,
                         profilePictureUrl = document.getString("profilePictureUrl") ?: ""
                     )
+                    Log.d(tag, "User data parsed successfully: ${userData.displayName}, online: ${userData.online}")
                     callback(userData)
                 } else {
-                    Log.d(tag, "User not found in Firebase, trying local storage")
+                    Log.d(tag, "User not found in Firebase for userId: $userId, trying local storage")
                     LocalStorageService.loadUserFromLocalStorage(userId) { user ->
+                        Log.d(tag, "Fallback: User data loaded from local storage: ${user.displayName}")
                         callback(user)
                     }
                 }
             }
             .addOnFailureListener { e ->
-                Log.e(tag, "Error loading user data from Firebase", e)
+                Log.e(tag, "Error loading user data from Firebase for userId: $userId", e)
+                Log.e(tag, "Error details: ${e.message}")
                 Toast.makeText(context, "Failed to load profile", Toast.LENGTH_SHORT).show()
+                Log.d(tag, "Attempting local storage fallback after Firebase failure")
                 LocalStorageService.loadUserFromLocalStorage(userId) { user ->
+                    Log.d(tag, "Error fallback: User data loaded from local storage: ${user.displayName}")
                     callback(user)
                 }
             }

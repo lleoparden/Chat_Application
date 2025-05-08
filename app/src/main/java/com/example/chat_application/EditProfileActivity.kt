@@ -147,29 +147,44 @@ class EditProfileActivity : AppCompatActivity() {
     }
 
     private fun loadInfoIntoViews() {
+        Log.d(TAG, "Starting to load user info into views for userId: $userId")
+        progressIndicator.visibility = View.VISIBLE
+
         FirebaseService.loadUserFromFirebase(userId) { user ->
+            Log.d(TAG, "User data received in loadInfoIntoViews: ${user.displayName}")
+
             nameEditText.setText(user.displayName)
             statusEditText.setText(user.userStatus)
             descriptionEditText.setText(user.userDescription)
             phoneTextView.text = user.phoneNumber
 
+            Log.d(TAG, "Text fields populated with user data")
+
             // Check for local image first - we may have saved it locally previously
             val localImageFile = File(filesDir, "profile_${userId}.jpg")
             val imageUrl = user.profilePictureUrl
 
+            Log.d(TAG, "Checking profile picture - URL: ${if (imageUrl.isNotEmpty()) imageUrl else "empty"}, Local file exists: ${localImageFile.exists()}")
+
             if (imageUrl.isNotEmpty()) {
+                Log.d(TAG, "Loading remote profile image from URL: $imageUrl")
                 profilePictureUrl = imageUrl
                 HelperFunctions.loadImageFromUrl(imageUrl, profileImageView)
 
                 // Try to download and save the image locally for next time
+                Log.d(TAG, "Attempting to download and save remote image locally")
                 ImageUploadService.downloadAndSaveImageLocally(this, imageUrl, userId)
             } else if (localImageFile.exists()) {
+                Log.d(TAG, "Loading profile image from local file: ${localImageFile.absolutePath}")
                 localImagePath = localImageFile.absolutePath
                 selectedImageUri = Uri.fromFile(localImageFile)
                 ImageUploadService.loadImageIntoView(this, selectedImageUri, profileImageView)
+            } else {
+                Log.d(TAG, "No profile image available for user")
             }
 
             progressIndicator.visibility = View.GONE
+            Log.d(TAG, "Finished loading user info into views")
         }
     }
 
