@@ -181,15 +181,21 @@ class ChatAdapter(
 
             // First check if we can get cached data immediately
            var userdata = HelperFunctions.loadUserById(otherUserId,holder.chatCardView.context)
-            HelperFunctions.loadImageFromUrl(userdata?.profilePictureUrl.toString(),holder.avatarImageView)
-            holder.nameTextView.text = userdata?.displayName.toString()
+            if (userdata != null) {
+                HelperFunctions.loadImageFromUrl(userdata.profilePictureUrl.toString(),holder.avatarImageView)
+                holder.nameTextView.text = userdata.displayName.toString()
+            }else{
+                HelperFunctions.getUserData(otherUserId) {user->
+                    HelperFunctions.loadImageFromUrl(user?.profilePictureUrl.toString(),holder.avatarImageView)
+                    holder.nameTextView.text = user?.displayName.toString()
+                }
+            }
 
 
         } catch (e: Exception) {
             Log.e("ChatAdapter", "Exception in profile picture loading process: ${e.message}", e)
             holder.avatarImageView.setImageResource(R.drawable.ic_person)
         }
-
         handleSelectionState(chat.id, holder.chatCardView, holder.selectionCheckbox)
 
         // Set click listeners

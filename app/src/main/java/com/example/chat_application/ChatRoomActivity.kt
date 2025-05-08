@@ -166,18 +166,20 @@ class ChatRoomActivity : AppCompatActivity() {
         chatMessagesFile = File(filesDir, "messages_${chatId}.json")
     }
 
-    lateinit var user: UserData
+    var user: UserData? = null
     private fun initializeProfileImage() {
 
         if (chat.type == "direct") {
-            user = HelperFunctions.loadUserById(otherParticipantId, this)!!
+            user = HelperFunctions.loadUserById(otherParticipantId, this)
 
             if (user != null) {
-                HelperFunctions.loadImageFromUrl(user.profilePictureUrl, profileImageView)
-                nameView.text =user.displayName
-            }
-            if(nameView.text.isEmpty()){
-                nameView.text =chat.getEffectiveDisplayName()
+                HelperFunctions.loadImageFromUrl(user!!.profilePictureUrl, profileImageView)
+                nameView.text = user!!.displayName
+            }else{
+                HelperFunctions.getUserData(otherParticipantId) {user->
+                    HelperFunctions.loadImageFromUrl(user?.profilePictureUrl.toString(),profileImageView)
+                    nameView.text = user?.displayName.toString()
+                }
             }
         }else{
             HelperFunctions.getGroupPfp(chat.id) { url ->
@@ -235,9 +237,12 @@ class ChatRoomActivity : AppCompatActivity() {
 
 
     private fun setupRecyclerView() {
+
+        messageList.sortBy { it.timestamp }
+
         messageAdapter = MessageAdapter(
             currentUserId = currentUserId,
-            messageList = messageList,
+            messageList =  messageList,
             onMessageLongClick = { position, message ->
                 handleMessageLongClick(message)
             },
