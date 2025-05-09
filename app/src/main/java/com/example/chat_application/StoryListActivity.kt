@@ -43,7 +43,7 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
     private val firebaseEnabled by lazy { resources.getBoolean(R.bool.firebaseOn) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(UserSettings.theme)
+        setTheme(UserSettings.getThemeResource())
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.stories_page)

@@ -46,7 +46,7 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d(TAG, "onCreate: Starting activity")
-        setTheme(UserSettings.theme)
+        setTheme(UserSettings.getThemeResource())
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.add_new_chat)

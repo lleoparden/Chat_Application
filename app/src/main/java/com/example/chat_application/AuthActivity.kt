@@ -66,7 +66,7 @@ class AuthActivity : AppCompatActivity() {
 
     @SuppressLint("MissingInflatedId")
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(UserSettings.theme)
+        setTheme(UserSettings.getThemeResource())
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -545,6 +545,7 @@ class AuthActivity : AppCompatActivity() {
 
     private fun navigateToMainActivity(userId: String) {
         UserSettings.userId = userId
+        UserSettings.loadSettings(this)
 
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)

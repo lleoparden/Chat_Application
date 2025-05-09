@@ -10,12 +10,11 @@
 
     <!-- Background Image -->
     <ImageView
-        android:id="@+id/imageView2"
+        android:id="@+id/chatBackground"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
         app:layout_anchor="@+id/messagesRecyclerView"
-        app:layout_anchorGravity="center"
         app:srcCompat="@drawable/chatbg" />
 
     <!-- Top App Bar -->
@@ -142,6 +141,9 @@
     </com.google.android.material.appbar.AppBarLayout>
 
     <!-- Chat content area -->
+    <!-- Message input area - fixed at bottom -->
+
+    <!-- Voice recording layout (initially hidden) -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/messagesRecyclerView"
         android:layout_width="match_parent"
@@ -150,11 +152,9 @@
         android:paddingStart="8dp"
         android:paddingTop="8dp"
         android:paddingEnd="8dp"
-        android:paddingBottom="80dp" />
-    <!--        app:layout_behavior="@string/appbar_scrolling_view_behavior" />-->
-    <!-- Message input area - fixed at bottom -->
+        android:paddingBottom="80dp"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
-    <!-- Voice recording layout (initially hidden) -->
     <LinearLayout
         android:id="@+id/messageInputLayout"
         android:layout_width="match_parent"

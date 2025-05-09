@@ -14,18 +14,13 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 import android.provider.MediaStore
+import com.example.chat_application.dataclasses.UserSettings
 
 class ChatWallpaperActivity : AppCompatActivity() {
 
     companion object {
         private const val PICK_IMAGE_REQUEST = 1
         private const val PERMISSION_REQUEST_READ_EXTERNAL_STORAGE = 100
-        private const val PREF_NAME = "chat_wallpaper_preferences"
-        private const val KEY_THEME = "selected_theme"
-        private const val KEY_WALLPAPER_URI = "wallpaper_uri"
-        private const val THEME_LIGHT = "light"
-        private const val THEME_DARK = "dark"
-        private const val THEME_SYSTEM = "system"
     }
 
     private lateinit var themeRadioGroup: RadioGroup
@@ -36,16 +31,12 @@ class ChatWallpaperActivity : AppCompatActivity() {
     private lateinit var selectFromGalleryButton: Button
     private lateinit var removeWallpaper: Button
     private lateinit var noWallpaperSelected: TextView
-    private lateinit var sharedPreferences: SharedPreferences
 
     private var selectedWallpaperUri: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.chat_wallpaper)
-
-        // Shared Preferences
-        sharedPreferences = getSharedPreferences(PREF_NAME, MODE_PRIVATE)
 
         initViews()
 
@@ -73,20 +64,26 @@ class ChatWallpaperActivity : AppCompatActivity() {
 
     private fun loadSavedPreferences() {
         // Theme
-        when (sharedPreferences.getString(KEY_THEME, THEME_SYSTEM)) {
-            THEME_LIGHT -> lightThemeRadio.isChecked = true
-            THEME_DARK -> darkThemeRadio.isChecked = true
+        when (UserSettings.theme) {
+            "light" -> lightThemeRadio.isChecked = true
+            "dark" -> darkThemeRadio.isChecked = true
             else -> systemThemeRadio.isChecked = true
         }
 
         // Wallpaper
-        val savedWallpaperUri = sharedPreferences.getString(KEY_WALLPAPER_URI, null)
-        if (savedWallpaperUri != null) {
+        val savedWallpaperPath = UserSettings.getChatWallpaper()
+        if (savedWallpaperPath != null) {
             try {
-                selectedWallpaperUri = Uri.parse(savedWallpaperUri)
-                selectedWallpaperPreview.setImageURI(selectedWallpaperUri)
-                noWallpaperSelected.visibility = View.GONE
-                removeWallpaper.visibility = View.VISIBLE
+                val wallpaperFile = java.io.File(savedWallpaperPath)
+                if (wallpaperFile.exists()) {
+                    selectedWallpaperUri = Uri.fromFile(wallpaperFile)
+                    selectedWallpaperPreview.setImageURI(selectedWallpaperUri)
+                    noWallpaperSelected.visibility = View.GONE
+                    removeWallpaper.visibility = View.VISIBLE
+                } else {
+                    noWallpaperSelected.visibility = View.VISIBLE
+                    removeWallpaper.visibility = View.GONE
+                }
             } catch (e: Exception) {
                 noWallpaperSelected.visibility = View.VISIBLE
                 removeWallpaper.visibility = View.GONE
@@ -100,15 +97,16 @@ class ChatWallpaperActivity : AppCompatActivity() {
     private fun setupClickListeners() {
         themeRadioGroup.setOnCheckedChangeListener { _, checkedId ->
             val newTheme = when (checkedId) {
-                R.id.lightThemeRadio -> THEME_LIGHT
-                R.id.darkThemeRadio -> THEME_DARK
-                else -> THEME_SYSTEM
+                R.id.lightThemeRadio -> "light"
+                R.id.darkThemeRadio -> "dark"
+                else -> "system"
             }
 
-            val currentTheme = sharedPreferences.getString(KEY_THEME, THEME_SYSTEM)
+            val currentTheme = UserSettings.theme
 
             if (newTheme != currentTheme) {
-                sharedPreferences.edit().putString(KEY_THEME, newTheme).apply()
+                UserSettings.theme = newTheme
+                UserSettings.saveSettings(this)
                 applyTheme(newTheme)
             }
         }
@@ -128,9 +126,9 @@ class ChatWallpaperActivity : AppCompatActivity() {
 
     private fun applyTheme(theme: String) {
         when (theme) {
-            THEME_LIGHT -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
-            THEME_DARK -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
-            THEME_SYSTEM -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+            "light" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+            "dark" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+            "system" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         }
     }
 
@@ -195,32 +193,32 @@ class ChatWallpaperActivity : AppCompatActivity() {
             selectedWallpaperUri = data.data
 
             selectedWallpaperUri?.let { uri ->
-                try {
-                    selectedWallpaperPreview.setImageURI(uri)
-                    noWallpaperSelected.visibility = View.GONE
-                    removeWallpaper.visibility = View.VISIBLE
-
-                    // Save to SharedPreferences only
-                    sharedPreferences.edit().putString(KEY_WALLPAPER_URI, uri.toString()).apply()
-
-                    Toast.makeText(this, "Wallpaper saved locally", Toast.LENGTH_SHORT).show()
-                } catch (e: Exception) {
-                    Toast.makeText(this, "Failed to load image: ${e.message}", Toast.LENGTH_SHORT).show()
-                    noWallpaperSelected.visibility = View.VISIBLE
-                    removeWallpaper.visibility = View.GONE
+                UserSettings.saveChatWallpaper(this, uri) { success ->
+                    if (success) {
+                        selectedWallpaperPreview.setImageURI(uri)
+                        noWallpaperSelected.visibility = View.GONE
+                        removeWallpaper.visibility = View.VISIBLE
+                        Toast.makeText(this, "Wallpaper saved successfully", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this, "Failed to save wallpaper", Toast.LENGTH_SHORT).show()
+                        noWallpaperSelected.visibility = View.VISIBLE
+                        removeWallpaper.visibility = View.GONE
+                    }
                 }
             }
+            UserSettings.saveSettings(this)
         }
     }
 
     private fun removeWallpaperImage() {
-        selectedWallpaperPreview.setImageResource(R.drawable.circle2) // fallback default
-        sharedPreferences.edit().remove(KEY_WALLPAPER_URI).apply()
-
-        selectedWallpaperUri = null
-        noWallpaperSelected.visibility = View.VISIBLE
-        removeWallpaper.visibility = View.GONE
-
-        Toast.makeText(this, "Wallpaper removed", Toast.LENGTH_SHORT).show()
+        if (UserSettings.removeChatWallpaper(this)) {
+            selectedWallpaperPreview.setImageResource(R.drawable.circle2) // fallback default
+            selectedWallpaperUri = null
+            noWallpaperSelected.visibility = View.VISIBLE
+            removeWallpaper.visibility = View.GONE
+            Toast.makeText(this, "Wallpaper removed", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Failed to remove wallpaper", Toast.LENGTH_SHORT).show()
+        }
     }
 }

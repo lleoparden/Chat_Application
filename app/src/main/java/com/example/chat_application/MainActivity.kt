@@ -63,7 +63,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(UserSettings.theme)
+        setTheme(UserSettings.getThemeResource())
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.mainpage)

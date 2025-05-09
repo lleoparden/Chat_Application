@@ -43,6 +43,7 @@ import android.widget.ImageView
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
+import com.bumptech.glide.Glide
 import com.example.chat_application.dataclasses.UserData
 import com.github.dhaval2404.imagepicker.ImagePicker
 import com.example.chat_application.services.ImageUploadService
@@ -60,6 +61,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var messagesRecyclerView: RecyclerView
     private lateinit var nameView: TextView
     private lateinit var inputLayout: LinearLayout
+    private lateinit var chatBackground: ImageView
 
     var isInSelectionMode = false
     private val selectedMessageIds = mutableSetOf<String>()
@@ -116,6 +118,11 @@ class ChatRoomActivity : AppCompatActivity() {
         initializeComponents()
         setupClickListeners()
 
+        chatBackground = findViewById(R.id.chatBackground)
+
+        // Load the wallpaper
+        loadChatWallpaper()
+
 
         loadMessagesFromLocalStorage()
 
@@ -129,11 +136,33 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
+    private fun loadChatWallpaper() {
+        val wallpaperPath = UserSettings.getChatWallpaper()
+
+        if (wallpaperPath != null) {
+            // Custom wallpaper is set
+            try {
+                val wallpaperUri = Uri.fromFile(File(wallpaperPath))
+                Glide.with(this)
+                    .load(wallpaperUri)
+                    .error(R.drawable.chatbg)
+                    .into(chatBackground)
+            } catch (e: Exception) {
+                // Fallback to default
+                chatBackground.setImageResource(R.drawable.chatbg)
+            }
+        } else {
+            // Use default wallpaper
+            chatBackground.setImageResource(R.drawable.chatbg)
+        }
+    }
 
     //region Setup Methods
 
     private fun setupThemeAndLayout(savedInstanceState: Bundle?) {
-        setTheme(UserSettings.theme)
+        // Apply theme from UserSettings before calling super.onCreate()
+        setTheme(UserSettings.getThemeResource())
+
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.chatroom)

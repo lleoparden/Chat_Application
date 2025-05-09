@@ -82,6 +82,25 @@ class InviteFriendsActivity : AppCompatActivity() {
         Log.d(TAG, "Toolbar setup complete")
     }
 
+    // Handle toolbar back button click
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            android.R.id.home -> {
+                Log.d(TAG, "Back button clicked, navigating to SettingsActivity")
+                navigateToSettings()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    // Function to navigate to SettingsActivity
+    private fun navigateToSettings() {
+        val intent = Intent(this, SettingsActivity::class.java)
+        startActivity(intent)
+        finish() // Close current activity
+    }
+
     private fun setupRecyclerView() {
         contactsAdapter = ContactsAdapter(
             onContactClick = { processedUser ->
@@ -227,12 +246,11 @@ class InviteFriendsActivity : AppCompatActivity() {
     }
 
     private fun navigateToChat(userId: String) {
-
         Log.i(TAG, "Navigation to chat with user ID: $userId")
-         val intent = Intent(this, ChatRoomActivity::class.java).apply {
-             putExtra("USER_ID", userId)
-         }
-         startActivity(intent)
+        val intent = Intent(this, ChatRoomActivity::class.java).apply {
+            putExtra("USER_ID", userId)
+        }
+        startActivity(intent)
     }
 
     private fun sendInvitation(phoneNumber: String) {
@@ -257,4 +275,9 @@ class InviteFriendsActivity : AppCompatActivity() {
         }
     }
 
+    // Handle physical back button press
+    override fun onBackPressed() {
+        Log.d(TAG, "Back button pressed, navigating to SettingsActivity")
+        navigateToSettings()
+    }
 }

@@ -47,7 +47,7 @@ class AddNewStoryActivity : AppCompatActivity() {
     private lateinit var imagePickLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(UserSettings.theme)
+        setTheme(UserSettings.getThemeResource())
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.create_story)

@@ -44,7 +44,7 @@ class UserProfileActivity : AppCompatActivity() {
     private lateinit var firebaseDatabase: FirebaseDatabase
     private lateinit var chat: Chat
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(UserSettings.theme)
+        setTheme(UserSettings.getThemeResource())
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.user_profile)

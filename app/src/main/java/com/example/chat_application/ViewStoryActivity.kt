@@ -40,7 +40,7 @@ class ViewStoryActivity : AppCompatActivity() {
     private var currentTimeMs: Long = System.currentTimeMillis()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(UserSettings.theme)
+        setTheme(UserSettings.getThemeResource())
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.view_story)
