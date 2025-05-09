@@ -12,9 +12,6 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
 import android.content.pm.PackageManager
 import android.provider.MediaStore
 
@@ -42,16 +39,10 @@ class ChatWallpaperActivity : AppCompatActivity() {
     private lateinit var sharedPreferences: SharedPreferences
 
     private var selectedWallpaperUri: Uri? = null
-    private lateinit var auth: FirebaseAuth
-    private lateinit var database: DatabaseReference
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.chat_wallpaper)
-
-        // Firebase
-        auth = FirebaseAuth.getInstance()
-        database = FirebaseDatabase.getInstance().reference
 
         // Shared Preferences
         sharedPreferences = getSharedPreferences(PREF_NAME, MODE_PRIVATE)
@@ -209,8 +200,10 @@ class ChatWallpaperActivity : AppCompatActivity() {
                     noWallpaperSelected.visibility = View.GONE
                     removeWallpaper.visibility = View.VISIBLE
 
-                    // Save to SharedPreferences and Firebase
-                    saveWallpaperToDatabase(uri.toString())
+                    // Save to SharedPreferences only
+                    sharedPreferences.edit().putString(KEY_WALLPAPER_URI, uri.toString()).apply()
+
+                    Toast.makeText(this, "Wallpaper saved locally", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     Toast.makeText(this, "Failed to load image: ${e.message}", Toast.LENGTH_SHORT).show()
                     noWallpaperSelected.visibility = View.VISIBLE
@@ -220,38 +213,14 @@ class ChatWallpaperActivity : AppCompatActivity() {
         }
     }
 
-    private fun saveWallpaperToDatabase(uri: String) {
-        sharedPreferences.edit().putString(KEY_WALLPAPER_URI, uri).apply()
-
-        val userId = auth.currentUser?.uid
-        userId?.let {
-            database.child("users").child(it).child("wallpaper").setValue(uri)
-                .addOnSuccessListener {
-                    Toast.makeText(this, "Wallpaper saved successfully", Toast.LENGTH_SHORT).show()
-                }
-                .addOnFailureListener { e ->
-                    Toast.makeText(this, "Failed to save to Firebase: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-        }
-    }
-
     private fun removeWallpaperImage() {
         selectedWallpaperPreview.setImageResource(R.drawable.circle2) // fallback default
         sharedPreferences.edit().remove(KEY_WALLPAPER_URI).apply()
 
-        val userId = auth.currentUser?.uid
-        userId?.let {
-            database.child("users").child(it).child("wallpaper").removeValue()
-                .addOnSuccessListener {
-                    Toast.makeText(this, "Wallpaper removed", Toast.LENGTH_SHORT).show()
-                }
-                .addOnFailureListener { e ->
-                    Toast.makeText(this, "Failed to remove: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-        }
-
         selectedWallpaperUri = null
         noWallpaperSelected.visibility = View.VISIBLE
         removeWallpaper.visibility = View.GONE
+
+        Toast.makeText(this, "Wallpaper removed", Toast.LENGTH_SHORT).show()
     }
 }
