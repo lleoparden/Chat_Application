@@ -239,8 +239,6 @@ class InviteFriendsActivity : AppCompatActivity() {
         try {
             val message = "Check out my app! Download it here: https://yourwebsite.com/app"
 
-            // Format phone number to ensure it's properly formatted
-            // Remove any non-digit characters that might cause issues
             val formattedNumber = phoneNumber.replace(Regex("[^0-9+]"), "")
 
             // Create SMS intent with properly formatted URI
@@ -259,24 +257,4 @@ class InviteFriendsActivity : AppCompatActivity() {
         }
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            android.R.id.home -> {
-                Log.d(TAG, "Back/up button pressed")
-                finish()
-                true
-            }
-            R.id.action_refresh -> {
-                Log.d(TAG, "Refresh action selected")
-                loadUsersFromContacts()
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.invite_friends_menu, menu)
-        return true
-    }
 }

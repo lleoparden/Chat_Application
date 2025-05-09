@@ -53,13 +53,16 @@ class ContactsAdapter(
 
     private fun updateTimeDisplay(lastseen: String): String {
         return try {
-            val lastSeenTime = lastseen.toLong()
+            val lastSeenTime = lastseen.toLong()  // Convert seconds to milliseconds if needed
             val timeElapsedMs = System.currentTimeMillis() - lastSeenTime
 
             when {
-                timeElapsedMs < 60000 -> "${(timeElapsedMs / 1000).toInt()}s" // Less than 1 minute
-                timeElapsedMs < 3600000 -> "${(timeElapsedMs / 60000).toInt()}m" // Less than 1 hour
-                else -> "${(timeElapsedMs / 3600000).toInt()}h" // Display in hours
+                timeElapsedMs < 60000 -> "${(timeElapsedMs / 1000).toInt()} seconds ago" // Less than 1 minute
+                timeElapsedMs < 3600000 -> "${(timeElapsedMs / 60000).toInt()} minutes ago" // Less than 1 hour
+                timeElapsedMs < 86400000 -> "${(timeElapsedMs / 3600000).toInt()} hours ago" // Less than 1 day (24 hours)
+                timeElapsedMs < 2592000000 -> "${(timeElapsedMs / 86400000).toInt()} days ago" // Less than 30 days
+                timeElapsedMs < 31536000000 -> "${(timeElapsedMs / 2592000000).toInt()} months ago" // Less than 365 days
+                else -> "${(timeElapsedMs / 31536000000).toInt()} years ago" // More than a year
             }
         } catch (e: NumberFormatException) {
             // Return a default value if parsing fails

@@ -184,7 +184,7 @@ object HelperFunctions {
                 Log.e("UserSettings", "Error updating offline status", e)
             }
         db.collection("users").document(userId)
-            .update("lastSeen", System.currentTimeMillis().toInt())
+            .update("lastSeen", System.currentTimeMillis())
             .addOnFailureListener { e ->
                 Log.e("UserSettings", "Error updating online status", e)
             }
