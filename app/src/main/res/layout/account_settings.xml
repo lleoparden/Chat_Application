@@ -115,7 +115,9 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
                 app:boxStrokeColor="@color/purple_700"
-                app:hintTextColor="@color/purple_700">
+                app:hintTextColor="@color/purple_700"
+                app:endIconMode="password_toggle"
+                app:endIconContentDescription="Toggle password visibility">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/passwordEditText"

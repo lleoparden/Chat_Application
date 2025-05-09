@@ -15,8 +15,6 @@ import androidx.core.content.ContextCompat
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.StorageReference
 import android.content.pm.PackageManager
 import android.provider.MediaStore
 
@@ -33,7 +31,6 @@ class ChatWallpaperActivity : AppCompatActivity() {
         private const val THEME_SYSTEM = "system"
     }
 
-
     private lateinit var themeRadioGroup: RadioGroup
     private lateinit var lightThemeRadio: RadioButton
     private lateinit var darkThemeRadio: RadioButton
@@ -44,7 +41,6 @@ class ChatWallpaperActivity : AppCompatActivity() {
     private lateinit var noWallpaperSelected: TextView
     private lateinit var sharedPreferences: SharedPreferences
 
-
     private var selectedWallpaperUri: Uri? = null
     private lateinit var auth: FirebaseAuth
     private lateinit var database: DatabaseReference
@@ -53,34 +49,27 @@ class ChatWallpaperActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.chat_wallpaper)
 
-        // Initialize Firebase
+        // Firebase
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().reference
 
-        // Initialize shared preferences
+        // Shared Preferences
         sharedPreferences = getSharedPreferences(PREF_NAME, MODE_PRIVATE)
 
-        // Initialize views
         initViews()
 
         val backButton = findViewById<Toolbar>(R.id.toolbar)
-
         backButton.setNavigationOnClickListener {
             val intent = Intent(this, SettingsActivity::class.java)
             startActivity(intent)
             overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
         }
-        // Load saved preferences
+
         loadSavedPreferences()
-
-        // Set up click listeners
         setupClickListeners()
-
-
     }
 
     private fun initViews() {
-
         themeRadioGroup = findViewById(R.id.themeRadioGroup)
         lightThemeRadio = findViewById(R.id.lightThemeRadio)
         darkThemeRadio = findViewById(R.id.darkThemeRadio)
@@ -92,45 +81,47 @@ class ChatWallpaperActivity : AppCompatActivity() {
     }
 
     private fun loadSavedPreferences() {
-        // Load theme preference
+        // Theme
         when (sharedPreferences.getString(KEY_THEME, THEME_SYSTEM)) {
             THEME_LIGHT -> lightThemeRadio.isChecked = true
             THEME_DARK -> darkThemeRadio.isChecked = true
             else -> systemThemeRadio.isChecked = true
         }
 
-        // Load wallpaper URI if exists
+        // Wallpaper
         val savedWallpaperUri = sharedPreferences.getString(KEY_WALLPAPER_URI, null)
         if (savedWallpaperUri != null) {
             try {
                 selectedWallpaperUri = Uri.parse(savedWallpaperUri)
                 selectedWallpaperPreview.setImageURI(selectedWallpaperUri)
                 noWallpaperSelected.visibility = View.GONE
+                removeWallpaper.visibility = View.VISIBLE
             } catch (e: Exception) {
                 noWallpaperSelected.visibility = View.VISIBLE
+                removeWallpaper.visibility = View.GONE
             }
         } else {
             noWallpaperSelected.visibility = View.VISIBLE
+            removeWallpaper.visibility = View.GONE
         }
     }
 
     private fun setupClickListeners() {
-        // Theme selection listener
         themeRadioGroup.setOnCheckedChangeListener { _, checkedId ->
-            val theme = when (checkedId) {
+            val newTheme = when (checkedId) {
                 R.id.lightThemeRadio -> THEME_LIGHT
                 R.id.darkThemeRadio -> THEME_DARK
                 else -> THEME_SYSTEM
             }
 
-            // Save the theme preference
-            sharedPreferences.edit().putString(KEY_THEME, theme).apply()
+            val currentTheme = sharedPreferences.getString(KEY_THEME, THEME_SYSTEM)
 
-            // Apply the theme
-            applyTheme(theme)
+            if (newTheme != currentTheme) {
+                sharedPreferences.edit().putString(KEY_THEME, newTheme).apply()
+                applyTheme(newTheme)
+            }
         }
 
-        // Gallery button click listener
         selectFromGalleryButton.setOnClickListener {
             if (checkStoragePermission()) {
                 openGallery()
@@ -139,6 +130,9 @@ class ChatWallpaperActivity : AppCompatActivity() {
             }
         }
 
+        removeWallpaper.setOnClickListener {
+            removeWallpaperImage()
+        }
     }
 
     private fun applyTheme(theme: String) {
@@ -179,7 +173,6 @@ class ChatWallpaperActivity : AppCompatActivity() {
         }
     }
 
-
     private fun openGallery() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         startActivityForResult(intent, PICK_IMAGE_REQUEST)
@@ -204,38 +197,61 @@ class ChatWallpaperActivity : AppCompatActivity() {
         }
     }
 
-//    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-//        super.onActivityResult(requestCode, resultCode, data)
-//
-//        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null) {
-//            selectedWallpaperUri = data.data
-//
-//            // Upload the selected wallpaper to Firebase Storage
-//            selectedWallpaperUri?.let { uri ->
-//                val fileRef = storageRef.child("wallpapers/${auth.currentUser?.uid}/${System.currentTimeMillis()}.jpg")
-//                fileRef.putFile(uri)
-//                    .addOnSuccessListener {
-//                        fileRef.downloadUrl.addOnSuccessListener { downloadUri ->
-//                            // Save the URI of the uploaded image to Firebase Realtime Database
-//                            saveWallpaperToDatabase(downloadUri.toString())
-//
-//                            // Display the selected image
-//                            selectedWallpaperPreview.setImageURI(downloadUri)
-//                            noWallpaperSelected.visibility = View.GONE
-//                        }
-//                    }
-//                    .addOnFailureListener { e ->
-//                        Toast.makeText(this, "Failed to upload image: ${e.message}", Toast.LENGTH_SHORT).show()
-//                    }
-//            }
-//        }
-//    }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null) {
+            selectedWallpaperUri = data.data
+
+            selectedWallpaperUri?.let { uri ->
+                try {
+                    selectedWallpaperPreview.setImageURI(uri)
+                    noWallpaperSelected.visibility = View.GONE
+                    removeWallpaper.visibility = View.VISIBLE
+
+                    // Save to SharedPreferences and Firebase
+                    saveWallpaperToDatabase(uri.toString())
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Failed to load image: ${e.message}", Toast.LENGTH_SHORT).show()
+                    noWallpaperSelected.visibility = View.VISIBLE
+                    removeWallpaper.visibility = View.GONE
+                }
+            }
+        }
+    }
 
     private fun saveWallpaperToDatabase(uri: String) {
+        sharedPreferences.edit().putString(KEY_WALLPAPER_URI, uri).apply()
+
         val userId = auth.currentUser?.uid
         userId?.let {
             database.child("users").child(it).child("wallpaper").setValue(uri)
-            sharedPreferences.edit().putString(KEY_WALLPAPER_URI, uri).apply()
+                .addOnSuccessListener {
+                    Toast.makeText(this, "Wallpaper saved successfully", Toast.LENGTH_SHORT).show()
+                }
+                .addOnFailureListener { e ->
+                    Toast.makeText(this, "Failed to save to Firebase: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
         }
+    }
+
+    private fun removeWallpaperImage() {
+        selectedWallpaperPreview.setImageResource(R.drawable.circle2) // fallback default
+        sharedPreferences.edit().remove(KEY_WALLPAPER_URI).apply()
+
+        val userId = auth.currentUser?.uid
+        userId?.let {
+            database.child("users").child(it).child("wallpaper").removeValue()
+                .addOnSuccessListener {
+                    Toast.makeText(this, "Wallpaper removed", Toast.LENGTH_SHORT).show()
+                }
+                .addOnFailureListener { e ->
+                    Toast.makeText(this, "Failed to remove: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+        }
+
+        selectedWallpaperUri = null
+        noWallpaperSelected.visibility = View.VISIBLE
+        removeWallpaper.visibility = View.GONE
     }
 }
