@@ -31,6 +31,7 @@ import java.io.File
 import java.util.regex.Pattern
 import android.app.AlertDialog
 import android.widget.EditText
+import com.google.firebase.firestore.auth.User
 
 private const val TAG = "AccountSettingsActivity"
 
@@ -123,7 +124,7 @@ class AccountSettingsActivity : AppCompatActivity() {
         FirebaseService.loadUserFromFirebase(userId) { user ->
             nameEditText.setText(user.displayName)
             phoneEditText.setText(user.phoneNumber)
-            readReceiptsSwitch.isChecked = user.online ?: true
+            readReceiptsSwitch.isChecked = UserSettings.readReceipts
             passwordEditText.setText(user.password) // Show the user's password instead of clearing it
             val localImageFile = File(filesDir, "profile_${userId}.jpg")
             val imageUrl = user.profilePictureUrl
@@ -202,6 +203,9 @@ class AccountSettingsActivity : AppCompatActivity() {
         val password = passwordEditText.text.toString().trim()
         val readReceipts = readReceiptsSwitch.isChecked
 
+        UserSettings.readReceipts = readReceipts
+        UserSettings.saveSettings(this)
+
         if (!validateInputs(name, phone, password)) return
         if (ImageUploadService.isUploadInProgress()) {
             Toast.makeText(this, "Please wait for image upload to complete", Toast.LENGTH_SHORT).show()
@@ -212,45 +216,23 @@ class AccountSettingsActivity : AppCompatActivity() {
         saveButton.visibility = View.GONE
         Toast.makeText(this, "Saving settings...", Toast.LENGTH_SHORT).show()
 
-        val currentUser = FirebaseAuth.getInstance().currentUser
-        if (password.isNotEmpty()) {
-            if (currentUser != null && currentUser.email != null) {
-                promptForCurrentPassword { currentPassword ->
-                    if (currentPassword != null) {
-                        reauthenticateUser(currentUser.email!!, currentPassword) { success ->
-                            if (success) {
-                                currentUser.updatePassword(password)
-                                    .addOnSuccessListener {
-                                        Log.d(TAG, "Password updated successfully in Firebase Auth")
-                                        Toast.makeText(this, "Password updated successfully", Toast.LENGTH_SHORT).show()
-                                        proceedWithProfileSave(name, phone, readReceipts)
-                                    }
-                                    .addOnFailureListener { exception ->
-                                        Log.e(TAG, "Password update failed: ${exception.message}", exception)
-                                        Toast.makeText(this, "Failed to update password: ${exception.message}", Toast.LENGTH_LONG).show()
-                                        progressIndicator.visibility = View.GONE
-                                        saveButton.visibility = View.VISIBLE
-                                    }
-                            } else {
-                                progressIndicator.visibility = View.GONE
-                                saveButton.visibility = View.VISIBLE
-                            }
-                        }
-                    } else {
-                        Toast.makeText(this, "Current password is required to update password", Toast.LENGTH_SHORT).show()
-                        progressIndicator.visibility = View.GONE
-                        saveButton.visibility = View.VISIBLE
-                    }
-                }
-            } else {
-                Log.e(TAG, "No authenticated user or email found")
-                Toast.makeText(this, "Error: No authenticated user or email found", Toast.LENGTH_SHORT).show()
+        val user = hashMapOf<String, Any>(
+            "displayName" to name,
+            "phoneNumber" to phone,
+            "password" to password
+        )
+
+        FirebaseService.updateUserinFirebase(userId,user) {
+            if(it){
                 progressIndicator.visibility = View.GONE
-                saveButton.visibility = View.VISIBLE
-                return
+                Log.d(TAG, "Password updated successfully in Firebase")
+                Toast.makeText(this, "Password updated successfully", Toast.LENGTH_SHORT).show()
+                proceedWithProfileSave(name, phone, readReceipts)
+            }else{
+                progressIndicator.visibility = View.GONE
+                Log.d(TAG, "couldn't update Password in Firebase")
+                Toast.makeText(this, "couldn't Password update", Toast.LENGTH_SHORT).show()
             }
-        } else {
-            proceedWithProfileSave(name, phone, readReceipts)
         }
     }
 

@@ -16,6 +16,7 @@ import com.example.chat_application.VoiceNotePlayer
 import com.example.chat_application.dataclasses.Message
 import com.example.chat_application.dataclasses.MessageType
 import com.example.chat_application.dataclasses.UserData
+import com.example.chat_application.dataclasses.UserSettings
 import com.google.firebase.database.DatabaseReference
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -174,7 +175,7 @@ class MessageAdapter(
 
             HelperFunctions.loadImageFromUrl(user?.profilePictureUrl.toString(), profileImage)
 
-            if (message.readStatus[currentUserId] != true) {
+            if (message.readStatus[currentUserId] != true && UserSettings.readReceipts) {
                 message.readStatus[currentUserId] = true
 
                 val readStatusUpdates = HashMap<String, Any>()
