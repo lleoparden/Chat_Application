@@ -110,7 +110,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="8dp"
-                        android:text="www.yourwebsite.com"
+                        android:text="www.Bubble.com"
                         android:textColor="?attr/generalText"
                         android:textSize="14sp" />
 
@@ -118,7 +118,7 @@
                         android:id="@+id/developerEmail"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="contact@yourwebsite.com"
+                        android:text="Za3boot.biko@gmail.com"
                         android:textColor="?attr/generalText"
                         android:textSize="14sp" />
                 </LinearLayout>

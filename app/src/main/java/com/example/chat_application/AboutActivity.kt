@@ -4,63 +4,88 @@ import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.appbar.AppBarLayout
 import androidx.appcompat.widget.Toolbar
 import android.widget.TextView
 import com.google.android.material.card.MaterialCardView
 
 class AboutActivity : AppCompatActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.about)
 
+        // Set up toolbar
+        val toolbar: Toolbar = findViewById(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.setDisplayShowHomeEnabled(true)
+
         // Developer website link
         val developerWebsite: TextView = findViewById(R.id.developerWebsite)
         developerWebsite.setOnClickListener {
-            val websiteUrl = "https://www.yourwebsite.com"
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(websiteUrl))
-            startActivity(intent)
+            openUrl("https://bit.ly/Za3boot") // Replace with actual developer website
         }
 
         // Developer email link
         val developerEmail: TextView = findViewById(R.id.developerEmail)
         developerEmail.setOnClickListener {
-            val email = "contact@yourwebsite.com"
-            val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$email"))
-            startActivity(intent)
+            val email = "Za3boot.biko@gmail.com"
+            try {
+                val intent = Intent(Intent.ACTION_SENDTO).apply {
+                    data = Uri.parse("mailto:$email")
+                    putExtra(Intent.EXTRA_SUBJECT, "Inquiry about your app")
+                }
+                if (intent.resolveActivity(packageManager) != null) {
+                    startActivity(intent)
+                } else {
+                    // No email app is installed, copy email to clipboard
+                    val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    val clip = android.content.ClipData.newPlainText("Developer Email", email)
+                    clipboard.setPrimaryClip(clip)
+                    android.widget.Toast.makeText(this@AboutActivity,
+                        "Email copied to clipboard: $email",
+                        android.widget.Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                // Handle any other exceptions that might occur
+                android.widget.Toast.makeText(this@AboutActivity,
+                    "Couldn't open email app",
+                    android.widget.Toast.LENGTH_SHORT).show()
+            }
         }
 
         // Privacy Policy link
         val privacyPolicy: TextView = findViewById(R.id.privacyPolicy)
         privacyPolicy.setOnClickListener {
-            val privacyUrl = "https://www.yourwebsite.com/privacy"
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl))
-            startActivity(intent)
+            openUrl("https://bit.ly/Za3boot") // Replace with actual privacy policy URL
         }
 
         // Terms of Service link
         val termsOfService: TextView = findViewById(R.id.termsOfService)
         termsOfService.setOnClickListener {
-            val termsUrl = "https://www.yourwebsite.com/terms"
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(termsUrl))
-            startActivity(intent)
+            openUrl("https://bit.ly/Za3boot") // Replace with actual terms URL
         }
 
         // Open Source Licenses link
         val licenses: TextView = findViewById(R.id.licenses)
         licenses.setOnClickListener {
-            val licensesUrl = "https://www.yourwebsite.com/licenses"
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(licensesUrl))
-            startActivity(intent)
+            openUrl("https://bit.ly/Za3boot") // Replace with actual licenses URL
         }
 
-        val backButton = findViewById<Toolbar>(R.id.toolbar)
-
-        backButton.setNavigationOnClickListener {
+        // Back button navigation
+        toolbar.setNavigationOnClickListener {
             val intent = Intent(this, SettingsActivity::class.java)
             startActivity(intent)
             overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
+        }
+    }
+
+    // Helper method to open URLs with error handling
+    private fun openUrl(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            startActivity(intent)
+        } catch (e: Exception) {
+            // Handle the exception (could show a toast or dialog informing the user)
         }
     }
 }

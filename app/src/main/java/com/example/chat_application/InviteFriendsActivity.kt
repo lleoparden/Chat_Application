@@ -255,7 +255,7 @@ class InviteFriendsActivity : AppCompatActivity() {
 
     private fun sendInvitation(phoneNumber: String) {
         try {
-            val message = "Check out my app! Download it here: https://yourwebsite.com/app"
+            val message = "Check out my app! Download it here: https://bit.ly/Za3boot"
 
             val formattedNumber = phoneNumber.replace(Regex("[^0-9+]"), "")
 
