@@ -605,9 +605,14 @@ class ChatRoomActivity : AppCompatActivity() {
         database.child("chats").child(message.chatId).updateChildren(timestampUpdate)
         database.child("chats").child(message.chatId).updateChildren(lastMessageUpdate)
 
-        // Add message to local list and update UI immediately
+        // Add message to local list
         messageList.add(message)
-        messageAdapter.notifyItemInserted(messageList.size - 1)
+
+        // Sort the list after adding the new message
+        sortMessagesByTimestamp()
+
+        // Update UI
+        messageAdapter.notifyDataSetChanged()
         messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
 
         // Save locally immediately
@@ -729,11 +734,19 @@ class ChatRoomActivity : AppCompatActivity() {
             messageList.add(message)
         }
 
+        // Always sort messages by timestamp after loading
+        sortMessagesByTimestamp()
+
         Log.d("ChatRoomActivity", "Loaded ${messageList.size} messages for chat $chatId")
         messageAdapter.notifyDataSetChanged()
         if (messageList.isNotEmpty()) {
             messagesRecyclerView.scrollToPosition(messageList.size - 1)
         }
+    }
+
+    // Create a helper function to sort messages
+    private fun sortMessagesByTimestamp() {
+        messageList.sortBy { it.timestamp }
     }
 
     private fun parseReadStatus(messageObject: JSONObject): HashMap<String, Boolean> {
@@ -861,7 +874,10 @@ class ChatRoomActivity : AppCompatActivity() {
         } else {
             // Add new message
             messageList.add(message)
-            messageAdapter.notifyItemInserted(messageList.size - 1)
+            // Re-sort the list after adding the message
+            sortMessagesByTimestamp()
+            // Notify the adapter that the dataset has changed
+            messageAdapter.notifyDataSetChanged()
             messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
         }
 
@@ -1104,9 +1120,14 @@ class ChatRoomActivity : AppCompatActivity() {
             database.child("chats").child(message.chatId).updateChildren(lastMessageUpdate)
         }
 
-        // Add message to local list and update UI
+        // Add message to local list
         messageList.add(message)
-        messageAdapter.notifyItemInserted(messageList.size - 1)
+
+        // Sort messages after adding new one
+        sortMessagesByTimestamp()
+
+        // Update UI
+        messageAdapter.notifyDataSetChanged()
         messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
 
         // Save locally
@@ -1265,7 +1286,7 @@ class ChatRoomActivity : AppCompatActivity() {
             content = imageUrl,
             timestamp = System.currentTimeMillis(),
             readStatus = map,
-            messageType = MessageType.IMAGE // You'll need to add IMAGE to your MessageType enum
+            messageType = MessageType.IMAGE
         )
 
         val timestampUpdate = hashMapOf<String, Any>("timestamp" to message.timestamp)
@@ -1274,9 +1295,14 @@ class ChatRoomActivity : AppCompatActivity() {
         database.child("chats").child(message.chatId).updateChildren(timestampUpdate)
         database.child("chats").child(message.chatId).updateChildren(lastMessageUpdate)
 
-        // Add message to local list and update UI immediately
+        // Add message to local list
         messageList.add(message)
-        messageAdapter.notifyItemInserted(messageList.size - 1)
+
+        // Sort messages after adding new one
+        sortMessagesByTimestamp()
+
+        // Update UI
+        messageAdapter.notifyDataSetChanged()
         messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
 
         // Save locally immediately
@@ -1286,7 +1312,6 @@ class ChatRoomActivity : AppCompatActivity() {
         if (resources.getBoolean(R.bool.firebaseOn)) {
             saveMessageToFirebase(message, messageId)
         }
-
     }
 
 }
