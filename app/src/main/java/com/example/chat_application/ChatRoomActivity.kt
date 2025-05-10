@@ -991,6 +991,8 @@ class ChatRoomActivity : AppCompatActivity() {
         return selectedMessageIds.contains(messageId)
     }
 
+    // Sending Voice Notes --------------------------->
+
 
     private fun setupVoiceRecordingButton() {
         val cancelThreshold = 150 // in pixels, adjust as needed

@@ -1,5 +1,6 @@
 package com.example.chat_application.adapters
 
+import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.chat_application.ChatRoomActivity
 import com.example.chat_application.HelperFunctions
+import com.example.chat_application.ImageViewActivity
 import com.example.chat_application.R
 import com.example.chat_application.VoiceNotePlayer
 import com.example.chat_application.dataclasses.Message
@@ -287,14 +289,15 @@ class MessageAdapter(
                 else android.R.drawable.ic_menu_send
             )
 
-            // Handle image click to show full screen
+
             imageView.setOnClickListener {
-                // Only handle click if not in selection mode
                 if ((itemView.context as? ChatRoomActivity)?.isInSelectionMode == false) {
-                    // Open full screen image viewer
-                    // You can implement this later
+                    val intent = Intent(itemView.context, ImageViewActivity::class.java)
+                    intent.putExtra("image_url", message.content)
+                    itemView.context.startActivity(intent)
                 }
             }
+
 
             handleMessageSelection(itemView, message, position)
         }
@@ -324,14 +327,14 @@ class MessageAdapter(
                 database.child("messages").child(message.chatId).child(message.id).updateChildren(readStatusUpdates)
             }
 
-            // Handle image click to show full screen
             imageView.setOnClickListener {
-                // Only handle click if not in selection mode
                 if ((itemView.context as? ChatRoomActivity)?.isInSelectionMode == false) {
-                    // Open full screen image viewer
-                    // You can implement this later
+                    val intent = Intent(itemView.context, ImageViewActivity::class.java)
+                    intent.putExtra("image_url", message.content)
+                    itemView.context.startActivity(intent)
                 }
             }
+
 
             handleMessageSelection(itemView, message, position)
         }

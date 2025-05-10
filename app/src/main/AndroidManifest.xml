@@ -62,10 +62,12 @@
         <activity android:name=".HelpActivity" android:exported="true" />
         <activity android:name=".InviteFriendsActivity" android:exported="true" />
         <activity android:name=".AboutActivity" android:exported="true" />
+        <activity android:name=".ImageViewActivity" />
         <!-- Account Settings Activity -->
         <activity android:name=".AccountSettingsActivity" android:exported="true" />
         <activity android:name=".AddNewGroupActivity" android:exported="true" />
         <activity android:name=".GroupProfileActivity" android:exported="true" />
+
 
     </application>
 

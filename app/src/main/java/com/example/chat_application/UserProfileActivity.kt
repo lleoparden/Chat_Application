@@ -244,7 +244,7 @@ class UserProfileActivity : AppCompatActivity() {
     }
 
     private fun updateUIWithUserData() {
-        var userdata = HelperFunctions.loadUserById(viewingUserId, this)
+        val userdata = HelperFunctions.loadUserById(viewingUserId, this)
         if (userdata != null) {
             displayNameText.text = userdata.displayName
             name = userdata.displayName
@@ -252,8 +252,15 @@ class UserProfileActivity : AppCompatActivity() {
             displayDescription.text = userdata.userDescription
             displayStatus.text = userdata.userStatus
             HelperFunctions.loadImageFromUrl(userdata.profilePictureUrl, profileImage)
+
+            profileImage.setOnClickListener {
+                val intent = Intent(this, ImageViewActivity::class.java)
+                intent.putExtra("image_url", userdata.profilePictureUrl)
+                startActivity(intent)
+            }
         }
     }
+
 
 
     private fun initializeViews() {
@@ -263,8 +270,6 @@ class UserProfileActivity : AppCompatActivity() {
         displayDescription = findViewById(R.id.userDescriptionEdit)
         displayStatus = findViewById(R.id.userStatusEdit)
         startnewchatButton = findViewById(R.id.startChatButton)
-
-
     }
 
 
