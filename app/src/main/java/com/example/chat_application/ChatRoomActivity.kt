@@ -39,6 +39,8 @@ import com.example.chat_application.dataclasses.Message
 import com.example.chat_application.dataclasses.MessageType
 import com.example.chat_application.dataclasses.UserSettings
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.widget.ImageView
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
@@ -80,6 +82,9 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var recordStateText: TextView
     private var isRecording = false
     private val RECORD_AUDIO_PERMISSION_CODE = 101
+    private var timerHandler: Handler? = null
+    private var timerRunnable: Runnable? = null
+    private var secondsElapsed = 0
 
 
     private lateinit var imagePickerLauncher: ActivityResultLauncher<Intent>
@@ -972,43 +977,72 @@ class ChatRoomActivity : AppCompatActivity() {
 
 
     private fun setupVoiceRecordingButton() {
+        val cancelThreshold = 150 // in pixels, adjust as needed
+        var startX = 0f
+        var hasCancelled = false
+
         recordButton.setOnTouchListener { view, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     if (checkRecordPermission()) {
+                        startX = event.rawX
+                        hasCancelled = false
                         startRecording()
                     } else {
                         requestRecordPermission()
                     }
                     true
                 }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val distance = startX - event.rawX
+                    if (!hasCancelled && distance > cancelThreshold) {
+                        hasCancelled = true
+                        cancelRecording()
+                        Toast.makeText(this, "Recording cancelled", Toast.LENGTH_SHORT).show()
+                    }
+                    true
+                }
+
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    if (isRecording) {
+                    if (isRecording && !hasCancelled) {
                         stopRecording()
                     }
                     true
                 }
+
                 else -> false
             }
         }
     }
 
+
     private fun startRecording() {
         isRecording = true
         val voiceNotePath = voiceRecorder.startRecording()
 
-        // Show recording UI with null safety
         val recordingLayout = findViewById<LinearLayout>(R.id.recordingLayout)
         val messageInputLayout = findViewById<LinearLayout>(R.id.messageInputLayout)
+        val recordTimerText = findViewById<TextView>(R.id.recordTimerText)
 
         recordingLayout?.visibility = View.VISIBLE
         messageInputLayout?.visibility = View.GONE
 
-        // Add cancel button listener with null safety
-        findViewById<Button>(R.id.cancelRecordingButton)?.setOnClickListener {
-            cancelRecording()
+        // Start timer
+        secondsElapsed = 0
+        timerHandler = Handler(Looper.getMainLooper())
+        timerRunnable = object : Runnable {
+            override fun run() {
+                val minutes = secondsElapsed / 60
+                val seconds = secondsElapsed % 60
+                recordTimerText?.text = String.format("%02d:%02d", minutes, seconds)
+                secondsElapsed++
+                timerHandler?.postDelayed(this, 1000)
+            }
         }
+        timerHandler?.post(timerRunnable!!)
     }
+
 
     private fun stopRecording() {
         if (!isRecording) return
@@ -1022,6 +1056,8 @@ class ChatRoomActivity : AppCompatActivity() {
 
         recordingLayout?.visibility = View.GONE
         messageInputLayout?.visibility = View.VISIBLE
+        timerHandler?.removeCallbacks(timerRunnable!!)
+
 
         // Send voice note message
         if (duration > 1) { // Only send if recording is longer than 1 second
@@ -1093,6 +1129,8 @@ class ChatRoomActivity : AppCompatActivity() {
 
             recordingLayout?.visibility = View.GONE
             messageInputLayout?.visibility = View.VISIBLE
+            timerHandler?.removeCallbacks(timerRunnable!!)
+
         }
     }
 

@@ -151,7 +151,7 @@ class ChatAdapter(
         holder.lastMessageTextView.text = chat.lastMessage
 
         // Format timestamp
-        val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val sdf = SimpleDateFormat("h:mm a", Locale.getDefault())
         holder.timeTextView.text = sdf.format(Date(chat.timestamp))
 
         // Show unread count if any
