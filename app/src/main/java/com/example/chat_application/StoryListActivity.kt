@@ -1,5 +1,6 @@
 package com.example.chat_application
 
+import android.content.ContentValues
 import android.content.Intent
 import android.os.Bundle
 import android.widget.ImageView
@@ -15,6 +16,7 @@ import com.example.chat_application.adapters.StoryAdapter
 import com.example.chat_application.dataclasses.Stories
 import com.example.chat_application.dataclasses.Story
 import com.example.chat_application.dataclasses.UserSettings
+import com.example.chat_application.services.LocalStorageService
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
@@ -40,6 +42,7 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
     private val storiesList = mutableListOf<Stories>()
     private lateinit var listOfUsers: List<String>
 
+
     private val firebaseEnabled by lazy { resources.getBoolean(R.bool.firebaseOn) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,7 +55,16 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
         setupUI()
         setupRecyclerView()
         setupFirebase()
+
+        LocalStorageService.initialize(this, ContentValues.TAG)
+
         loadStories()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Save stories when app is paused
+        saveStoriesToLocalStorage()
     }
 
     //region UI Setup
@@ -65,7 +77,6 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
     }
 
     private fun setupUI() {
-
         // Setup settings button
         settingsButton.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
@@ -81,7 +92,7 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
         // Setup bottom navigation
         bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.navigation_stories -> true // Already on chats page
+                R.id.navigation_stories -> true // Already on stories page
                 R.id.navigation_chats -> {
                     startActivity(Intent(this, MainActivity::class.java))
                     finish()
@@ -101,17 +112,38 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
                 Toast.makeText(this, "Failed to load users", Toast.LENGTH_SHORT).show()
                 return@getAllUserIds
             }
-
+            loadStoriesFromLocalStorage()
             listOfUsers = userIds
             if (firebaseEnabled) {
                 loadStoryFromFirebase(userIds)
             }
-            else{
-                //loadStoryfromLocalStorage(TAG)
+        }
+        saveStoriesToLocalStorage()
+    }
+
+    private fun loadStoriesFromLocalStorage() {
+        Log.d(TAG, "Loading stories from local storage")
+        val localStories = LocalStorageService.loadStoriesFromLocalStorage()
+
+        if (localStories.isNotEmpty()) {
+            storiesList.clear()
+            storiesList.addAll(localStories)
+
+            runOnUiThread {
+                storyAdapter.updateStories(storiesList, this@StoryListActivity)
+                Log.d(TAG, "Loaded ${storiesList.size} stories from local storage")
             }
+        } else {
+            Log.d(TAG, "No stories found in local storage")
         }
     }
 
+    private fun saveStoriesToLocalStorage() {
+        Log.d(TAG, "Saving stories to local storage")
+        if (storiesList.isNotEmpty()) {
+            LocalStorageService.saveStoriesToLocalStorage(storiesList)
+        }
+    }
 
     private fun loadStoryFromFirebase(users: List<String>) {
         if (!firebaseEnabled) {
@@ -175,6 +207,9 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
                     // Update UI when all users are processed
                     if (loadedUsers >= totalUsers) {
                         runOnUiThread {
+                            // Save stories to local storage after loading from Firebase
+                            saveStoriesToLocalStorage()
+
                             // Update the adapter with new stories and filter based on local_user.json
                             storyAdapter.updateStories(storiesList, this@StoryListActivity)
                             // Hide loading indicator if you have one
@@ -188,6 +223,11 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
                     // Update UI when all users are processed, even if some failed
                     if (loadedUsers >= totalUsers) {
                         runOnUiThread {
+                            // Try loading from local storage if Firebase fails
+                            if (storiesList.isEmpty()) {
+                                loadStoriesFromLocalStorage()
+                            }
+
                             // Update the adapter with new stories and filter based on local_user.json
                             storyAdapter.updateStories(storiesList, this@StoryListActivity)
                             // Hide loading indicator if you have one

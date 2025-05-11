@@ -5,6 +5,8 @@ package com.example.chat_application.services
 import android.annotation.SuppressLint
 import android.content.ContentValues.TAG
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -53,50 +55,202 @@ object FirebaseService {
      * Initialize Firebase services
      */
 
-    fun initialize(Context: Context, Tag :String,FirebaseEnabled:Boolean) {
-        firestore = FirebaseFirestore.getInstance()
-        firebaseDatabase = FirebaseDatabase.getInstance()
-        chatsReference = firebaseDatabase.getReference("chats")
-        usersReference = firebaseDatabase.getReference("users")
+    fun initialize(context: Context, logTag: String, enabled: Boolean) {
+        // Store context and tag
+        this.context = context
+        this.tag = logTag
 
-        context = Context
-        tag = Tag
-        firebaseEnabled = FirebaseEnabled
+        // Exit immediately if Firebase is disabled
+        if (!enabled) {
+            Log.d(tag, "Firebase is disabled, skipping initialization")
+            return
+        }
+
+        try {
+            // Initialize Firebase components
+            firebaseDatabase = FirebaseDatabase.getInstance()
+            firestore = FirebaseFirestore.getInstance()
+            chatsReference = firebaseDatabase.getReference("chats")
+
+            Log.d(tag, "Firebase initialized successfully")
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to initialize Firebase: ${e.message}")
+        }
     }
 
-    /**
-     * Set up Firebase connection monitoring and fallback mechanisms
-     */
-    fun setupFirebase(chatManager: ChatManager, chatAdapter: ChatAdapter) {
+    fun checkConnectionAndLoadChatsFromFirebase(localChats: List<Chat>, chatAdapter: ChatAdapter, chatManager: ChatManager) {
         try {
-            // Add connection status listener with improved error handling
+            // First, ensure Firebase is properly initialized
+            if (!this::firebaseDatabase.isInitialized) {
+                Log.e(tag, "Firebase database not initialized")
+                return
+            }
+
+            // Add timeout to fallback to local data if Firebase doesn't respond
+            val timeoutHandler = Handler(Looper.getMainLooper())
+            val timeoutRunnable = Runnable {
+                Log.d(tag, "Firebase connection timeout - using local data")
+                // Ensure UI is updated with at least local data
+                chatManager.clear()
+                chatManager.pushAll(localChats)
+                chatAdapter.updateData(chatManager.getAll())
+            }
+
+            // Set timeout for 3 seconds (reduced from 5 for faster experience)
+            timeoutHandler.postDelayed(timeoutRunnable, 3000)
+
+            // Check network connectivity first to avoid unnecessary Firebase calls
+            val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val networkCapabilities = connectivityManager.activeNetwork?.let {
+                connectivityManager.getNetworkCapabilities(it)
+            }
+
+            val isOnline = networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+
+            if (!isOnline) {
+                Log.d(tag, "Device is offline, not attempting Firebase connection")
+                timeoutHandler.removeCallbacks(timeoutRunnable)
+                return
+            }
+
+            // Use ValueEventListener instead of SingleValueEvent to catch connection changes
             val connectedRef = firebaseDatabase.getReference(".info/connected")
-            connectionListener = object : ValueEventListener {
+            connectedRef.addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val connected = snapshot.getValue(Boolean::class.java) ?: false
-                    if (!connected) {
-                        Log.w(tag, "Device is offline, using local data")
-                        LocalStorageService.loadChatsFromLocalStorageAndDisplay(chatManager, chatAdapter)
-                    } else {
-                        // If we're connected, set up real-time chat listener
-                        setupRealTimeChatListener(chatManager, chatAdapter)
+                    try {
+                        val connected = snapshot.getValue(Boolean::class.java) ?: false
+                        if (connected) {
+                            // Cancel timeout since we're connected
+                            timeoutHandler.removeCallbacks(timeoutRunnable)
+                            Log.d(tag, "Firebase connected, loading chats")
+                            loadChatsFromFirebaseAndMerge(localChats, chatManager, chatAdapter)
+                        } else {
+                            // Still waiting for connection or disconnected
+                            Log.d(tag, "Firebase not connected yet")
+                        }
+                    } catch (e: Exception) {
+                        Log.e(tag, "Error processing connection status: ${e.message}")
+                        timeoutHandler.removeCallbacks(timeoutRunnable)
+                        // Ensure we have local data
+                        chatManager.clear()
+                        chatManager.pushAll(localChats)
+                        chatAdapter.updateData(chatManager.getAll())
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    Log.e(tag, "Firebase connection listener cancelled: ${error.message}")
-                    // When connection is cancelled, fall back to local data
-                    LocalStorageService.loadChatsFromLocalStorageAndDisplay(chatManager, chatAdapter)
+                    // Cancel timeout in case of explicit cancellation
+                    timeoutHandler.removeCallbacks(timeoutRunnable)
+                    Log.e(tag, "Failed to check connection status: ${error.message}")
+                    // Ensure we have local data
+                    chatManager.clear()
+                    chatManager.pushAll(localChats)
+                    chatAdapter.updateData(chatManager.getAll())
+                }
+            })
+        } catch (e: Exception) {
+            Log.e(tag, "Exception checking Firebase connection: ${e.message}")
+            // Ensure we have local data as a fallback
+            chatManager.clear()
+            chatManager.pushAll(localChats)
+            chatAdapter.updateData(chatManager.getAll())
+        }
+    }
+
+    // Improved fetchUserDataAndUpdateDisplayNames to handle offline case properly
+    fun fetchUserDataAndUpdateDisplayNames(chatManager: ChatManager, chatAdapter: ChatAdapter) {
+        // Check if Firestore is initialized
+        if (!this::firestore.isInitialized) {
+            Log.e(tag, "Firestore not initialized")
+            return
+        }
+
+        // Create a map to store user IDs and their display names
+        val userDisplayNames = mutableMapOf<String, String>()
+
+        // Get all chats to find all participant IDs
+        val allChats = chatManager.getAll()
+        val allParticipantIds = HashMap<String,Boolean>()
+
+        // Collect all unique participant IDs
+        for (chat in allChats) {
+            chat.participantIds.forEach { (userId, active) ->
+                if (active) {
+                    allParticipantIds[userId] = true
                 }
             }
+        }
 
-            connectedRef.addValueEventListener(connectionListener!!)
-        } catch (e: Exception) {
-            Log.e(tag, "Failed to initialize Firebase: ${e.message}")
-            e.printStackTrace()
+        // Remove the current user ID
+        allParticipantIds.remove(UserSettings.userId)
 
-            // Fall back to local storage
-            LocalStorageService.loadChatsFromLocalStorageAndDisplay(chatManager, chatAdapter)
+        // If there are no other participants, we're done
+        if (allParticipantIds.isEmpty()) {
+            return
+        }
+
+        // Add timeout to prevent blocking if Firestore is slow/offline
+        val timeoutHandler = Handler(Looper.getMainLooper())
+        val timeoutRunnable = Runnable {
+            Log.d(tag, "Firestore user fetch timeout - using IDs as display names")
+            // Use IDs as display names as fallback
+            for (userId in allParticipantIds.keys) {
+                userDisplayNames[userId] = userId
+            }
+            updateDisplayNamesAndRefresh(userDisplayNames, chatManager, chatAdapter)
+        }
+
+        // Set timeout for 3 seconds
+        timeoutHandler.postDelayed(timeoutRunnable, 3000)
+
+        // Keep track of how many users we've processed
+        var processedCount = 0
+
+        // Query Firestore for each user's data
+        for (userId in allParticipantIds.keys) {
+            firestore.collection("users").document(userId)
+                .get()
+                .addOnSuccessListener { document ->
+                    if (document != null && document.exists()) {
+                        // Get the user's display name from Firestore
+                        val displayName = document.getString("displayName") ?: userId
+
+                        // Add to our map
+                        userDisplayNames[userId] = displayName
+
+                        Log.d(tag, "Fetched user $userId with display name: $displayName")
+                    } else {
+                        // If user document doesn't exist, use the ID as display name
+                        userDisplayNames[userId] = userId
+                        Log.d(tag, "User document not found for $userId")
+                    }
+
+                    // Increment processed count
+                    processedCount++
+
+                    // If we've processed all users, update display names
+                    if (processedCount == allParticipantIds.size) {
+                        // Cancel timeout as we've completed normally
+                        timeoutHandler.removeCallbacks(timeoutRunnable)
+                        updateDisplayNamesAndRefresh(userDisplayNames, chatManager, chatAdapter)
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e(tag, "Error fetching user $userId: ${e.message}")
+
+                    // Use the ID as display name in case of failure
+                    userDisplayNames[userId] = userId
+
+                    // Increment processed count
+                    processedCount++
+
+                    // If we've processed all users, proceed even with some errors
+                    if (processedCount == allParticipantIds.size) {
+                        // Cancel timeout as we've completed normally
+                        timeoutHandler.removeCallbacks(timeoutRunnable)
+                        updateDisplayNamesAndRefresh(userDisplayNames, chatManager, chatAdapter)
+                    }
+                }
         }
     }
 
@@ -294,82 +448,6 @@ object FirebaseService {
     }
 
 
-
-    /**
-     * Fetch user data and update display names in the UI
-     */
-    fun fetchUserDataAndUpdateDisplayNames(chatManager: ChatManager, chatAdapter: ChatAdapter) {
-        // Create a map to store user IDs and their display names
-        val userDisplayNames = mutableMapOf<String, String>()
-
-        // Get all chats to find all participant IDs
-        val allChats = chatManager.getAll()
-        val allParticipantIds = HashMap<String,Boolean>()
-
-        // Collect all unique participant IDs
-        for (chat in allChats) {
-            chat.participantIds.forEach { (userId, active) ->
-                if (active) {
-                    allParticipantIds[userId] = true
-                }
-            }
-        }
-
-        // Remove the current user ID
-        allParticipantIds.remove(UserSettings.userId)
-
-        // If there are no other participants, we're done
-        if (allParticipantIds.isEmpty()) {
-            return
-        }
-
-        // Keep track of how many users we've processed
-        var processedCount = 0
-
-        // Query Firestore for each user's data
-        for (userId in allParticipantIds.keys) {
-            firestore.collection("users").document(userId)
-                .get()
-                .addOnSuccessListener { document ->
-                    if (document != null && document.exists()) {
-                        // Get the user's display name from Firestore
-                        val displayName = document.getString("displayName") ?: userId
-
-                        // Add to our map
-                        userDisplayNames[userId] = displayName
-
-                        Log.d(tag, "Fetched user $userId with display name: $displayName")
-                    } else {
-                        // If user document doesn't exist, use the ID as display name
-                        userDisplayNames[userId] = userId
-                        Log.d(tag, "User document not found for $userId")
-                    }
-
-                    // Increment processed count
-                    processedCount++
-
-                    // If we've processed all users, update display names
-                    if (processedCount == allParticipantIds.size) {
-                        updateDisplayNamesAndRefresh(userDisplayNames, chatManager, chatAdapter)
-                    }
-                }
-                .addOnFailureListener { e ->
-                    Log.e(tag, "Error fetching user $userId: ${e.message}")
-
-                    // Use the ID as display name in case of failure
-                    userDisplayNames[userId] = userId
-
-                    // Increment processed count
-                    processedCount++
-
-                    // If we've processed all users, proceed even with some errors
-                    if (processedCount == allParticipantIds.size) {
-                        updateDisplayNamesAndRefresh(userDisplayNames, chatManager, chatAdapter)
-                    }
-                }
-        }
-    }
-
     /**
      * Update display names in chat manager and refresh UI
      */
@@ -387,57 +465,6 @@ object FirebaseService {
         saveChatsToFirebase(chatManager)
     }
 
-    /**
-     * Check connection status and load chats from Firebase if online
-     */
-    fun checkConnectionAndLoadChatsFromFirebase(localChats: List<Chat>, chatAdapter: ChatAdapter, chatManager: ChatManager) {
-        try {
-            // First, ensure Firebase is properly initialized
-            if (!this::firebaseDatabase.isInitialized) {
-                Log.e(tag, "Firebase database not initialized")
-                return
-            }
-
-            // Add timeout to fallback to local data if Firebase doesn't respond
-            val timeoutHandler = Handler(Looper.getMainLooper())
-            val timeoutRunnable = Runnable {
-                Log.d(tag, "Firebase connection timeout - using local data")
-                // Already loaded local data, so no action needed
-            }
-
-            // Set timeout for 5 seconds
-            timeoutHandler.postDelayed(timeoutRunnable, 5000)
-
-            // Use ValueEventListener instead of SingleValueEvent to catch connection changes
-            val connectedRef = firebaseDatabase.getReference(".info/connected")
-            connectedRef.addValueEventListener(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    try {
-                        val connected = snapshot.getValue(Boolean::class.java) ?: false
-                        if (connected) {
-                            // Cancel timeout since we're connected
-                            timeoutHandler.removeCallbacks(timeoutRunnable)
-                            Log.d(tag, "Firebase connected, loading chats")
-                            loadChatsFromFirebaseAndMerge(localChats, chatManager, chatAdapter)
-                        } else {
-                            // Still waiting for connection or disconnected
-                            Log.d(tag, "Firebase not connected yet")
-                        }
-                    } catch (e: Exception) {
-                        Log.e(tag, "Error processing connection status: ${e.message}")
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    // Cancel timeout in case of explicit cancellation
-                    timeoutHandler.removeCallbacks(timeoutRunnable)
-                    Log.e(tag, "Failed to check connection status: ${error.message}")
-                }
-            })
-        } catch (e: Exception) {
-            Log.e(tag, "Exception checking Firebase connection: ${e.message}")
-        }
-    }
 
     /**
      * Load chats from Firebase and merge with local chats

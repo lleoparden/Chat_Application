@@ -4,11 +4,8 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
-import com.example.chat_application.dataclasses.Chat
-import com.example.chat_application.adapters.ChatAdapter
+import com.example.chat_application.dataclasses.*
 import com.example.chat_application.ChatManager
-import com.example.chat_application.dataclasses.UserData
-import com.example.chat_application.dataclasses.UserSettings
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -27,6 +24,7 @@ object LocalStorageService {
     private const val USER_USERS_FILE = "local_user.json"
     private const val PREFS_NAME = "ChatAppPrefs"
     private const val USER_ID_KEY = "userId"
+    private val STORIES_FILE = "local_stories.json"
 
     // Properties
     private lateinit var context: Context
@@ -356,16 +354,6 @@ object LocalStorageService {
     // ============================
 
     /**
-     * Loads chats from local storage and updates the ChatManager and ChatAdapter
-     */
-    fun loadChatsFromLocalStorageAndDisplay(chatManager: ChatManager, chatAdapter: ChatAdapter, ) {
-        val localChats = loadChatsFromLocalStorageWithoutSaving()
-        chatManager.clear()
-        chatManager.pushAll(localChats)
-        chatAdapter.updateData(chatManager.getAll())
-    }
-
-    /**
      * Loads chats from local storage without updating the ChatManager
      */
     fun loadChatsFromLocalStorageWithoutSaving(): List<Chat> {
@@ -380,56 +368,146 @@ object LocalStorageService {
 
         try {
             val jsonArray = JSONArray(jsonString)
+            Log.d(tag, "Found ${jsonArray.length()} chats in JSON")
 
             for (i in 0 until jsonArray.length()) {
-                val chatObject = jsonArray.getJSONObject(i)
-                val participantIdsJsonArray = chatObject.getJSONArray("participantIds")
-                val participantIds = HashMap<String,Boolean>()
+                try {
+                    val chatObject = jsonArray.getJSONObject(i)
 
-                for (j in 0 until participantIdsJsonArray.length()) {
-                    val participantId = participantIdsJsonArray.getString(j)
-                    participantIds[participantId] = true
-                }
+                    // Debug the chat object
+                    Log.d(tag, "Processing chat JSON: ${chatObject.toString().take(100)}...")
 
+                    // Extract participantIds correctly - handle both array and map formats
+                    val participantIds = HashMap<String, Boolean>()
 
-                // Get displayName if it exists, otherwise default to empty string
-                val displayName = if (chatObject.has("displayName"))
-                    chatObject.getString("displayName") else ""
+                    // Check if participantIds is an array or object
+                    if (chatObject.has("participantIds")) {
+                        val participantIdsValue = chatObject.get("participantIds")
 
-                val unreadCount = mutableMapOf<String, Int>()
-                if (chatObject.has("unreadCount")) {
-                    val unreadCountJson = chatObject.getJSONObject("unreadCount")
-                    val keys = unreadCountJson.keys()
-                    while (keys.hasNext()) {
-                        val key = keys.next()
-                        unreadCount[key] = unreadCountJson.getInt(key)
+                        if (participantIdsValue is JSONArray) {
+                            // Old format - array of strings
+                            val participantIdsJsonArray = chatObject.getJSONArray("participantIds")
+                            for (j in 0 until participantIdsJsonArray.length()) {
+                                val participantId = participantIdsJsonArray.getString(j)
+                                participantIds[participantId] = true
+                            }
+                        } else if (participantIdsValue is JSONObject) {
+                            // New format - object with boolean values
+                            val participantIdsJson = chatObject.getJSONObject("participantIds")
+                            val keys = participantIdsJson.keys()
+                            while (keys.hasNext()) {
+                                val key = keys.next()
+                                participantIds[key] = participantIdsJson.getBoolean(key)
+                            }
+                        }
                     }
-                }
 
+                    // Log the participantIds for debugging
+                    Log.d(tag, "ParticipantIds: $participantIds")
 
-                val chat = Chat(
-                    id = chatObject.getString("id"),
-                    name = chatObject.getString("name"),
-                    displayName = displayName,
-                    lastMessage = chatObject.getString("lastMessage"),
-                    timestamp = chatObject.getLong("timestamp"),
-                    unreadCount = unreadCount,
-                    participantIds = participantIds,
-                    type = chatObject.getString("type")
-                )
+                    // Get displayName if it exists, otherwise default to empty string
+                    val displayName = if (chatObject.has("displayName"))
+                        chatObject.getString("displayName") else ""
 
-                // Only add chats where current user is a participant
-                if (participantIds.contains(UserSettings.userId)) {
-                    localChats.add(chat)
+                    // Extract unreadCount
+                    val unreadCount = mutableMapOf<String, Int>()
+                    if (chatObject.has("unreadCount")) {
+                        val unreadCountJson = chatObject.getJSONObject("unreadCount")
+                        val keys = unreadCountJson.keys()
+                        while (keys.hasNext()) {
+                            val key = keys.next()
+                            unreadCount[key] = unreadCountJson.getInt(key)
+                        }
+                    }
+
+                    // Debug
+                    Log.d(tag, "Current user ID: ${UserSettings.userId}")
+                    Log.d(tag, "Is user in participants: ${participantIds.containsKey(UserSettings.userId)}")
+
+                    // Set a default type if missing
+                    val type = if (chatObject.has("type"))
+                        chatObject.getString("type")
+                    else
+                        "direct"
+
+                    val chat = Chat(
+                        id = chatObject.getString("id"),
+                        name = chatObject.getString("name"),
+                        displayName = displayName,
+                        lastMessage = chatObject.getString("lastMessage"),
+                        timestamp = chatObject.getLong("timestamp"),
+                        unreadCount = unreadCount,
+                        participantIds = participantIds,
+                        type = type
+                    )
+
+                    // Check if current user is a participant with active status (or default to true)
+                    val isParticipant = participantIds.containsKey(UserSettings.userId) &&
+                            (participantIds[UserSettings.userId] ?: true)
+
+                    if (isParticipant) {
+                        Log.d(tag, "Adding chat: ${chat.name} with ID: ${chat.id}")
+                        localChats.add(chat)
+                    } else {
+                        Log.d(tag, "Skipping chat: ${chat.name} - user is not an active participant")
+                    }
+                } catch (e: Exception) {
+                    Log.e(tag, "Error processing chat at index $i: ${e.message}")
+                    e.printStackTrace()
                 }
             }
 
             Log.d(tag, "Loaded ${localChats.size} chats from local storage")
         } catch (e: Exception) {
             Log.e(tag, "Error loading chats from file: ${e.message}")
+            e.printStackTrace() // Add stack trace for detailed error info
         }
 
         return localChats
+    }
+
+    /**
+     * Saves all chats from the ChatManager to local storage
+     */
+    fun saveChatsToLocalStorage(chatManager: ChatManager) {
+        val jsonArray = JSONArray()
+        val allChats = chatManager.getAll()
+
+        for (chat in allChats) {
+            try {
+                val chatObject = JSONObject().apply {
+                    put("id", chat.id)
+                    put("name", chat.name)
+                    put("displayName", chat.displayName)
+                    put("lastMessage", chat.lastMessage)
+                    put("timestamp", chat.timestamp)
+
+                    // Save unreadCount as an object
+                    val unreadCountJson = JSONObject()
+                    for ((userId, count) in chat.unreadCount) {
+                        unreadCountJson.put(userId, count)
+                    }
+                    put("unreadCount", unreadCountJson)
+
+                    // Save participantIds as an object with boolean values
+                    val participantIdsJson = JSONObject()
+                    for ((userId, isActive) in chat.participantIds) {
+                        participantIdsJson.put(userId, isActive)
+                    }
+                    put("participantIds", participantIdsJson)
+
+                    put("type", chat.type)
+                }
+                jsonArray.put(chatObject)
+            } catch (e: Exception) {
+                Log.e(tag, "Error saving chat ${chat.id}: ${e.message}")
+            }
+        }
+
+        Log.d(tag, "Saving ${chatManager.size()} chats to local storage")
+
+        val jsonString = jsonArray.toString()
+        writeChatsToFile(jsonString)
     }
 
     /**
@@ -453,43 +531,6 @@ object LocalStorageService {
     }
 
     /**
-     * Saves all chats from the ChatManager to local storage
-     */
-    fun saveChatsToLocalStorage(chatManager: ChatManager, ) {
-        val jsonArray = JSONArray()
-        val allChats = chatManager.getAll()
-
-        for (chat in allChats) {
-            val chatObject = JSONObject().apply {
-                put("id", chat.id)
-                put("name", chat.name)
-                put("displayName", chat.displayName)
-                put("lastMessage", chat.lastMessage)
-                put("timestamp", chat.timestamp)
-                val unreadCountJson = JSONObject()
-                for ((userId, count) in chat.unreadCount) {
-                    unreadCountJson.put(userId, count)
-                }
-                put("unreadCount", unreadCountJson)
-
-
-                // Create a JSONArray for participantIds
-                val participantIdsArray = JSONArray()
-                for (participantId in chat.participantIds) {
-                    participantIdsArray.put(participantId)
-                }
-                put("participantIds", participantIdsArray)
-                put("type", chat.type)
-            }
-            jsonArray.put(chatObject)
-        }
-        Log.d(tag, "Saving ${chatManager.size()} chats to local storage")
-
-        val jsonString = jsonArray.toString()
-        writeChatsToFile(jsonString)
-    }
-
-    /**
      * Writes chat data to the local file
      */
     private fun writeChatsToFile(jsonString: String, ) {
@@ -499,6 +540,148 @@ object LocalStorageService {
             Log.d(tag, "Chats saved to file: ${file.absolutePath}")
         } catch (e: Exception) {
             Log.e(tag, "Error writing to file: ${e.message}")
+        }
+    }
+
+
+
+    // ============================
+    // story Data Management Methods
+    // ============================
+
+    /**
+     * Loads stories from local storage without updating the StoriesManager
+     */
+    fun loadStoriesFromLocalStorage(): List<Stories> {
+        Log.d(tag, "Loading stories from local storage")
+        val jsonString = readStoriesFromFile()
+        val localStories = mutableListOf<Stories>()
+
+        if (jsonString.isEmpty()) {
+            Log.d(tag, "No stories file found or empty file")
+            return localStories
+        }
+
+        try {
+            val jsonArray = JSONArray(jsonString)
+            Log.d(tag, "Found ${jsonArray.length()} story entries in JSON")
+
+            for (i in 0 until jsonArray.length()) {
+                try {
+                    val storiesObject = jsonArray.getJSONObject(i)
+
+                    // Debug the stories object
+                    Log.d(tag, "Processing stories JSON: ${storiesObject.toString().take(100)}...")
+
+                    val uid = storiesObject.getString("uid")
+                    val displayName = storiesObject.getString("displayName")
+                    val profilePictureUrl = storiesObject.getString("profilePictureUrl")
+
+                    // Extract stories list
+                    val storiesArray = storiesObject.getJSONArray("stories")
+                    val storiesList = mutableListOf<Story>()
+
+                    for (j in 0 until storiesArray.length()) {
+                        val storyObject = storiesArray.getJSONObject(j)
+                        val story = Story(
+                            imageurl = storyObject.getString("imageurl"),
+                            storyCaption = storyObject.getString("storyCaption"),
+                            uploadedAt = storyObject.getString("uploadedAt")
+                        )
+                        storiesList.add(story)
+                    }
+
+                    val stories = Stories(
+                        uid = uid,
+                        displayName = displayName,
+                        profilePictureUrl = profilePictureUrl,
+                        stories = storiesList
+                    )
+
+                    localStories.add(stories)
+                    Log.d(tag, "Added stories for user: $displayName with ID: $uid")
+                } catch (e: Exception) {
+                    Log.e(tag, "Error processing stories at index $i: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+
+            Log.d(tag, "Loaded ${localStories.size} stories entries from local storage")
+        } catch (e: Exception) {
+            Log.e(tag, "Error loading stories from file: ${e.message}")
+            e.printStackTrace()
+        }
+
+        return localStories
+    }
+
+    /**
+     * Saves all stories to local storage
+     */
+    fun saveStoriesToLocalStorage(storiesList: List<Stories>) {
+        val jsonArray = JSONArray()
+
+        for (stories in storiesList) {
+            try {
+                val storiesObject = JSONObject().apply {
+                    put("uid", stories.uid)
+                    put("displayName", stories.displayName)
+                    put("profilePictureUrl", stories.profilePictureUrl)
+
+                    // Save list of stories
+                    val storiesJsonArray = JSONArray()
+                    for (story in stories.stories!!) {
+                        val storyObject = JSONObject().apply {
+                            put("imageurl", story.imageurl)
+                            put("storyCaption", story.storyCaption)
+                            put("uploadedAt", story.uploadedAt)
+                        }
+                        storiesJsonArray.put(storyObject)
+                    }
+                    put("stories", storiesJsonArray)
+                }
+                jsonArray.put(storiesObject)
+            } catch (e: Exception) {
+                Log.e(tag, "Error saving stories for user ${stories.uid}: ${e.message}")
+            }
+        }
+
+        Log.d(tag, "Saving ${storiesList.size} stories entries to local storage")
+
+        val jsonString = jsonArray.toString()
+        writeStoriesToFile(jsonString)
+    }
+
+    /**
+     * Reads stories data from the local file
+     */
+    private fun readStoriesFromFile(): String {
+        val file = File(context.filesDir, STORIES_FILE)
+        val content = if (file.exists()) {
+            val text = file.readText()
+            Log.d(tag, "Stories file content length: ${text.length}")
+            // Print first 100 chars to debug log
+            if (text.isNotEmpty()) {
+                Log.d(tag, "Stories file content preview: ${text.take(100)}...")
+            }
+            text
+        } else {
+            Log.d(tag, "Stories file doesn't exist at: ${file.absolutePath}")
+            ""
+        }
+        return content
+    }
+
+    /**
+     * Writes stories data to the local file
+     */
+    private fun writeStoriesToFile(jsonString: String) {
+        try {
+            val file = File(context.filesDir, STORIES_FILE)
+            file.writeText(jsonString)
+            Log.d(tag, "Stories saved to file: ${file.absolutePath}")
+        } catch (e: Exception) {
+            Log.e(tag, "Error writing stories to file: ${e.message}")
         }
     }
 }

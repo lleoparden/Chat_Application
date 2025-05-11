@@ -2,7 +2,10 @@ package com.example.chat_application
 
 import android.annotation.SuppressLint
 import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -346,23 +349,38 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
     //region Chat Management
 
     private fun loadChats() {
-
-
-        // Load local chats first
+        // 1. First, always load local chats immediately for fast UI rendering
         val localChats = LocalStorageService.loadChatsFromLocalStorageWithoutSaving()
 
-        // Update UI with local chats immediately
+        // 2. Update UI with local chats immediately
         chatManager.clear()
         chatManager.pushAll(localChats)
-        chatAdapter.updateData(chatManager.getAll()) // Add this line to update adapter
+        chatAdapter.updateData(chatManager.getAll())
 
-
-        FirebaseService.fetchUserDataAndUpdateDisplayNames(chatManager,chatAdapter)
-
-
-        // Only attempt Firebase loading if explicitly enabled AND we're online
+        // 3. Only proceed with Firebase operations if enabled
         if (firebaseEnabled) {
-            FirebaseService.checkConnectionAndLoadChatsFromFirebase(localChats,chatAdapter,chatManager)
+            // 4. Process display names separately, don't block initial load
+            fetchUserDisplayNamesIfOnline()
+
+            // 5. Try to load from Firebase with proper timeout and fallback
+            FirebaseService.checkConnectionAndLoadChatsFromFirebase(localChats, chatAdapter, chatManager)
+        }
+    }
+
+    // New function to handle display name updates separately
+    private fun fetchUserDisplayNamesIfOnline() {
+        // Check if we're online first before attempting Firestore operations
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val networkCapabilities = connectivityManager.activeNetwork?.let {
+            connectivityManager.getNetworkCapabilities(it)
+        }
+
+        val isOnline = networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+
+        if (isOnline) {
+            FirebaseService.fetchUserDataAndUpdateDisplayNames(chatManager, chatAdapter)
+        } else {
+            Log.d(TAG, "Skipping display name fetch - device appears to be offline")
         }
     }
 
@@ -374,8 +392,10 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         if (isInSelectionMode) {
             toggleChatSelection(chat)
         } else {
+            LocalStorageService.saveChatsToLocalStorage(chatManager)
             if (firebaseEnabled) {
                 FirebaseService.saveChatsToFirebase(chatManager)
+
 
                 if (firebaseEnabled) {
                     val unreadCountRef = FirebaseDatabase.getInstance()
