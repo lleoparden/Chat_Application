@@ -254,9 +254,11 @@ class UserProfileActivity : AppCompatActivity() {
             HelperFunctions.loadImageFromUrl(userdata.profilePictureUrl, profileImage)
 
             profileImage.setOnClickListener {
-                val intent = Intent(this, ImageViewActivity::class.java)
-                intent.putExtra("image_url", userdata.profilePictureUrl)
-                startActivity(intent)
+                if(userdata.profilePictureUrl!="") {
+                    val intent = Intent(this, ImageViewActivity::class.java)
+                    intent.putExtra("image_url", userdata.profilePictureUrl)
+                    startActivity(intent)
+                }
             }
         }
     }

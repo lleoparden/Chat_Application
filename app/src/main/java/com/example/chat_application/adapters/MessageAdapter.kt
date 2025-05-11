@@ -238,7 +238,13 @@ class MessageAdapter(
 
             var user = HelperFunctions.loadUserById(message.senderId,timeText.context)
 
-            HelperFunctions.loadImageFromUrl(user?.profilePictureUrl.toString(), profileImage)
+            Glide.with(profileImage.context)
+                .load(user?.profilePictureUrl)
+                .placeholder(R.drawable.circle_background) // optional placeholder
+                .error(R.drawable.circle_background)       // optional error fallback
+                .circleCrop()
+                .into(profileImage)
+
 
 
             if (message.readStatus[currentUserId] != true) {

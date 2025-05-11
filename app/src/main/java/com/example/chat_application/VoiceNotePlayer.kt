@@ -127,8 +127,12 @@ class VoiceNotePlayer {
     private fun resetPlayback() {
         playPauseButton?.setImageResource(android.R.drawable.ic_media_play)
         seekBar?.progress = 0
-        updateDurationText(0, mediaPlayer?.duration ?: 0)
+
+        // Keep showing the *total duration* after playback finishes
+        val totalDuration = mediaPlayer?.duration ?: 0
+        updateDurationText(totalDuration, totalDuration)
     }
+
 
     fun stopPlayback() {
         handler.removeCallbacksAndMessages(null)
