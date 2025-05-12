@@ -13,5 +13,6 @@
     <attr name="generalBG" format="reference|color"/>
     <attr name="generalButton" format="reference|color"/>
     <attr name="generalTitleBar" format="reference|color"/>
+    <attr name="pfpBG" format="reference|color"/>
 
 </resources>

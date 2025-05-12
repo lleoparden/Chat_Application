@@ -160,7 +160,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="?attr/BG"
+        android:background="#413D3D3D"
         android:elevation="4dp"
         android:orientation="horizontal"
         android:padding="8dp">

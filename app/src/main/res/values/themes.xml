@@ -24,6 +24,7 @@
         <item name="generalBG">@color/generalBGLight</item>
         <item name="generalTitleBar">@color/generalTitleBarLight</item>
         <item name="generalButton">@color/generalButtonLight</item>
+        <item name="pfpBG">@color/generalBGLight</item>
     </style>
 
 </resources>

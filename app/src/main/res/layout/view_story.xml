@@ -44,7 +44,7 @@
 
     <TextView
         android:id="@+id/storyCaption"
-        android:layout_width="393dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#A6050505"
         android:paddingTop="7dp"
@@ -95,7 +95,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="4dp"
         android:layout_marginBottom="80dp"
-        android:text="TextView"
+        android:text="Time"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@+id/accName"
         app:layout_constraintTop_toTopOf="parent"

@@ -24,5 +24,6 @@
         <item name="generalBG">@color/generalBGDark</item>
         <item name="generalTitleBar">@color/generalTitleBarDark</item>
         <item name="generalButton">@color/generalButtonDark</item>
+        <item name="pfpBG">@color/generalButtonDark</item>
     </style>
 </resources>

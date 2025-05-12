@@ -82,7 +82,6 @@
             <TextView
                 ns0:layout_width="match_parent"
                 ns0:layout_height="wrap_content"
-                ns0:layout_marginBottom="10dp"
                 ns0:text="Wallpaper"
                 ns0:textColor="?attr/generalText"
                 ns0:textSize="19sp"
@@ -100,17 +99,15 @@
                     ns0:id="@+id/selectedWallpaperPreview"
                     ns0:layout_width="233dp"
                     ns0:layout_height="367dp"
-                    ns0:background="#f0f0f0"
                     ns0:contentDescription="Selected Wallpaper Preview"
                     ns0:padding="40dp"
                     ns0:scaleType="centerCrop"
-                    ns0:src="@drawable/circle2" />
+                    ns0:src="@drawable/chatbg" />
 
                 <Button
                     ns0:id="@+id/selectFromGalleryButton"
                     ns0:layout_width="wrap_content"
                     ns0:layout_height="wrap_content"
-                    ns0:layout_marginTop="16dp"
                     ns0:backgroundTint="?attr/generalButton"
                     ns0:drawableStart="@android:drawable/ic_menu_gallery"
                     ns0:drawablePadding="8dp"

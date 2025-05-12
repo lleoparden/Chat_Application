@@ -20,7 +20,7 @@
             android:layout_height="48dp"
             android:layout_marginStart="7dp"
             android:background="@drawable/circle_background"
-            android:backgroundTint="?attr/AuthButton"
+            android:backgroundTint="?attr/pfpBG"
             android:contentDescription="Profile"
             android:clipToOutline="true"
             android:src="@drawable/ic_person"

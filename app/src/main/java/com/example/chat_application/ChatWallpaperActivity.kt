@@ -212,7 +212,7 @@ class ChatWallpaperActivity : AppCompatActivity() {
 
     private fun removeWallpaperImage() {
         if (UserSettings.removeChatWallpaper(this)) {
-            selectedWallpaperPreview.setImageResource(R.drawable.circle2) // fallback default
+            selectedWallpaperPreview.setImageResource(R.drawable.chatbg) // fallback default
             selectedWallpaperUri = null
             noWallpaperSelected.visibility = View.VISIBLE
             removeWallpaper.visibility = View.GONE

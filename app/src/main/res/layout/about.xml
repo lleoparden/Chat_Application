@@ -60,7 +60,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="28dp"
-                android:text="Version 1.0.0"
+                android:text="Version 4.2.0"
                 android:textSize="16sp" />
 
             <!-- About Description -->

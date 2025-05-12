@@ -33,7 +33,7 @@
                 android:text="Bubble"
                 android:textColor="?attr/generalText"
                 android:textSize="26sp"
-                android:textStyle="bold | italic"
+                android:textStyle="bold|italic"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
@@ -125,23 +125,24 @@
         android:id="@+id/searchContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="?attr/generalBG"
         android:orientation="horizontal"
         android:padding="8dp"
         android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@+id/topBar"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toBottomOf="@+id/topBar">
 
         <EditText
             android:id="@+id/searchBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Search chat by name..."
-            android:inputType="text"
-            android:padding="12dp"
-            android:background="@drawable/search_background"
+            android:background="@drawable/border"
             android:drawablePadding="8dp"
-            android:imeOptions="actionSearch"/>
+            android:hint="Search chat by name..."
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:padding="12dp" />
     </LinearLayout>
 
 

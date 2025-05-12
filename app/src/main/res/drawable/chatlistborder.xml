@@ -6,7 +6,7 @@
 
 
     <!-- Optional: background color -->
-    <solid android:color="?attr/ChatList" /> <!-- White background -->
+    <solid android:color="?attr/ChatList" />
 
     <!-- Optional: corner radius -->
     <corners android:radius="20dp"/>
