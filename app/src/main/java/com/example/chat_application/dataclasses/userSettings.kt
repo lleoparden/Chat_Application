@@ -48,12 +48,21 @@ object UserSettings {
             return
         }
 
-        // Use ImageUploadService to save image locally
+        // Remove existing wallpaper first
+        if (chatroomBackground != null) {
+            try {
+                File(chatroomBackground!!).delete()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting old wallpaper", e)
+            }
+        }
+
+        // Save new wallpaper
         val localPath = ImageUploadService.saveImageLocally(
             context,
             imageUri,
             userId,
-            "wallpaper_" // Using prefix to differentiate from profile images
+            "wallpaper_"
         )
 
         if (localPath != null) {

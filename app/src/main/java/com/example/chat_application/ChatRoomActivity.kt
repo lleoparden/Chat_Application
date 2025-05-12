@@ -46,6 +46,8 @@ import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.request.RequestOptions
 import com.example.chat_application.dataclasses.UserData
 import com.github.dhaval2404.imagepicker.ImagePicker
 import com.example.chat_application.services.ImageUploadService
@@ -144,22 +146,14 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun loadChatWallpaper() {
         val wallpaperPath = UserSettings.getChatWallpaper()
 
-        if (wallpaperPath != null) {
-            // Custom wallpaper is set
-            try {
-                val wallpaperUri = Uri.fromFile(File(wallpaperPath))
-                Glide.with(this)
-                    .load(wallpaperUri)
-                    .error(R.drawable.chatbg)
-                    .into(chatBackground)
-            } catch (e: Exception) {
-                // Fallback to default
-                chatBackground.setImageResource(R.drawable.chatbg)
-            }
-        } else {
-            // Use default wallpaper
-            chatBackground.setImageResource(R.drawable.chatbg)
-        }
+        Glide.with(this)
+            .load(if (wallpaperPath != null) Uri.fromFile(File(wallpaperPath)) else R.drawable.chatbg)
+            .apply(
+                RequestOptions()
+                .diskCacheStrategy(DiskCacheStrategy.NONE) // Disable caching
+                .skipMemoryCache(true) // Skip memory cache
+                .error(R.drawable.chatbg))
+            .into(chatBackground)
     }
 
     //region Setup Methods

@@ -296,13 +296,9 @@ class AccountSettingsActivity : AppCompatActivity() {
     }
 
     private fun navigateBack() {
-        finish()
+        startActivity(Intent(this, SettingsActivity::class.java))
     }
 
-    override fun onBackPressed() {
-        navigateBack()
-        super.onBackPressed()
-    }
 
     private fun updateUserInChatsList(displayName: String) {
         try {
