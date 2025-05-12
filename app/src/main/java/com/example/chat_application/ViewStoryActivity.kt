@@ -93,7 +93,7 @@ class ViewStoryActivity : AppCompatActivity() {
 
         // If there are expired stories, update Firestore
         if (expiredStoryIndices.isNotEmpty() && firebaseEnabled) {
-            updateFirestoreStories(validStories)
+            updateFireStoreStories(validStories)
         }
 
         // Update our local list for display
@@ -107,7 +107,7 @@ class ViewStoryActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateFirestoreStories(validStories: List<Story>) {
+    private fun updateFireStoreStories(validStories: List<Story>) {
         try {
             db.collection("Stories").document(viewedStory.uid)
                 .update("stories", validStories)

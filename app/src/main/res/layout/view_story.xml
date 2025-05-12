@@ -32,8 +32,8 @@
 
     <ImageView
         android:id="@+id/storyImage"
-        android:layout_width="394dp"
-        android:layout_height="811dp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:scaleType="fitCenter"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -44,7 +44,7 @@
 
     <TextView
         android:id="@+id/storyCaption"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:background="#A6050505"
         android:paddingTop="7dp"

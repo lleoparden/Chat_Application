@@ -297,11 +297,6 @@ class AddNewStoryActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Updates the index of locally saved stories
-     *
-     * @param storyFileName The filename of the newly saved story
-     */
     private fun updateStoriesIndex(storyFileName: String) {
         try {
             // Create or load existing index file

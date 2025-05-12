@@ -28,18 +28,18 @@ object LocalStorageService {
 
     // Properties
     private lateinit var context: Context
-    private lateinit var tag :String
+    private lateinit var tag: String
     private lateinit var localUsersFile: File
     private lateinit var usersFile: File
 
     /**
      * Initializes the local storage service
      */
-    fun initialize(context: Context,Tag :String) {
+    fun initialize(context: Context, Tag: String) {
         LocalStorageService.context = context
         usersFile = File(context.filesDir, USERS_FILE)
         localUsersFile = File(context.filesDir, USER_USERS_FILE)
-        tag= Tag
+        tag = Tag
 
         if (!usersFile.exists()) {
             try {
@@ -169,7 +169,10 @@ object LocalStorageService {
                 jsonArray.put(jsonUser)
             }
 
-            Log.d(tag, "Attempting to write ${jsonArray.length()} users to file: ${localUsersFile.absolutePath}")
+            Log.d(
+                tag,
+                "Attempting to write ${jsonArray.length()} users to file: ${localUsersFile.absolutePath}"
+            )
 
             FileWriter(localUsersFile).use { writer ->
                 writer.write(jsonArray.toString())
@@ -241,7 +244,15 @@ object LocalStorageService {
         return prefs.getString(USER_ID_KEY, null)
     }
 
-     fun updateUserToLocalStorage(displayName: String, status: String, description: String,userId: String,localImagePath:String,profilePictureUrl:String,phoneNumber: String,) : Boolean{
+    fun updateUserToLocalStorage(
+        displayName: String,
+        status: String,
+        description: String,
+        userId: String,
+        localImagePath: String,
+        profilePictureUrl: String,
+        phoneNumber: String,
+    ): Boolean {
         try {
             val fileContent = if (usersFile.exists() && usersFile.readText().isNotBlank()) {
                 usersFile.readText()
@@ -302,30 +313,30 @@ object LocalStorageService {
             usersFile.writeText(jsonArray.toString())
 
             return true
-            
+
         } catch (e: Exception) {
             Log.e(tag, "Error saving profile to local storage", e)
             Toast.makeText(context, "Failed to save profile", Toast.LENGTH_SHORT).show()
-            
+
             return false
         }
     }
 
-    fun loadUserFromLocalStorage(userId: String,callback: (UserData) -> Unit) {
+    fun loadUserFromLocalStorage(userId: String, callback: (UserData) -> Unit) {
         try {
             if (!usersFile.exists() || usersFile.readText().isBlank()) {
                 Log.e(tag, "Local Users File Not Found or Empty")
                 Toast.makeText(context, "User Data Not Found", Toast.LENGTH_SHORT).show()
                 return
             }
-            var user : UserData
+            var user: UserData
             val fileContent = usersFile.readText()
             if (fileContent.trim().startsWith("[")) {
                 val jsonArray = JSONArray(fileContent)
                 for (i in 0 until jsonArray.length()) {
                     val jsonUser = jsonArray.getJSONObject(i)
                     if (jsonUser.getString("uid") == userId) {
-                         user = UserData(
+                        user = UserData(
                             uid = userId,
                             displayName = jsonUser.getString("displayName") ?: "",
                             phoneNumber = jsonUser.getString("phoneNumber") ?: "",
@@ -422,7 +433,10 @@ object LocalStorageService {
 
                     // Debug
                     Log.d(tag, "Current user ID: ${UserSettings.userId}")
-                    Log.d(tag, "Is user in participants: ${participantIds.containsKey(UserSettings.userId)}")
+                    Log.d(
+                        tag,
+                        "Is user in participants: ${participantIds.containsKey(UserSettings.userId)}"
+                    )
 
                     // Set a default type if missing
                     val type = if (chatObject.has("type"))
@@ -449,7 +463,10 @@ object LocalStorageService {
                         Log.d(tag, "Adding chat: ${chat.name} with ID: ${chat.id}")
                         localChats.add(chat)
                     } else {
-                        Log.d(tag, "Skipping chat: ${chat.name} - user is not an active participant")
+                        Log.d(
+                            tag,
+                            "Skipping chat: ${chat.name} - user is not an active participant"
+                        )
                     }
                 } catch (e: Exception) {
                     Log.e(tag, "Error processing chat at index $i: ${e.message}")
@@ -533,7 +550,7 @@ object LocalStorageService {
     /**
      * Writes chat data to the local file
      */
-    private fun writeChatsToFile(jsonString: String, ) {
+    private fun writeChatsToFile(jsonString: String) {
         try {
             val file = File(context.filesDir, CHATS_FILE)
             file.writeText(jsonString)
@@ -542,7 +559,6 @@ object LocalStorageService {
             Log.e(tag, "Error writing to file: ${e.message}")
         }
     }
-
 
 
     // ============================

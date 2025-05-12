@@ -40,19 +40,114 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:layout_marginBottom="25dp"
+                android:layout_marginBottom="16dp"
                 android:text="Frequently Asked Questions"
                 android:textColor="?attr/generalText"
                 android:textSize="19sp"
                 android:textStyle="bold" />
 
+            <!-- FAQ Items -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:backgroundTint="?attr/generalBG"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <!-- FAQ Item 1 -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="How do I create a new chat?"
+                        android:textColor="?attr/generalText"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:text="To start a new chat, go to the home screen and tap the plus (+) button at the bottom right. Then select a contact from your list to begin chatting." />
+
+                    <!-- FAQ Item 2 -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="How do I send images in a chat?"
+                        android:textColor="?attr/generalText"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:text="While in a chat, tap the attachment icon next to the message input field. Select 'Gallery' to choose an image from your device to send." />
+
+                    <!-- FAQ Item 3 -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="How do I change my profile picture?"
+                        android:textColor="?attr/generalText"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:text="Go to Settings > Profile, then tap on your profile picture. You can then choose to take a new photo or select one from your gallery." />
+
+                    <!-- FAQ Item 4 -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="How do I switch to dark mode?"
+                        android:textColor="?attr/generalText"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:layout_marginBottom="16dp"
+                        android:text="Navigate to Settings > Appearance > Theme and select 'Dark' to enable dark mode." />
+
+                    <!-- FAQ Item 5 -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Can I delete messages after sending them?"
+                        android:textColor="?attr/generalText"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Yes, long-press on the message you wish to delete, then select the delete option from the menu that appears. You can choose to delete just for yourself or for everyone in the chat." />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Contact Support Section -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:layout_marginBottom="10dp"
+                android:layout_marginBottom="16dp"
                 android:text="Contact Support"
                 android:textColor="?attr/generalText"
                 android:textSize="19sp"
@@ -68,7 +163,7 @@
 
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_height="wrap_content"
                     android:background="?attr/generalBG"
                     android:orientation="vertical"
                     android:padding="16dp">
@@ -76,29 +171,120 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="22dp"
+                        android:layout_marginBottom="16dp"
                         android:text="If you can't find answers to your questions, you can contact our support team."
                         android:textSize="16sp" />
 
-                    <Button
-                        android:id="@+id/contactSupportButton"
+                    <!-- Name Field -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/nameInputLayout"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
-                        android:layout_height="59dp"
-                        android:layout_marginTop="10dp"
-                        android:layout_marginBottom="10dp"
-                        android:backgroundTint="?attr/generalButton"
-                        android:text="Contact Support"
-                        android:textColor="@android:color/black" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:hint="Your Name">
 
-                    <Button
-                        android:id="@+id/pickImageButton"
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/nameEditText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textPersonName" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Email Field -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/emailInputLayout"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
-                        android:layout_height="60dp"
-                        android:layout_marginTop="16dp"
-                        android:backgroundTint="?attr/generalButton"
-                        android:text="Pick Image from Gallery"
-                        android:textColor="@android:color/black" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:hint="Your Email">
 
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/emailEditText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textEmailAddress" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Message Field -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/messageInputLayout"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="16dp"
+                        android:hint="Describe your issue">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/messageEditText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textMultiLine"
+                            android:minLines="3" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Image Preview -->
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="16dp">
+
+                        <ImageView
+                            android:id="@+id/selectedImageView"
+                            android:layout_width="match_parent"
+                            android:layout_height="200dp"
+                            android:scaleType="centerCrop"
+                            android:visibility="gone"
+                            android:contentDescription="Selected image" />
+
+                        <ImageButton
+                            android:id="@+id/removeImageButton"
+                            android:layout_width="36dp"
+                            android:layout_height="36dp"
+                            android:layout_gravity="end|top"
+                            android:background="@android:color/transparent"
+                            android:contentDescription="Remove image"
+                            android:src="@android:drawable/ic_menu_close_clear_cancel"
+                            android:visibility="gone" />
+                    </FrameLayout>
+
+                    <!-- Upload Progress -->
+                    <ProgressBar
+                        android:id="@+id/uploadProgressBar"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:visibility="gone"
+                        android:indeterminate="true" />
+
+                    <!-- Buttons -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/pickImageButton"
+                            android:layout_width="0dp"
+                            android:layout_height="60dp"
+                            android:layout_marginEnd="8dp"
+                            android:layout_weight="1"
+                            android:backgroundTint="?attr/generalButton"
+                            android:text="Attach Image"
+                            android:drawableStart="@android:drawable/ic_menu_gallery"
+                            android:padding="12dp"
+                            android:textColor="@android:color/black" />
+
+                        <Button
+                            android:id="@+id/submitSupportButton"
+                            android:layout_width="0dp"
+                            android:layout_height="60dp"
+                            android:layout_weight="1"
+                            android:backgroundTint="?attr/generalButton"
+                            android:text="Submit"
+                            android:textColor="@android:color/black" />
+                    </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>

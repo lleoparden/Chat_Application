@@ -6,7 +6,6 @@ import android.util.Log
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
@@ -41,7 +40,7 @@ class UserProfileActivity : AppCompatActivity() {
 
     private lateinit var chatsReference: DatabaseReference
     private lateinit var firebaseDatabase: FirebaseDatabase
-    private lateinit var chat: Chat
+
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(UserSettings.getThemeResource())
         super.onCreate(savedInstanceState)
@@ -167,9 +166,11 @@ class UserProfileActivity : AppCompatActivity() {
                                         }
                                     }
                                 }
+
                                 else -> null
                             }
                         }
+
                         else -> null
                     }
 
@@ -181,7 +182,8 @@ class UserProfileActivity : AppCompatActivity() {
                         )
 
                         if ((participants[0] == currentUserId && participants[1] == profileUserId) ||
-                            (participants[0] == profileUserId && participants[1] == currentUserId)) {
+                            (participants[0] == profileUserId && participants[1] == currentUserId)
+                        ) {
                             return chatObject
                         }
                     }
@@ -192,6 +194,7 @@ class UserProfileActivity : AppCompatActivity() {
         }
         return null
     }
+
     // Convert JSONObject to Chat object
     private fun chatFromJson(jsonObject: JSONObject): Chat {
         // Handle participantIds in both array and object formats
@@ -205,6 +208,7 @@ class UserProfileActivity : AppCompatActivity() {
                     participantsList[participantsValue.getString(i)] = true
                 }
             }
+
             is JSONObject -> {
                 // New format - object with boolean values
                 val keys = participantsValue.keys()
@@ -213,6 +217,7 @@ class UserProfileActivity : AppCompatActivity() {
                     participantsList[key] = participantsValue.getBoolean(key)
                 }
             }
+
             else -> {
                 Log.e(TAG, "Unexpected participantIds format")
             }
@@ -230,10 +235,12 @@ class UserProfileActivity : AppCompatActivity() {
                         unreadCountMap[key] = unreadCountValue.getInt(key)
                     }
                 }
+
                 is Int -> {
                     // Handle legacy format where unreadCount might be a single integer
                     unreadCountMap[UserSettings.userId] = unreadCountValue
                 }
+
                 else -> {
                     Log.e(TAG, "Unexpected unreadCount format")
                 }
@@ -251,7 +258,6 @@ class UserProfileActivity : AppCompatActivity() {
             type = jsonObject.optString("type", "direct")
         )
     }
-
 
     // Open existing chat
     private fun openExistingChat(chat: Chat) {
@@ -307,7 +313,7 @@ class UserProfileActivity : AppCompatActivity() {
             HelperFunctions.loadImageFromUrl(userdata.profilePictureUrl, profileImage)
 
             profileImage.setOnClickListener {
-                if(userdata.profilePictureUrl!="") {
+                if (userdata.profilePictureUrl != "") {
                     val intent = Intent(this, ImageViewActivity::class.java)
                     intent.putExtra("image_url", userdata.profilePictureUrl)
                     startActivity(intent)
@@ -315,8 +321,6 @@ class UserProfileActivity : AppCompatActivity() {
             }
         }
     }
-
-
 
     private fun initializeViews() {
         profileImage = findViewById(R.id.profileImageView)
@@ -326,7 +330,6 @@ class UserProfileActivity : AppCompatActivity() {
         displayStatus = findViewById(R.id.userStatusEdit)
         startnewchatButton = findViewById(R.id.startChatButton)
     }
-
 
     private fun saveChatToFirebase(chat: Chat) {
         if (!resources.getBoolean(R.bool.firebaseOn)) {

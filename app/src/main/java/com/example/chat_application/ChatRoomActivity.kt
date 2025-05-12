@@ -114,7 +114,7 @@ class ChatRoomActivity : AppCompatActivity() {
     // Storage
     private lateinit var chatMessagesFile: File
 
-    private lateinit var chat : Chat
+    private lateinit var chat: Chat
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d("ChatRoomActivity", "initializing chatroom ")
@@ -150,9 +150,10 @@ class ChatRoomActivity : AppCompatActivity() {
             .load(if (wallpaperPath != null) Uri.fromFile(File(wallpaperPath)) else R.drawable.chatbg)
             .apply(
                 RequestOptions()
-                .diskCacheStrategy(DiskCacheStrategy.NONE) // Disable caching
-                .skipMemoryCache(true) // Skip memory cache
-                .error(R.drawable.chatbg))
+                    .diskCacheStrategy(DiskCacheStrategy.NONE) // Disable caching
+                    .skipMemoryCache(true) // Skip memory cache
+                    .error(R.drawable.chatbg)
+            )
             .into(chatBackground)
     }
 
@@ -203,13 +204,16 @@ class ChatRoomActivity : AppCompatActivity() {
             if (user != null) {
                 HelperFunctions.loadImageFromUrl(user!!.profilePictureUrl, profileImageView)
                 nameView.text = user!!.displayName
-            }else{
-                HelperFunctions.getUserData(otherParticipantId) {user->
-                    HelperFunctions.loadImageFromUrl(user?.profilePictureUrl.toString(),profileImageView)
+            } else {
+                HelperFunctions.getUserData(otherParticipantId) { user ->
+                    HelperFunctions.loadImageFromUrl(
+                        user?.profilePictureUrl.toString(),
+                        profileImageView
+                    )
                     nameView.text = user?.displayName.toString()
                 }
             }
-        }else{
+        } else {
             HelperFunctions.getGroupPfp(chat.id) { url ->
                 if (url != null) {
                     // Make sure we're on the UI thread when updating the ImageView
@@ -270,7 +274,7 @@ class ChatRoomActivity : AppCompatActivity() {
 
         messageAdapter = MessageAdapter(
             currentUserId = currentUserId,
-            messageList =  messageList,
+            messageList = messageList,
             onMessageLongClick = { position, message ->
                 handleMessageLongClick(message)
             },
@@ -370,7 +374,8 @@ class ChatRoomActivity : AppCompatActivity() {
         saveMessagesToLocalStorage()
 
         // Exit selection mode and update UI
-        Toast.makeText(this, "${selectedMessageIds.size} message(s) deleted", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "${selectedMessageIds.size} message(s) deleted", Toast.LENGTH_SHORT)
+            .show()
         exitSelectionMode()
     }
 
@@ -404,7 +409,8 @@ class ChatRoomActivity : AppCompatActivity() {
 
                 // Detect keyboard visibility changes
                 if (lastVisibleHeight != 0 && lastVisibleHeight != visibleHeight) {
-                    val isKeyboardVisible = visibleHeight < initialHeight * 0.85 // More reliable detection
+                    val isKeyboardVisible =
+                        visibleHeight < initialHeight * 0.85 // More reliable detection
 
                     if (isKeyboardVisible) {
                         // Calculate keyboard height as a percentage of screen height for better adaptation
@@ -416,7 +422,7 @@ class ChatRoomActivity : AppCompatActivity() {
                             messagesRecyclerView.paddingLeft,
                             messagesRecyclerView.paddingTop,
                             messagesRecyclerView.paddingRight,
-                            safeKeyboardPadding+150
+                            safeKeyboardPadding + 150
                         )
                     } else {
                         // Reset padding when keyboard is hidden
@@ -447,12 +453,11 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
-        // Helper extension function if needed
-        fun Int.dpToPx(): Int {
-            val density = resources.displayMetrics.density
-            return (this * density).toInt()
-        }
-
+    // Helper extension function if needed
+    private fun Int.dpToPx(): Int {
+        val density = resources.displayMetrics.density
+        return (this * density).toInt()
+    }
 
 
     private fun setupClickListeners() {
@@ -577,7 +582,10 @@ class ChatRoomActivity : AppCompatActivity() {
                         dataSnapshot: DataSnapshot?
                     ) {
                         if (databaseError != null) {
-                            Log.e("Firebase", "Error updating unread count: ${databaseError.message}")
+                            Log.e(
+                                "Firebase",
+                                "Error updating unread count: ${databaseError.message}"
+                            )
                         }
                     }
                 })
@@ -802,7 +810,11 @@ class ChatRoomActivity : AppCompatActivity() {
             }
             .addOnFailureListener { e ->
                 Log.e("Firebase", "Error saving to Realtime DB: ${e.message}")
-                Toast.makeText(this, "Failed to send message. Check your connection.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    "Failed to send message. Check your connection.",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
     }
 
@@ -973,7 +985,6 @@ class ChatRoomActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-
     private fun removeRealtimeMessageListener() {
         if (resources.getBoolean(R.bool.firebaseOn)) {
             messagesListener?.let {
@@ -981,12 +992,12 @@ class ChatRoomActivity : AppCompatActivity() {
             }
         }
     }
-    fun isMessageSelected(messageId: String): Boolean {
+
+    internal fun isMessageSelected(messageId: String): Boolean {
         return selectedMessageIds.contains(messageId)
     }
 
     // Sending Voice Notes --------------------------->
-
 
     private fun setupVoiceRecordingButton() {
         val cancelThreshold = 150 // in pixels, adjust as needed
@@ -1185,18 +1196,19 @@ class ChatRoomActivity : AppCompatActivity() {
     // Sending Images --------------------------->
 
     private fun setupImagePickerLauncher() {
-        imagePickerLauncher = registerForActivityResult(StartActivityForResult()) { result: ActivityResult ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                val data = result.data
-                if (data != null && data.data != null) {
-                    // Get the selected image URI
-                    selectedImageUri = data.data
+        imagePickerLauncher =
+            registerForActivityResult(StartActivityForResult()) { result: ActivityResult ->
+                if (result.resultCode == Activity.RESULT_OK) {
+                    val data = result.data
+                    if (data != null && data.data != null) {
+                        // Get the selected image URI
+                        selectedImageUri = data.data
 
-                    // Show image preview
-                    showImagePreview(selectedImageUri!!)
+                        // Show image preview
+                        showImagePreview(selectedImageUri!!)
+                    }
                 }
             }
-        }
     }
 
     private fun showImagePreview(imageUri: Uri) {
@@ -1244,9 +1256,11 @@ class ChatRoomActivity : AppCompatActivity() {
                 }
 
                 override fun onUploadFailure(errorMessage: String) {
-                    Toast.makeText(this@ChatRoomActivity,
+                    Toast.makeText(
+                        this@ChatRoomActivity,
                         "Failed to upload image: $errorMessage",
-                        Toast.LENGTH_SHORT).show()
+                        Toast.LENGTH_SHORT
+                    ).show()
                     isImageUploading = false
                     selectedImageUri = null
                 }

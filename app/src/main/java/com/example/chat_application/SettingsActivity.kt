@@ -13,9 +13,11 @@ import androidx.appcompat.widget.Toolbar
 import com.example.chat_application.dataclasses.UserSettings
 import java.io.File
 
+
+@SuppressLint("MissingInflatedId")
 class SettingsActivity : AppCompatActivity() {
 
-    @SuppressLint("MissingInflatedId")
+
     override fun onCreate(savedInstanceState: Bundle?) {
 
         setTheme(UserSettings.getThemeResource())
@@ -82,8 +84,10 @@ class SettingsActivity : AppCompatActivity() {
             val message = when {
                 deletedCount > 0 && failedCount == 0 ->
                     "Cleared $deletedCount chats"
+
                 deletedCount > 0 && failedCount > 0 ->
                     "Cleared $deletedCount chats, $failedCount failed"
+
                 else ->
                     "No chats cleared"
             }

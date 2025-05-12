@@ -7,8 +7,11 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import android.view.View
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -16,6 +19,7 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import com.example.chat_application.dataclasses.UserSettings
@@ -29,9 +33,6 @@ import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import java.io.File
 import java.util.regex.Pattern
-import android.app.AlertDialog
-import android.widget.EditText
-import com.google.firebase.firestore.auth.User
 
 private const val TAG = "AccountSettingsActivity"
 
@@ -53,7 +54,7 @@ class AccountSettingsActivity : AppCompatActivity() {
 
     companion object {
         private const val PHONE_PATTERN = "^\\+?[1-9]\\d{1,14}\$"
-        private const val MIN_PASSWORD_LENGTH = 6
+        private const val MIN_PASSWORD_LENGTH = 8 // Updated to match validation requirement
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,8 +69,58 @@ class AccountSettingsActivity : AppCompatActivity() {
             FirebaseService.initialize(this, TAG, firebaseEnabled)
         }
         userId = UserSettings.userId
-        setupClickListeners()
-        loadUserData()
+
+        // Show authentication dialog before displaying any data
+        showAuthenticationDialog()
+    }
+
+    private fun showAuthenticationDialog() {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Verify It's You")
+        builder.setMessage("Please enter your password to continue")
+        builder.setCancelable(false)
+
+        val input = EditText(this)
+        input.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+        input.hint = "Current Password"
+        input.setHintTextColor(resources.getColor(android.R.color.darker_gray))
+        builder.setView(input)
+
+        builder.setPositiveButton("Verify") { _, _ ->
+            val password = input.text.toString().trim()
+            verifyPassword(password)
+        }
+
+        builder.setNegativeButton("Cancel") { _, _ ->
+            // If user cancels, go back to previous screen
+            finish()
+        }
+
+        val dialog = builder.create()
+        dialog.show()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(resources.getColor(android.R.color.black))
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(resources.getColor(android.R.color.black))
+    }
+
+    private fun verifyPassword(password: String) {
+        progressIndicator.visibility = View.VISIBLE
+
+        // Get stored password from Firebase or local storage for verification
+        FirebaseService.loadUserFromFirebase(userId) { user ->
+            progressIndicator.visibility = View.GONE
+
+            if (user.password == password) {
+                // Password correct, proceed with initialization
+                setupClickListeners()
+                loadUserData()
+            } else {
+                // Password incorrect, show error and go back
+                Toast.makeText(this, "Incorrect password. Please try again.", Toast.LENGTH_LONG).show()
+                Handler(Looper.getMainLooper()).postDelayed({
+                    finish()
+                }, 1000)
+            }
+        }
     }
 
     private fun initializeViews() {
@@ -82,6 +133,17 @@ class AccountSettingsActivity : AppCompatActivity() {
         progressIndicator = findViewById(R.id.progressIndicator)
         imageUploadProgressBar = findViewById(R.id.imageUploadProgressBar)
         imageUploadProgressBar.visibility = View.GONE
+
+        // Add text change listener for password validation
+        passwordEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+
+            override fun afterTextChanged(s: Editable?) {
+                validatePassword(s.toString(), passwordEditText)
+            }
+        })
     }
 
     private fun setupClickListeners() {
@@ -151,52 +213,6 @@ class AccountSettingsActivity : AppCompatActivity() {
             }
     }
 
-    private fun promptForCurrentPassword(callback: (String?) -> Unit) {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("Enter Current Password")
-
-        val input = EditText(this)
-        input.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-        input.hint = "Current Password"
-        input.setHintTextColor(resources.getColor(android.R.color.darker_gray))
-        builder.setView(input)
-
-        builder.setPositiveButton("OK") { _, _ ->
-            val currentPassword = input.text.toString().trim()
-            if (currentPassword.isNotEmpty()) {
-                callback(currentPassword)
-            } else {
-                callback(null)
-            }
-        }
-        builder.setNegativeButton("Cancel") { _, _ -> callback(null) }
-
-        val dialog = builder.create()
-        dialog.show()
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(resources.getColor(android.R.color.black))
-        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(resources.getColor(android.R.color.black))
-    }
-
-    private fun reauthenticateUser(email: String, currentPassword: String, callback: (Boolean) -> Unit) {
-        val user = FirebaseAuth.getInstance().currentUser
-        if (user != null) {
-            val credential = EmailAuthProvider.getCredential(email, currentPassword)
-            user.reauthenticate(credential)
-                .addOnSuccessListener {
-                    Log.d(TAG, "Re-authentication successful")
-                    callback(true)
-                }
-                .addOnFailureListener { exception ->
-                    Log.e(TAG, "Re-authentication failed: ${exception.message}", exception)
-                    Toast.makeText(this, "Re-authentication failed: ${exception.message}", Toast.LENGTH_LONG).show()
-                    callback(false)
-                }
-        } else {
-            Toast.makeText(this, "No authenticated user found", Toast.LENGTH_SHORT).show()
-            callback(false)
-        }
-    }
-
     private fun saveProfile() {
         val name = nameEditText.text.toString().trim()
         val phone = phoneEditText.text.toString().trim()
@@ -222,7 +238,7 @@ class AccountSettingsActivity : AppCompatActivity() {
             "password" to password
         )
 
-        FirebaseService.updateUserinFirebase(userId,user) {
+        FirebaseService.updateUserinFirebase(userId, user) {
             if(it){
                 progressIndicator.visibility = View.GONE
                 Log.d(TAG, "Password updated successfully in Firebase")
@@ -287,18 +303,50 @@ class AccountSettingsActivity : AppCompatActivity() {
             phoneEditText.announceForAccessibility("Invalid phone number")
             isValid = false
         }
-        if (password.isNotEmpty() && password.length < MIN_PASSWORD_LENGTH) {
-            passwordEditText.error = "Password must be at least $MIN_PASSWORD_LENGTH characters"
-            passwordEditText.announceForAccessibility("Password must be at least $MIN_PASSWORD_LENGTH characters")
+
+        // Use the enhanced password validation
+        if (password.isNotEmpty() && !isValidPassword(password)) {
+            // Error message already set by validatePassword()
             isValid = false
         }
+
         return isValid
+    }
+
+    private fun isValidPassword(password: String): Boolean {
+        if (password.length < 8) return false
+
+        val hasUppercase = password.any { it.isUpperCase() }
+        val hasSpecialChar = password.any { !it.isLetterOrDigit() }
+
+        return hasUppercase && hasSpecialChar
+    }
+
+    private fun validatePassword(password: String, passwordField: EditText) {
+        if (password.isEmpty()) {
+            passwordField.error = null
+            return
+        }
+
+        when {
+            password.length < 8 -> {
+                passwordField.error = "Password must be at least 8 characters"
+            }
+            !password.any { it.isUpperCase() } -> {
+                passwordField.error = "Password must include uppercase letters"
+            }
+            !password.any { !it.isLetterOrDigit() } -> {
+                passwordField.error = "Password must include special characters"
+            }
+            else -> {
+                passwordField.error = null
+            }
+        }
     }
 
     private fun navigateBack() {
         startActivity(Intent(this, SettingsActivity::class.java))
     }
-
 
     private fun updateUserInChatsList(displayName: String) {
         try {

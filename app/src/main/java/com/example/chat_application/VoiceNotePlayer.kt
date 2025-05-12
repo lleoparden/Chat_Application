@@ -17,7 +17,6 @@ class VoiceNotePlayer {
     private var durationText: TextView? = null
     private var playPauseButton: ImageButton? = null
 
-    // CRITICAL FIX: We need to handle clicks on the button separately from the actual player state
     private var buttonClickListener: (() -> Unit)? = null
 
     fun playVoiceNote(
@@ -94,13 +93,6 @@ class VoiceNotePlayer {
         })
     }
 
-    // This method is no longer needed since we handle clicks directly on the button
-    // Keep it for compatibility with existing code
-    fun togglePlayPause() {
-        // Just forward to the click listener if it exists
-        buttonClickListener?.invoke()
-    }
-
     private fun startProgressUpdates() {
         handler.removeCallbacksAndMessages(null)
 
@@ -132,7 +124,6 @@ class VoiceNotePlayer {
         val totalDuration = mediaPlayer?.duration ?: 0
         updateDurationText(totalDuration, totalDuration)
     }
-
 
     fun stopPlayback() {
         handler.removeCallbacksAndMessages(null)

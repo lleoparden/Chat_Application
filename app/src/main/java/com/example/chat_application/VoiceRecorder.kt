@@ -105,7 +105,6 @@ class VoiceRecorder(private val context: Context) {
         }
     }
 
-    // New method to convert audio file to Base64
     fun encodeFileToBase64(filePath: String): String {
         try {
             val file = File(filePath)
@@ -141,7 +140,6 @@ class VoiceRecorder(private val context: Context) {
         }
     }
 
-    // New method to save a Base64 string to a file
     fun saveBase64ToFile(base64String: String, outputFilePath: String): Boolean {
         try {
             val audioBytes = Base64.decode(base64String, Base64.DEFAULT)

@@ -110,10 +110,6 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
                         usersList.clear()
                         userAdapter.notifyDataSetChanged()
                         showEmptyState("Enter a phone number to search for users")
-                    } else if (isFullPhoneNumber(query)) {
-                        // Search using Firebase for full phone numbers
-                        Log.d(TAG, "Full phone number detected, searching Firebase")
-                        searchUsersByPhoneOnFirebase(query)
                     } else {
                         // Search using local JSON for partial numbers
                         Log.d(TAG, "Partial number, searching local database")
@@ -126,13 +122,6 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
         } catch (e: Exception) {
             Log.e(TAG, "setupUI: Error configuring UI components", e)
         }
-    }
-
-    private fun isFullPhoneNumber(query: String): Boolean {
-        // Check if the number consists of exactly 11 digits
-        return query.all { it.isDigit() } && query.length == 11 ||
-                // Or if it starts with "+" followed by exactly 10 digits
-                (query.startsWith("+") && query.drop(1).all { it.isDigit() } && query.length == 11)
     }
 
     private fun loadLocalUsers() {
@@ -216,6 +205,9 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
                 userAdapter.notifyDataSetChanged()
                 emptyResultsTextView.visibility = View.GONE
             } else {
+                usersList.clear()
+                userAdapter.notifyDataSetChanged()
+                emptyResultsTextView.visibility = View.GONE
                 showEmptyState("No users found with this phone number")
             }
 
@@ -225,114 +217,6 @@ class AddNewChatActivity : AppCompatActivity(), UserAdapter.OnUserClickListener 
             Log.e(TAG, "searchLocalUsersByPhone: Error searching local users", e)
             progressIndicator.visibility = View.GONE
             showEmptyState("An error occurred while searching")
-        }
-    }
-
-    private fun searchUsersByPhoneOnFirebase(phoneQuery: String) {
-        Log.i(TAG, "searchUsersByPhoneOnFirebase: Searching for users with phone: '$phoneQuery'")
-        try {
-            // Show loading indicator
-            progressIndicator.visibility = View.VISIBLE
-            emptyResultsTextView.visibility = View.GONE
-
-            // Clear any existing users
-            usersList.clear()
-
-            // Get current user ID
-            val currentUserId = UserSettings.userId
-            if (currentUserId == null) {
-                Log.e(TAG, "searchUsersByPhoneOnFirebase: Current user ID is null")
-                return
-            }
-            Log.d(TAG, "searchUsersByPhoneOnFirebase: Current user ID: $currentUserId")
-
-            // Try multiple phone number formats to increase chances of finding a match
-            val phoneQueries = listOf(
-                phoneQuery,                     // Original input
-                "+$phoneQuery",                 // With + prefix
-                "+2$phoneQuery",                // With country code +2
-                "+20$phoneQuery",
-                phoneQuery.replace("+", "")     // Without + if it exists
-            )
-
-            var queriesCompleted = 0
-            var totalUsersFound = 0
-
-            for (formattedQuery in phoneQueries) {
-                firestore.collection("users")
-                    .whereGreaterThanOrEqualTo("phoneNumber", formattedQuery)
-                    .whereLessThanOrEqualTo("phoneNumber", formattedQuery + "\uf8ff")
-                    .limit(10)
-                    .get()
-                    .addOnSuccessListener { documents ->
-                        queriesCompleted++
-                        Log.d(TAG, "Query for '$formattedQuery' found ${documents.size()} documents")
-
-                        if (!documents.isEmpty) {
-                            for (document in documents) {
-                                try {
-                                    // Create UserData object
-                                    val userData = UserData(
-                                        uid = document.getString("uid") ?: "",
-                                        displayName = document.getString("displayName") ?: "",
-                                        phoneNumber = document.getString("phoneNumber") ?: "",
-                                        password = document.getString("password") ?: "",
-                                        userDescription = document.getString("userDescription") ?: "",
-                                        userStatus = document.getString("userStatus") ?: "",
-                                        online = when (val onlineValue = document.get("online")) {
-                                            is Boolean -> onlineValue
-                                            is String -> onlineValue.equals("true", ignoreCase = true)
-                                            else -> false
-                                        },
-                                        lastSeen = document.getLong("lastSeen").toString(),
-                                        profilePictureUrl = document.getString("profilePictureUrl") ?: ""
-                                    )
-
-                                    // Add users that are not the current user and not already in the list
-                                    if (userData.uid != currentUserId &&
-                                        !usersList.any { it.uid == userData.uid }) {
-                                        usersList.add(userData)
-                                        totalUsersFound++
-                                        Log.d(TAG, "Added user: ${userData.displayName}")
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e(TAG, "Error parsing user document: ${document.id}", e)
-                                }
-                            }
-
-                            // Update adapter with newly found users
-                            userAdapter.notifyDataSetChanged()
-                        }
-
-                        // Check if all queries are complete
-                        if (queriesCompleted == phoneQueries.size) {
-                            progressIndicator.visibility = View.GONE
-
-                            if (totalUsersFound == 0) {
-                                showEmptyState("No users found with this phone number")
-                            } else {
-                                emptyResultsTextView.visibility = View.GONE
-                            }
-                        }
-                    }
-                    .addOnFailureListener { exception ->
-                        queriesCompleted++
-                        Log.e(TAG, "Error searching for '$formattedQuery'", exception)
-
-                        // Check if all queries are complete
-                        if (queriesCompleted == phoneQueries.size) {
-                            progressIndicator.visibility = View.GONE
-
-                            if (totalUsersFound == 0) {
-                                showEmptyState("No users found with this phone number")
-                            }
-                        }
-                    }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "searchUsersByPhoneOnFirebase: Unexpected error", e)
-            progressIndicator.visibility = View.GONE
-            showEmptyState("An unexpected error occurred")
         }
     }
 

@@ -19,7 +19,6 @@ class ImageViewActivity : AppCompatActivity() {
                 .into(imageView)
         }
 
-        // Optional: Close on click
         imageView.setOnClickListener { finish() }
     }
 }

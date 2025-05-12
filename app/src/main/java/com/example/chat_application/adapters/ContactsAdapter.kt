@@ -17,10 +17,13 @@ import com.example.chat_application.dataclasses.Story
 import com.google.android.material.button.MaterialButton
 import java.util.*
 
+private val TAG = "ContactsAdapter"
+
 class ContactsAdapter(
     private val onContactClick: (ProcessedUser) -> Unit,
     private val onActionButtonClick: (ProcessedUser) -> Unit
-) : ListAdapter<ProcessedUser, ContactsAdapter.ContactViewHolder>(ContactDiffCallback()), Filterable {
+) : ListAdapter<ProcessedUser, ContactsAdapter.ContactViewHolder>(ContactDiffCallback()),
+    Filterable {
 
     private var allItems = listOf<ProcessedUser>()
     private var filteredItems = listOf<ProcessedUser>()
@@ -88,7 +91,8 @@ class ContactsAdapter(
 
             // Set status
             if (processedUser.isRegistered) {
-                txtStatus.text = if (user.online) "Online" else "Last seen: ${updateTimeDisplay(user.lastSeen)}"
+                txtStatus.text =
+                    if (user.online) "Online" else "Last seen: ${updateTimeDisplay(user.lastSeen)}"
                 txtStatus.visibility = View.VISIBLE
 
                 // Set action button for registered users
@@ -102,7 +106,7 @@ class ContactsAdapter(
                 btnAction.setIconResource(R.drawable.ic_back)
             }
 
-            HelperFunctions.loadImageFromUrl(user.profilePictureUrl.toString(),imgAvatar)
+            HelperFunctions.loadImageFromUrl(user.profilePictureUrl.toString(), imgAvatar)
 
 
             // Set click listeners

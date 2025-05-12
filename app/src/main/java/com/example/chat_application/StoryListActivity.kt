@@ -98,6 +98,7 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
                     finish()
                     true
                 }
+
                 else -> false
             }
         }
@@ -173,7 +174,8 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
                             if (storiesData != null) {
                                 // Safely get stories list with type checking
                                 @Suppress("UNCHECKED_CAST")
-                                val storyList = document.get("stories") as? List<Map<String, Any>> ?: emptyList()
+                                val storyList = document.get("stories") as? List<Map<String, Any>>
+                                    ?: emptyList()
 
                                 // Convert maps to Story objects
                                 val stories = storyList.mapNotNull { storyMap ->
@@ -192,7 +194,8 @@ class StoryListActivity : AppCompatActivity(), StoryAdapter.OnStoryClickListener
                                 val userStories = Stories(
                                     uid = document.getString("uid") ?: "",
                                     displayName = document.getString("displayName") ?: "",
-                                    profilePictureUrl = document.getString("profilePictureUrl") ?: "",
+                                    profilePictureUrl = document.getString("profilePictureUrl")
+                                        ?: "",
                                     stories = stories
                                 )
                                 storiesList.add(userStories)

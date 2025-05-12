@@ -41,7 +41,11 @@ object UserSettings {
      * @param imageUri The URI of the selected wallpaper image
      * @param callback Optional callback for completion
      */
-    fun saveChatWallpaper(context: Context, imageUri: Uri, callback: ((success: Boolean) -> Unit)? = null) {
+    fun saveChatWallpaper(
+        context: Context,
+        imageUri: Uri,
+        callback: ((success: Boolean) -> Unit)? = null
+    ) {
         if (!::userId.isInitialized) {
             Log.e(TAG, "User ID not initialized")
             callback?.invoke(false)
@@ -129,7 +133,8 @@ object UserSettings {
             return true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save settings", e)
-            Toast.makeText(context, "Failed to save settings: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Failed to save settings: ${e.message}", Toast.LENGTH_SHORT)
+                .show()
             return false
         }
     }
@@ -188,7 +193,8 @@ object UserSettings {
             return false
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load settings", e)
-            Toast.makeText(context, "Failed to load settings: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Failed to load settings: ${e.message}", Toast.LENGTH_SHORT)
+                .show()
             return false
         }
     }

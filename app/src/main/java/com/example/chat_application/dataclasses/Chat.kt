@@ -3,6 +3,13 @@ package com.example.chat_application.dataclasses
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 
+
+
+/**
+ * Data class representing a Chats
+ */
+
+
 @Parcelize
 data class Chat(
     var id: String = "",
@@ -14,9 +21,6 @@ data class Chat(
     val displayName: String = "",
     var unreadCount: Map<String, Int> = emptyMap() // Map of userId to unread count
 ) : Parcelable {
-    fun getUnreadCountForUser(userId: String): Int {
-        return unreadCount[userId] ?: 0
-    }
     fun getEffectiveDisplayName(): String {
         // If displayName is set, use it. Otherwise, fall back to name
         return if (displayName.isNotEmpty()) displayName else name

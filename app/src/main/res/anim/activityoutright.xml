@@ -2,4 +2,4 @@
     android:duration="200"
     android:interpolator="@android:interpolator/accelerate_quad"
     android:fromXDelta="0%p"
-    android:toXDelta="30%p" />
+    android:toXDelta="30%p"/>

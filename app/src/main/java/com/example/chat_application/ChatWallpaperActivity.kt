@@ -198,7 +198,8 @@ class ChatWallpaperActivity : AppCompatActivity() {
                         selectedWallpaperPreview.setImageURI(uri)
                         noWallpaperSelected.visibility = View.GONE
                         removeWallpaper.visibility = View.VISIBLE
-                        Toast.makeText(this, "Wallpaper saved successfully", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Wallpaper saved successfully", Toast.LENGTH_SHORT)
+                            .show()
                     } else {
                         Toast.makeText(this, "Failed to save wallpaper", Toast.LENGTH_SHORT).show()
                         noWallpaperSelected.visibility = View.VISIBLE

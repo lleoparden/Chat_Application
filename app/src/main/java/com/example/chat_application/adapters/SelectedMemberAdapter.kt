@@ -10,6 +10,8 @@ import com.bumptech.glide.Glide
 import com.example.chat_application.R
 import com.example.chat_application.dataclasses.UserData
 
+private val TAG = "SelectedMemberAdapter"
+
 class SelectedMemberAdapter(
     private val selectedUsers: List<UserData>,
     private val onRemoveClicked: (UserData) -> Unit

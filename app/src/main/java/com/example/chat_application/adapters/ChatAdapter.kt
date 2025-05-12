@@ -18,6 +18,8 @@ import com.example.chat_application.dataclasses.UserSettings
 import com.example.chat_application.dataclasses.UserSettings.userId
 import java.util.*
 
+private val TAG = "ChatAdapter"
+
 // Chat adapter for RecyclerView
 class ChatAdapter(
     private var chats: List<Chat>,
@@ -111,7 +113,11 @@ class ChatAdapter(
         notifyDataSetChanged()
     }
 
-    private fun handleSelectionState(chatId: String, chatCardView: ConstraintLayout, selectionCheckbox: CheckBox) {
+    private fun handleSelectionState(
+        chatId: String,
+        chatCardView: ConstraintLayout,
+        selectionCheckbox: CheckBox
+    ) {
         try {
             // First ensure the checkbox exists
             if (selectionCheckbox == null) {
@@ -174,19 +180,28 @@ class ChatAdapter(
             Log.d("ChatAdapter", "Other participant ID: $otherUserId")
 
             if (otherUserId == null || otherUserId.isEmpty()) {
-                Log.e("ChatAdapter", "Empty or null otherUserId - check participantIds in chat object")
+                Log.e(
+                    "ChatAdapter",
+                    "Empty or null otherUserId - check participantIds in chat object"
+                )
                 holder.avatarImageView.setImageResource(R.drawable.ic_person)
                 return
             }
 
             // First check if we can get cached data immediately
-           var userdata = HelperFunctions.loadUserById(otherUserId,holder.chatCardView.context)
+            var userdata = HelperFunctions.loadUserById(otherUserId, holder.chatCardView.context)
             if (userdata != null) {
-                HelperFunctions.loadImageFromUrl(userdata.profilePictureUrl.toString(),holder.avatarImageView)
+                HelperFunctions.loadImageFromUrl(
+                    userdata.profilePictureUrl.toString(),
+                    holder.avatarImageView
+                )
                 holder.nameTextView.text = userdata.displayName.toString()
-            }else{
-                HelperFunctions.getUserData(otherUserId) {user->
-                    HelperFunctions.loadImageFromUrl(user?.profilePictureUrl.toString(),holder.avatarImageView)
+            } else {
+                HelperFunctions.getUserData(otherUserId) { user ->
+                    HelperFunctions.loadImageFromUrl(
+                        user?.profilePictureUrl.toString(),
+                        holder.avatarImageView
+                    )
                     holder.nameTextView.text = user?.displayName.toString()
                 }
             }

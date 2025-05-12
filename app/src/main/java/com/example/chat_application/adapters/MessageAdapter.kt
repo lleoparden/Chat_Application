@@ -17,12 +17,13 @@ import com.example.chat_application.R
 import com.example.chat_application.VoiceNotePlayer
 import com.example.chat_application.dataclasses.Message
 import com.example.chat_application.dataclasses.MessageType
-import com.example.chat_application.dataclasses.UserData
 import com.example.chat_application.dataclasses.UserSettings
 import com.google.firebase.database.DatabaseReference
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+private val TAG = "MessageAdapter"
 
 class MessageAdapter(
     private val currentUserId: String,
@@ -129,7 +130,6 @@ class MessageAdapter(
             if (isSelected) R.drawable.selected_message_background
             else android.R.color.transparent
         )
-
         itemView.setOnLongClickListener {
             onMessageLongClick(position, message)
             true

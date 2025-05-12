@@ -3,6 +3,10 @@ package com.example.chat_application.dataclasses
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 
+
+/**
+ * Data class representing a Messages
+ */
 enum class MessageType {
     TEXT,
     VOICE_NOTE,

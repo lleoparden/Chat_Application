@@ -1,6 +1,9 @@
 package com.example.chat_application.dataclasses
 
-// User data class
+
+/**
+ * Data class representing a users
+ */
 data class UserData(
     val uid: String = "",
     var displayName: String = "",

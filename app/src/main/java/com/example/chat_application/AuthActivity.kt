@@ -58,6 +58,8 @@ class AuthActivity : AppCompatActivity() {
     private lateinit var balltopright: ImageView
     private lateinit var balltopleft: ImageView
 
+    var users = mutableListOf<UserData>()
+
 
     private val firebaseEnabled by lazy { resources.getBoolean(R.bool.firebaseOn) }
 
@@ -287,7 +289,6 @@ class AuthActivity : AppCompatActivity() {
         }
     }
 
-
     private fun isValidPassword(password: String): Boolean {
         if (password.length < 8) return false
 
@@ -297,9 +298,6 @@ class AuthActivity : AppCompatActivity() {
         return hasUppercase && hasSpecialChar
     }
 
-    /**
-     * Validates password in real-time and shows appropriate error message
-     */
     private fun validatePassword(password: String, passwordField: EditText) {
         if (password.isEmpty()) {
             passwordField.error = null
@@ -551,8 +549,6 @@ class AuthActivity : AppCompatActivity() {
         startActivity(intent)
         finish() // Close AuthActivity so user can't go back
     }
-
-    var users = mutableListOf<UserData>()
 
     // Load all users asynchronously
     private fun loadAndProcessUsers() {

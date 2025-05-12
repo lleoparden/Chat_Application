@@ -11,13 +11,14 @@ import com.example.chat_application.R
 import com.example.chat_application.dataclasses.UserData
 import com.example.chat_application.HelperFunctions
 
+
+private val TAG = "UserAdapter"
+
 class UserAdapter(
     private val users: List<UserData>,
     private val existingChatUserIds: Set<String>,  // Pass existing chat IDs as a parameter
     private val listener: OnUserClickListener
 ) : RecyclerView.Adapter<UserAdapter.UserViewHolder>() {
-
-    private val TAG = "UserAdapter"
 
     init {
         Log.d(TAG, "Adapter initialized with ${users.size} users")
@@ -31,7 +32,7 @@ class UserAdapter(
         private val nameTextView: TextView = itemView.findViewById(R.id.nameTextView)
         private val phoneTextView: TextView = itemView.findViewById(R.id.phoneTextView)
         private val statusTextView: TextView = itemView.findViewById(R.id.statusTextView)
-        private val profileImageView : ImageView = itemView.findViewById(R.id.profileImageView)
+        private val profileImageView: ImageView = itemView.findViewById(R.id.profileImageView)
         private val chatStatusView: TextView = itemView.findViewById(R.id.chatStatusTextView)
 
         init {
@@ -69,7 +70,6 @@ class UserAdapter(
 
 
     }
-
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): UserViewHolder {
         Log.d(TAG, "Creating new ViewHolder")

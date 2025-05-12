@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
@@ -90,6 +89,7 @@ class InviteFriendsActivity : AppCompatActivity() {
                 navigateToSettings()
                 true
             }
+
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -169,7 +169,10 @@ class InviteFriendsActivity : AppCompatActivity() {
                 fetchRegisteredUsers { registeredUsersList ->
                     lifecycleScope.launch {
                         try {
-                            Log.d(TAG, "Registered users fetched, count: ${registeredUsersList.size}")
+                            Log.d(
+                                TAG,
+                                "Registered users fetched, count: ${registeredUsersList.size}"
+                            )
 
                             // Now convert contacts to users, filtering only registered ones
                             val allProcessedUsers =
@@ -207,11 +210,6 @@ class InviteFriendsActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    fun normalizePhoneNumber(phoneNumber: String): String {
-        // Remove all non-digit characters
-        return phoneNumber.replace(Regex("[^\\d+]"), "")
     }
 
     // Simulated function to fetch registered users from your backend
@@ -270,8 +268,10 @@ class InviteFriendsActivity : AppCompatActivity() {
 
         } catch (e: Exception) {
             Log.e(TAG, "Error launching SMS intent: ${e.message}")
-            Snackbar.make(findViewById(android.R.id.content),
-                "Couldn't open messaging app", Snackbar.LENGTH_SHORT).show()
+            Snackbar.make(
+                findViewById(android.R.id.content),
+                "Couldn't open messaging app", Snackbar.LENGTH_SHORT
+            ).show()
         }
     }
 

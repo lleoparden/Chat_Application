@@ -67,10 +67,12 @@ object ImageUploadService {
         if (uri != null) {
             Glide.with(context)
                 .load(uri)
-                .apply(RequestOptions()
-                    .placeholder(R.drawable.ic_person)
-                    .error(R.drawable.ic_person)
-                    .diskCacheStrategy(DiskCacheStrategy.NONE))
+                .apply(
+                    RequestOptions()
+                        .placeholder(R.drawable.ic_person)
+                        .error(R.drawable.ic_person)
+                        .diskCacheStrategy(DiskCacheStrategy.NONE)
+                )
                 .into(imageView)
         } else {
             // Set default image
@@ -87,7 +89,12 @@ object ImageUploadService {
      * @param filePrefix Optional prefix for the filename (default: "profile_")
      * @return The path to the saved image or null if saving failed
      */
-    fun saveImageLocally(context: Context, imageUri: Uri, userId: String, filePrefix: String = "profile_"): String? {
+    fun saveImageLocally(
+        context: Context,
+        imageUri: Uri,
+        userId: String,
+        filePrefix: String = "profile_"
+    ): String? {
         try {
             // Create file path for local storage
             val imageFile = File(context.filesDir, "${filePrefix}${userId}.jpg")
@@ -180,7 +187,11 @@ object ImageUploadService {
                                 isUploadingImage = false
                                 callback.onUploadProgress(false)
                                 callback.onUploadSuccess(imageUrl)
-                                Toast.makeText(context, "Image uploaded to cloud successfully!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    "Image uploaded to cloud successfully!",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         } else {
                             Handler(Looper.getMainLooper()).post {

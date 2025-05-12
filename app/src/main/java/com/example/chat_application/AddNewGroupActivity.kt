@@ -251,6 +251,9 @@ class AddNewGroupActivity : AppCompatActivity(), UserAdapter.OnUserClickListener
                 userAdapter.notifyDataSetChanged()
                 emptyResultsTextView.visibility = View.GONE
             } else {
+                usersList.clear()
+                userAdapter.notifyDataSetChanged()
+                emptyResultsTextView.visibility = View.GONE
                 showEmptyState("No users found with this phone number")
             }
 

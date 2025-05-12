@@ -21,6 +21,7 @@ object HelperFunctions {
     const val IMGBB_API_KEY = "38328309adada9acb189c19a81befaa6"
 
     private const val TAG = "HelperFunctions"
+
     @SuppressLint("StaticFieldLeak")
     private val db = FirebaseFirestore.getInstance()
 
@@ -89,7 +90,10 @@ object HelperFunctions {
 
                         // Store in cache
                         userCache[userId] = userData
-                        Log.d(TAG, "Successfully parsed user data for $userId: profilePicUrl=${userData.profilePictureUrl}")
+                        Log.d(
+                            TAG,
+                            "Successfully parsed user data for $userId: profilePicUrl=${userData.profilePictureUrl}"
+                        )
 
                         callback(userData)
                     } catch (e: Exception) {
@@ -198,10 +202,10 @@ object HelperFunctions {
                 RequestOptions()
                     .placeholder(R.drawable.ic_person)
                     .error(R.drawable.ic_person)
-                    .diskCacheStrategy(DiskCacheStrategy.ALL))
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+            )
             .into(profileImageView)
     }
-
 
     fun determineOtherParticipantId(chat: Chat): String? {
         val currentUserId = UserSettings.userId
@@ -209,7 +213,10 @@ object HelperFunctions {
 
         // Ensure this is a two-person chat
         if (participantIds.size != 2) {
-            Log.w(TAG, "Chat is not a two-person chat, contains ${participantIds.size} participants")
+            Log.w(
+                TAG,
+                "Chat is not a two-person chat, contains ${participantIds.size} participants"
+            )
             return null
         }
 
@@ -217,12 +224,14 @@ object HelperFunctions {
         return participantIds.keys.firstOrNull { it != currentUserId }
     }
 
-
-    fun loadUserById(userId: String,context: Context): UserData? {
+    fun loadUserById(userId: String, context: Context): UserData? {
         val file = File(context.filesDir, "local_user.json")
 
         if (!file.exists()) {
-            Log.e(TAG, "loadUserById: local_user.json not found in files directory: ${file.absolutePath}")
+            Log.e(
+                TAG,
+                "loadUserById: local_user.json not found in files directory: ${file.absolutePath}"
+            )
             return null
         }
 

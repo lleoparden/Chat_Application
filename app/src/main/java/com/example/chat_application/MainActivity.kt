@@ -2,7 +2,6 @@ package com.example.chat_application
 
 import android.annotation.SuppressLint
 import android.content.ContentValues
-import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -35,8 +34,9 @@ import java.io.File
 
 private const val TAG = "MainActivity"
 
-
-class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatAdapter.OnChatLongClickListener{
+@SuppressLint("SetTextI18n")
+class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener,
+    ChatAdapter.OnChatLongClickListener {
 
     // UI Components
     private lateinit var chatRecyclerView: RecyclerView
@@ -64,7 +64,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
     private val firebaseEnabled by lazy { resources.getBoolean(R.bool.firebaseOn) }
 
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(UserSettings.getThemeResource())
         super.onCreate(savedInstanceState)
@@ -80,13 +79,12 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         LocalStorageService.initialize(this, ContentValues.TAG)
 
         if (firebaseEnabled) {
-            FirebaseService.initialize(this,TAG,firebaseEnabled)
+            FirebaseService.initialize(this, TAG, firebaseEnabled)
         }
 
         // Load data
         loadChats()
     }
-
 
     //region UI Setup
     private fun initViews() {
@@ -149,6 +147,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
 
                     true
                 }
+
                 else -> false
             }
         }
@@ -226,12 +225,10 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         updateSelectionCount()
     }
 
-    @SuppressLint("SetTextI18n")
     private fun updateSelectionCount() {
         val count = selectedChatIds.size
         selectionCountTextView.text = "$count selected"
     }
-
 
     private fun deleteSelectedChats() {
         var groupExists = false
@@ -253,7 +250,7 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         // Delete associated messages locally for each chat
         for (chatId in selectedChatIds) {
             // Delete messages for this chat from local storage
-            File(filesDir,"messages_${chatId}.json").delete()
+            File(filesDir, "messages_${chatId}.json").delete()
 
             // Remove from Firebase if enabled
             if (firebaseEnabled) {
@@ -301,7 +298,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
             imm.hideSoftInputFromWindow(searchBar.windowToken, 0)
 
 
-
             // Reset RecyclerView to show all chats
             chatAdapter.updateData(chatManager.getAll())
 
@@ -334,7 +330,8 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
                     chatAdapter.updateData(partialMatches)
                 } else {
                     // Display a message for no results
-                    Toast.makeText(this, "No chats found matching '$query'", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "No chats found matching '$query'", Toast.LENGTH_SHORT)
+                        .show()
                     // Show empty list
                     chatAdapter.updateData(emptyList())
                 }
@@ -347,7 +344,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
     //endregion
 
     //region Chat Management
-
     private fun loadChats() {
         // 1. First, always load local chats immediately for fast UI rendering
         val localChats = LocalStorageService.loadChatsFromLocalStorageWithoutSaving()
@@ -363,19 +359,24 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
             fetchUserDisplayNamesIfOnline()
 
             // 5. Try to load from Firebase with proper timeout and fallback
-            FirebaseService.checkConnectionAndLoadChatsFromFirebase(localChats, chatAdapter, chatManager)
+            FirebaseService.checkConnectionAndLoadChatsFromFirebase(
+                localChats,
+                chatAdapter,
+                chatManager
+            )
         }
     }
 
     // New function to handle display name updates separately
     private fun fetchUserDisplayNamesIfOnline() {
-        // Check if we're online first before attempting Firestore operations
-        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        // Check if we're online first before attempting FireStore operations
+        val connectivityManager = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
         val networkCapabilities = connectivityManager.activeNetwork?.let {
             connectivityManager.getNetworkCapabilities(it)
         }
 
-        val isOnline = networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        val isOnline =
+            networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
 
         if (isOnline) {
             FirebaseService.fetchUserDataAndUpdateDisplayNames(chatManager, chatAdapter)
@@ -383,7 +384,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
             Log.d(TAG, "Skipping display name fetch - device appears to be offline")
         }
     }
-
 
     //region Event Handling
 
@@ -407,7 +407,10 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
                     // Set the unread count to 0
                     unreadCountRef.setValue(0)
                         .addOnSuccessListener {
-                            Log.d("Firebase", "Unread count reset successfully for chat: ${chat.id}")
+                            Log.d(
+                                "Firebase",
+                                "Unread count reset successfully for chat: ${chat.id}"
+                            )
                         }
                         .addOnFailureListener { e ->
                             Log.e("Firebase", "Failed to reset unread count: ${e.message}")
@@ -421,7 +424,6 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         }
     }
 
-
     override fun onChatLongClick(chat: Chat): Boolean {
         if (!isInSelectionMode) {
             // Enter selection mode
@@ -433,5 +435,4 @@ class MainActivity : AppCompatActivity(), ChatAdapter.OnChatClickListener, ChatA
         return true
     }
     //endregion
-
 }

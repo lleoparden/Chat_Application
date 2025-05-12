@@ -104,41 +104,49 @@ class EditProfileActivity : AppCompatActivity() {
     }
 
     private fun setupImagePickerLauncher() {
-        imagePickLauncher = registerForActivityResult(StartActivityForResult()) { result: ActivityResult ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                val data = result.data
-                if (data != null && data.data != null) {
-                    selectedImageUri = data.data
+        imagePickLauncher =
+            registerForActivityResult(StartActivityForResult()) { result: ActivityResult ->
+                if (result.resultCode == Activity.RESULT_OK) {
+                    val data = result.data
+                    if (data != null && data.data != null) {
+                        selectedImageUri = data.data
 
-                    // Display the selected image immediately
-                    ImageUploadService.loadImageIntoView(this, selectedImageUri, profileImageView)
+                        // Display the selected image immediately
+                        ImageUploadService.loadImageIntoView(
+                            this,
+                            selectedImageUri,
+                            profileImageView
+                        )
 
-                    // Save image locally first
-                    localImagePath = ImageUploadService.saveImageLocally(this, selectedImageUri!!, userId)
+                        // Save image locally first
+                        localImagePath =
+                            ImageUploadService.saveImageLocally(this, selectedImageUri!!, userId)
 
-                    // Also upload to ImgBB for online access
-                    ImageUploadService.uploadImageToImgbb(
-                        this,
-                        selectedImageUri!!,
-                        imageUploadProgressBar,
-                        object : ImageUploadService.ImageUploadCallback {
-                            override fun onUploadSuccess(imageUrl: String) {
-                                profilePictureUrl = imageUrl
+                        // Also upload to ImgBB for online access
+                        ImageUploadService.uploadImageToImgbb(
+                            this,
+                            selectedImageUri!!,
+                            imageUploadProgressBar,
+                            object : ImageUploadService.ImageUploadCallback {
+                                override fun onUploadSuccess(imageUrl: String) {
+                                    profilePictureUrl = imageUrl
+                                }
+
+                                override fun onUploadFailure(errorMessage: String) {
+                                    Toast.makeText(
+                                        this@EditProfileActivity,
+                                        errorMessage, Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+
+                                override fun onUploadProgress(isUploading: Boolean) {
+                                    // This can be used to update UI elements based on upload state
+                                }
                             }
-
-                            override fun onUploadFailure(errorMessage: String) {
-                                Toast.makeText(this@EditProfileActivity,
-                                    errorMessage, Toast.LENGTH_SHORT).show()
-                            }
-
-                            override fun onUploadProgress(isUploading: Boolean) {
-                                // This can be used to update UI elements based on upload state
-                            }
-                        }
-                    )
+                        )
+                    }
                 }
             }
-        }
     }
 
     private fun loadUserData() {
@@ -164,7 +172,10 @@ class EditProfileActivity : AppCompatActivity() {
             val localImageFile = File(filesDir, "profile_${userId}.jpg")
             val imageUrl = user.profilePictureUrl
 
-            Log.d(TAG, "Checking profile picture - URL: ${if (imageUrl.isNotEmpty()) imageUrl else "empty"}, Local file exists: ${localImageFile.exists()}")
+            Log.d(
+                TAG,
+                "Checking profile picture - URL: ${if (imageUrl.isNotEmpty()) imageUrl else "empty"}, Local file exists: ${localImageFile.exists()}"
+            )
 
             if (imageUrl.isNotEmpty()) {
                 Log.d(TAG, "Loading remote profile image from URL: $imageUrl")
@@ -211,7 +222,8 @@ class EditProfileActivity : AppCompatActivity() {
 
         // Don't proceed if image is still uploading
         if (ImageUploadService.isUploadInProgress()) {
-            Toast.makeText(this, "Please wait for image upload to complete", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Please wait for image upload to complete", Toast.LENGTH_SHORT)
+                .show()
             return
         }
 

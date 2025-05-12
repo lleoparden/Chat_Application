@@ -39,16 +39,14 @@ object FirebaseService {
     private lateinit var firestore: FirebaseFirestore
     private lateinit var firebaseDatabase: FirebaseDatabase
     private lateinit var chatsReference: DatabaseReference
-    private lateinit var usersReference: DatabaseReference
 
 
     // Active listeners
     private var chatsListener: ChildEventListener? = null
     private var connectionListener: ValueEventListener? = null
-    private var messagesListener: ChildEventListener? = null
 
     private lateinit var context: Context
-    private lateinit var tag :String
+    private lateinit var tag: String
     private var firebaseEnabled by Delegates.notNull<Boolean>()
 
     /**
@@ -79,7 +77,11 @@ object FirebaseService {
         }
     }
 
-    fun checkConnectionAndLoadChatsFromFirebase(localChats: List<Chat>, chatAdapter: ChatAdapter, chatManager: ChatManager) {
+    fun checkConnectionAndLoadChatsFromFirebase(
+        localChats: List<Chat>,
+        chatAdapter: ChatAdapter,
+        chatManager: ChatManager
+    ) {
         try {
             // First, ensure Firebase is properly initialized
             if (!this::firebaseDatabase.isInitialized) {
@@ -101,12 +103,14 @@ object FirebaseService {
             timeoutHandler.postDelayed(timeoutRunnable, 3000)
 
             // Check network connectivity first to avoid unnecessary Firebase calls
-            val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val connectivityManager =
+                context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             val networkCapabilities = connectivityManager.activeNetwork?.let {
                 connectivityManager.getNetworkCapabilities(it)
             }
 
-            val isOnline = networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+            val isOnline =
+                networkCapabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
 
             if (!isOnline) {
                 Log.d(tag, "Device is offline, not attempting Firebase connection")
@@ -171,7 +175,7 @@ object FirebaseService {
 
         // Get all chats to find all participant IDs
         val allChats = chatManager.getAll()
-        val allParticipantIds = HashMap<String,Boolean>()
+        val allParticipantIds = HashMap<String, Boolean>()
 
         // Collect all unique participant IDs
         for (chat in allChats) {
@@ -258,7 +262,7 @@ object FirebaseService {
     /**
      * Set up real-time listeners for chat updates
      */
-    private fun setupRealTimeChatListener( chatManager: ChatManager, chatAdapter: ChatAdapter) {
+    private fun setupRealTimeChatListener(chatManager: ChatManager, chatAdapter: ChatAdapter) {
         // Remove existing listener if any
         removeRealTimeChatListener()
 
@@ -270,7 +274,8 @@ object FirebaseService {
                     // Only add chats where the current user is an ACTIVE participant (value is true)
                     if (chat != null &&
                         chat.participantIds.containsKey(UserSettings.userId) &&
-                        chat.participantIds[UserSettings.userId] == true) {
+                        chat.participantIds[UserSettings.userId] == true
+                    ) {
 
                         // Check if this chat already exists in the manager
                         val existingChat = chatManager.getChatById(chat.id)
@@ -280,14 +285,20 @@ object FirebaseService {
                             chatManager.push(chat)
                             chatAdapter.updateData(chatManager.getAll())
                             LocalStorageService.saveChatsToLocalStorage(chatManager)
-                            Log.d(tag, "New chat added from realtime event: ${chat.getEffectiveDisplayName()}")
+                            Log.d(
+                                tag,
+                                "New chat added from realtime event: ${chat.getEffectiveDisplayName()}"
+                            )
                         } else {
                             // Chat exists - update if needed based on timestamp
                             if (existingChat.timestamp < chat.timestamp) {
                                 chatManager.updateById(chat.id, chat)
                                 chatAdapter.updateData(chatManager.getAll())
                                 LocalStorageService.saveChatsToLocalStorage(chatManager)
-                                Log.d(tag, "Existing chat updated with newer data: ${chat.getEffectiveDisplayName()}")
+                                Log.d(
+                                    tag,
+                                    "Existing chat updated with newer data: ${chat.getEffectiveDisplayName()}"
+                                )
                             }
                         }
                     }
@@ -297,15 +308,14 @@ object FirebaseService {
             }
 
 
-
-
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
                 try {
                     val chat = extractChatFromSnapshot(snapshot)
                     // Apply the same condition here - only update if the user is an ACTIVE participant
                     if (chat != null &&
                         chat.participantIds.containsKey(UserSettings.userId) &&
-                        chat.participantIds[UserSettings.userId] == true) {
+                        chat.participantIds[UserSettings.userId] == true
+                    ) {
 
                         // Update existing chat
                         chatManager.updateById(chat.id, chat)
@@ -314,7 +324,8 @@ object FirebaseService {
                         Log.d(tag, "Chat updated: ${chat.getEffectiveDisplayName()}")
                     } else if (chat != null &&
                         chat.participantIds.containsKey(UserSettings.userId) &&
-                        chat.participantIds[UserSettings.userId] == false) {
+                        chat.participantIds[UserSettings.userId] == false
+                    ) {
                         // User was removed from this chat, so remove it from the UI
                         chatManager.removeById(chat.id)
                         chatAdapter.updateData(chatManager.getAll())
@@ -378,7 +389,7 @@ object FirebaseService {
             val type = chatSnapshot.child("type").getValue(String::class.java) ?: "direct"
 
             // Get participant IDs
-            val participantIds = HashMap<String,Boolean>()
+            val participantIds = HashMap<String, Boolean>()
             val participantsSnapshot = chatSnapshot.child("participantIds")
             for (participantSnapshot in participantsSnapshot.children) {
                 val participantId = participantSnapshot.key
@@ -438,7 +449,7 @@ object FirebaseService {
     /**
      * Delete a chat by ID from Firebase
      */
-    fun removeUserFromParticipants(chatId:String) {
+    fun removeUserFromParticipants(chatId: String) {
         val currentUserId = UserSettings.userId
 
         chatsReference.child(chatId)
@@ -452,7 +463,11 @@ object FirebaseService {
     /**
      * Update display names in chat manager and refresh UI
      */
-    private fun updateDisplayNamesAndRefresh(userDisplayNames: Map<String, String>, chatManager: ChatManager, chatAdapter: ChatAdapter) {
+    private fun updateDisplayNamesAndRefresh(
+        userDisplayNames: Map<String, String>,
+        chatManager: ChatManager,
+        chatAdapter: ChatAdapter
+    ) {
         // Update display names in chat manager
         chatManager.updateDisplayNames(userDisplayNames)
 
@@ -470,7 +485,11 @@ object FirebaseService {
     /**
      * Load chats from Firebase and merge with local chats
      */
-    private fun loadChatsFromFirebaseAndMerge(localChats: List<Chat>, chatManager: ChatManager, chatAdapter: ChatAdapter) {
+    private fun loadChatsFromFirebaseAndMerge(
+        localChats: List<Chat>,
+        chatManager: ChatManager,
+        chatAdapter: ChatAdapter
+    ) {
         Log.d(tag, "Loading chats from Firebase")
 
         try {
@@ -493,12 +512,16 @@ object FirebaseService {
                                 // Only process chats where the current user is an ACTIVE participant
                                 if (chat != null &&
                                     chat.participantIds.containsKey(UserSettings.userId) &&
-                                    chat.participantIds[UserSettings.userId] == true) {
+                                    chat.participantIds[UserSettings.userId] == true
+                                ) {
 
                                     firebaseChats.add(chat)
                                     // Firebase data overrides local data for the same chat ID
                                     mergedChats[chat.id] = chat
-                                    Log.d(tag, "Added Firebase chat: ${chat.getEffectiveDisplayName()} (ID: ${chat.id})")
+                                    Log.d(
+                                        tag,
+                                        "Added Firebase chat: ${chat.getEffectiveDisplayName()} (ID: ${chat.id})"
+                                    )
                                 }
                             } catch (e: Exception) {
                                 Log.e(tag, "Error processing chat from Firebase: ${e.message}")
@@ -580,7 +603,8 @@ object FirebaseService {
                 try {
                     // Only save if user is an ACTIVE participant
                     if (chat.participantIds.containsKey(UserSettings.userId) &&
-                        chat.participantIds[UserSettings.userId] == true) {
+                        chat.participantIds[UserSettings.userId] == true
+                    ) {
 
                         chatsReference.child(chat.id).setValue(chat)
                             .addOnSuccessListener {
@@ -612,7 +636,7 @@ object FirebaseService {
      * Verify user exists in Firestore
      */
     fun verifyUserInFirestore(
-        userId:String,
+        userId: String,
         onSuccess: (UserData) -> Unit,
         onFailure: (Exception?) -> Unit
     ) {
@@ -682,7 +706,7 @@ object FirebaseService {
      */
     fun saveUserToFirebase(
         userData: HashMap<String, String>,
-        userId:String,
+        userId: String,
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
@@ -699,7 +723,12 @@ object FirebaseService {
     /**
      * Create user data hashmap for Firebase
      */
-    fun createUserData(userId:String, name: String, phone: String, password: String ): HashMap<String, String> {
+    fun createUserData(
+        userId: String,
+        name: String,
+        phone: String,
+        password: String
+    ): HashMap<String, String> {
         return hashMapOf(
             "uid" to userId,
             "displayName" to name,
@@ -728,7 +757,13 @@ object FirebaseService {
             .whereEqualTo("phoneNumber", phoneNumber)
             .get()
             .addOnSuccessListener { documents ->
-                handleLoginQueryResult(documents, password, onSuccess, onIncorrectPassword, onUserNotFound)
+                handleLoginQueryResult(
+                    documents,
+                    password,
+                    onSuccess,
+                    onIncorrectPassword,
+                    onUserNotFound
+                )
             }
             .addOnFailureListener { e ->
                 Log.e(TAG, "Error validating login", e)
@@ -815,12 +850,21 @@ object FirebaseService {
                         lastSeen = lastSeen,
                         profilePictureUrl = document.getString("profilePictureUrl") ?: ""
                     )
-                    Log.d(tag, "User data parsed successfully: ${userData.displayName}, online: ${userData.online}")
+                    Log.d(
+                        tag,
+                        "User data parsed successfully: ${userData.displayName}, online: ${userData.online}"
+                    )
                     callback(userData)
                 } else {
-                    Log.d(tag, "User not found in Firebase for userId: $userId, trying local storage")
+                    Log.d(
+                        tag,
+                        "User not found in Firebase for userId: $userId, trying local storage"
+                    )
                     LocalStorageService.loadUserFromLocalStorage(userId) { user ->
-                        Log.d(tag, "Fallback: User data loaded from local storage: ${user.displayName}")
+                        Log.d(
+                            tag,
+                            "Fallback: User data loaded from local storage: ${user.displayName}"
+                        )
                         callback(user)
                     }
                 }
@@ -831,14 +875,21 @@ object FirebaseService {
                 Toast.makeText(context, "Failed to load profile", Toast.LENGTH_SHORT).show()
                 Log.d(tag, "Attempting local storage fallback after Firebase failure")
                 LocalStorageService.loadUserFromLocalStorage(userId) { user ->
-                    Log.d(tag, "Error fallback: User data loaded from local storage: ${user.displayName}")
+                    Log.d(
+                        tag,
+                        "Error fallback: User data loaded from local storage: ${user.displayName}"
+                    )
                     callback(user)
                 }
             }
     }
 
 
-    fun updateUserinFirebase(userId:String,data: HashMap<String,Any>,callback: (Boolean) -> Unit) {
+    fun updateUserinFirebase(
+        userId: String,
+        data: HashMap<String, Any>,
+        callback: (Boolean) -> Unit
+    ) {
         if (!firebaseEnabled) {
             callback(false)
             return
@@ -858,11 +909,4 @@ object FirebaseService {
             }
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////////////////////
-    
-    
 }

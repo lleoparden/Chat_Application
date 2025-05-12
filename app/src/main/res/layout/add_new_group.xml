@@ -54,7 +54,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:hint="Search by name or phone number"
+        android:hint="Search by phone number"
         app:endIconMode="clear_text"
         app:startIconDrawable="@android:drawable/ic_menu_search"
         app:layout_constraintTop_toBottomOf="@+id/selectedMembersRecyclerView">

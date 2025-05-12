@@ -36,12 +36,6 @@ class ContactManager(private val context: Context) {
         val isRegistered: Boolean = true
     )
 
-    /**
-     * Checks and requests contacts permission if needed
-     * @param activity The activity to request permissions from
-     * @param onGranted Callback for when permission is granted
-     * @param onDenied Callback for when permission is denied
-     */
     fun checkAndRequestContactsPermission(
         activity: AppCompatActivity,
         onGranted: () -> Unit = { cacheContactsOnStartup(activity) },
@@ -76,9 +70,6 @@ class ContactManager(private val context: Context) {
         }
     }
 
-    /**
-     * Request the contacts permission
-     */
     private fun requestPermission(activity: AppCompatActivity) {
         val requestPermissionLauncher = activity.registerForActivityResult(
             ActivityResultContracts.RequestPermission()
@@ -96,9 +87,6 @@ class ContactManager(private val context: Context) {
         requestPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
     }
 
-    /**
-     * Cache contacts on startup - convenience method
-     */
     private fun cacheContactsOnStartup(activity: Activity) {
         // This should be called from a coroutine or background thread
         kotlinx.coroutines.MainScope().launch {
@@ -106,10 +94,6 @@ class ContactManager(private val context: Context) {
         }
     }
 
-    /**
-     * Caches all contacts from the device when app starts
-     * This should be called during app initialization
-     */
     suspend fun cacheContacts() {
         withContext(Dispatchers.IO) {
             val contacts = mutableListOf<Contact>()
@@ -127,8 +111,10 @@ class ContactManager(private val context: Context) {
             )
 
             cursor?.use {
-                val nameColumnIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-                val numberColumnIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                val nameColumnIndex =
+                    it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                val numberColumnIndex =
+                    it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
 
                 while (it.moveToNext()) {
                     val name = it.getString(nameColumnIndex) ?: ""
@@ -145,11 +131,6 @@ class ContactManager(private val context: Context) {
         }
     }
 
-    /**
-     * Generate multiple phone number variants for matching
-     * @param phoneNumber The original phone number
-     * @return List of phone number variants to try matching
-     */
     private fun generatePhoneNumberVariants(phoneNumber: String): List<String> {
         val cleanNumber = phoneNumber.replace("\\s".toRegex(), "")
 
@@ -162,12 +143,6 @@ class ContactManager(private val context: Context) {
         ).distinct()
     }
 
-    /**
-     * Process a list of users against contacts
-     * @param users The list of users to process
-     * @param removeNonContacts If true, users not in contacts will be removed from the result
-     * @return A list of processed users
-     */
     fun processUsersToContact(users: List<UserData>, removeNonContacts: Boolean): List<UserData> {
         val processedUsers = mutableListOf<UserData>()
 
@@ -227,14 +202,10 @@ class ContactManager(private val context: Context) {
 
         return when {
             matchingContact != null -> user.copy(displayName = matchingContact.name)
-            else  -> user
+            else -> user
         }
     }
 
-    /**
-     * Converts all contacts to users
-     * @return A list of processed users with flags indicating registration status
-     */
     fun convertContactsToUsers(registeredUsers: List<UserData>): List<ProcessedUser> {
         val processedUsers = mutableListOf<ProcessedUser>()
 

@@ -12,15 +12,13 @@ import com.example.chat_application.adapters.StoryAdapter.StoryViewHolder
 import com.example.chat_application.dataclasses.Stories
 import com.example.chat_application.HelperFunctions
 
+private val TAG = "StoryAdapter"
 
 class StoryAdapter(
     private var allStories: List<Stories>,
     private val onStoryClickListener: OnStoryClickListener,
 ) : RecyclerView.Adapter<StoryViewHolder>() {
 
-    private val TAG = "StoryAdapter"
-    // Filtered list of stories that only contains stories with UIDs in local_user.json
-    // Will be populated after initializeFilteredStories is called
     private var filteredStories: List<Stories> = emptyList()
 
     interface OnStoryClickListener {
@@ -40,7 +38,9 @@ class StoryAdapter(
                 if (userdata != null) {
                     nameTextView.text = userdata.displayName
                     storyCountView.text = "${story.stories?.size} stories available"
-                    HelperFunctions.loadImageFromUrl(story.profilePictureUrl ?: userdata.profilePictureUrl, avatarImageView)
+                    HelperFunctions.loadImageFromUrl(
+                        story.profilePictureUrl ?: userdata.profilePictureUrl, avatarImageView
+                    )
 
                     // Set click listener
                     itemView.setOnClickListener {
@@ -54,9 +54,7 @@ class StoryAdapter(
         }
     }
 
-    /**
-     * Filters the stories list to only include stories with UIDs that exist in the local_user.json file
-     */
+
     /**
      * Initialize the filtered list with the valid stories
      * This should be called after we have a context available
@@ -69,7 +67,10 @@ class StoryAdapter(
     /**
      * Filters the stories list to only include stories with UIDs that exist in the local_user.json file
      */
-    private fun filterValidStories(stories: List<Stories>, context: android.content.Context): List<Stories> {
+    private fun filterValidStories(
+        stories: List<Stories>,
+        context: android.content.Context
+    ): List<Stories> {
         val validStories = mutableListOf<Stories>()
 
         for (story in stories) {
@@ -80,7 +81,10 @@ class StoryAdapter(
             if (userData != null) {
                 validStories.add(story)
             } else {
-                Log.d(TAG, "Filtered out story with UID: ${story.uid} (user not found in local_user.json)")
+                Log.d(
+                    TAG,
+                    "Filtered out story with UID: ${story.uid} (user not found in local_user.json)"
+                )
             }
         }
 

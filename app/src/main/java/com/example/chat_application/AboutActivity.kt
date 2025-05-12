@@ -9,6 +9,8 @@ import android.widget.TextView
 import com.google.android.material.card.MaterialCardView
 
 class AboutActivity : AppCompatActivity() {
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.about)
@@ -78,7 +80,6 @@ class AboutActivity : AppCompatActivity() {
             overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
         }
     }
-
     // Helper method to open URLs with error handling
     private fun openUrl(url: String) {
         try {
@@ -88,4 +89,6 @@ class AboutActivity : AppCompatActivity() {
             // Handle the exception (could show a toast or dialog informing the user)
         }
     }
+
+
 }

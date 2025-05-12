@@ -1,13 +1,10 @@
 package com.example.chat_application
 
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
@@ -23,9 +20,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.chat_application.adapters.GroupMemberAdapter
 import com.example.chat_application.dataclasses.Chat
 import com.example.chat_application.dataclasses.UserData
 import com.example.chat_application.dataclasses.UserSettings
+import com.example.chat_application.services.ImageUploadService
 import com.github.dhaval2404.imagepicker.ImagePicker
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
@@ -33,7 +32,6 @@ import com.google.firebase.firestore.FirebaseFirestore
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import com.example.chat_application.services.ImageUploadService
 
 private const val TAG = "GroupProfileActivity"
 
@@ -53,7 +51,7 @@ class GroupProfileActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
 
     // Firebase Components
-    private lateinit var firestore: FirebaseFirestore
+    private lateinit var FireStore: FirebaseFirestore
     private lateinit var firebaseDatabase: FirebaseDatabase
     private lateinit var groupsReference: DatabaseReference
     private val firebaseEnabled by lazy { resources.getBoolean(R.bool.firebaseOn) }
@@ -77,7 +75,7 @@ class GroupProfileActivity : AppCompatActivity() {
 
         // Initialize Firebase if enabled
         if (firebaseEnabled) {
-            firestore = FirebaseFirestore.getInstance()
+            FireStore = FirebaseFirestore.getInstance()
             firebaseDatabase = FirebaseDatabase.getInstance()
             groupsReference = firebaseDatabase.getReference("chats")
         }
@@ -133,7 +131,7 @@ class GroupProfileActivity : AppCompatActivity() {
 
     private fun setupImagePickerLauncher() {
         imagePickLauncher = registerForActivityResult(StartActivityForResult()) { result: ActivityResult ->
-            if (result.resultCode == Activity.RESULT_OK) {
+            if (result.resultCode == RESULT_OK) {
                 val data = result.data
                 if (data != null && data.data != null) {
                     selectedImageUri = data.data
@@ -160,7 +158,6 @@ class GroupProfileActivity : AppCompatActivity() {
                     }
 
                     // Save image locally first - use the service
-                    val localPath = ImageUploadService.saveImageLocally(this, selectedImageUri!!, groupChat.id, "group_")
 
                     // Also upload to ImgBB for online access
                     if (selectedImageUri != null) {
@@ -205,7 +202,7 @@ class GroupProfileActivity : AppCompatActivity() {
         } else {
             // If no local image, try to load from Firebase/URL
             if (firebaseEnabled) {
-                firestore.collection("groups").document(groupChat.id)
+                FireStore.collection("groups").document(groupChat.id)
                     .get()
                     .addOnSuccessListener { document ->
                         if (document != null && document.exists()) {
@@ -279,7 +276,7 @@ class GroupProfileActivity : AppCompatActivity() {
     }
 
     private fun loadGroupDescriptionFromFirebase() {
-        firestore.collection("groups").document(groupChat.id)
+        FireStore.collection("groups").document(groupChat.id)
             .get()
             .addOnSuccessListener { document ->
                 if (document != null && document.exists()) {
@@ -287,7 +284,7 @@ class GroupProfileActivity : AppCompatActivity() {
                     val description = document.getString("description") ?: ""
                     groupDescriptionText.setText(description)
                 } else {
-                    Log.d(TAG, "Group details not found in Firestore")
+                    Log.d(TAG, "Group details not found in FireStore")
                     groupDescriptionText.setText("")
                     loadGroupDescriptionFromLocalStorage()
                 }
@@ -354,24 +351,24 @@ class GroupProfileActivity : AppCompatActivity() {
             groupData["groupPictureUrl"] = groupPictureUrl!!
         }
 
-        firestore.collection("groups").document(groupChat.id)
+        FireStore.collection("groups").document(groupChat.id)
             .update(groupData as Map<String, Any>)
             .addOnSuccessListener {
-                Log.d(TAG, "Group details updated successfully in Firestore")
+                Log.d(TAG, "Group details updated successfully in FireStore")
                 Toast.makeText(this, "Group details saved", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { e ->
-                Log.e(TAG, "Error updating group details in Firestore", e)
+                Log.e(TAG, "Error updating group details in FireStore", e)
 
                 // If document doesn't exist yet, create it
-                firestore.collection("groups").document(groupChat.id)
+                FireStore.collection("groups").document(groupChat.id)
                     .set(groupData)
                     .addOnSuccessListener {
-                        Log.d(TAG, "Group details created successfully in Firestore")
+                        Log.d(TAG, "Group details created successfully in FireStore")
                         Toast.makeText(this, "Group details saved", Toast.LENGTH_SHORT).show()
                     }
                     .addOnFailureListener { e2 ->
-                        Log.e(TAG, "Error creating group details in Firestore", e2)
+                        Log.e(TAG, "Error creating group details in FireStore", e2)
                         Toast.makeText(this, "Failed to save group details", Toast.LENGTH_SHORT).show()
                     }
             }
@@ -457,7 +454,7 @@ class GroupProfileActivity : AppCompatActivity() {
                 return
             }else{
                 if (firebaseEnabled) {
-                    firestore.collection("users").document(userId)
+                    FireStore.collection("users").document(userId)
                         .get()
                         .addOnSuccessListener { document ->
                             if (document != null && document.exists()) {
@@ -652,40 +649,3 @@ class GroupProfileActivity : AppCompatActivity() {
     }
 }
 
-// Adapter for the group members RecyclerView
-class GroupMemberAdapter(
-    private val members: List<UserData>,
-    private val onItemClick: (UserData) -> Unit
-) : RecyclerView.Adapter<GroupMemberAdapter.MemberViewHolder>() {
-
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MemberViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_group_member, parent, false)
-        return MemberViewHolder(view)
-    }
-
-    override fun onBindViewHolder(holder: MemberViewHolder, position: Int) {
-        val member = members[position]
-        holder.bind(member)
-    }
-
-    override fun getItemCount(): Int = members.size
-
-    inner class MemberViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val memberName: TextView = itemView.findViewById(R.id.memberNameText)
-        private val memberAvatar: ImageView = itemView.findViewById(R.id.memberAvatar)
-
-        fun bind(user: UserData) {
-            memberName.text = user.displayName
-
-            // Load profile picture if available
-            if (user.profilePictureUrl.isNotEmpty()) {
-                HelperFunctions.loadImageFromUrl(user.profilePictureUrl, memberAvatar)
-            }
-
-            itemView.setOnClickListener {
-                onItemClick(user)
-            }
-        }
-    }
-}

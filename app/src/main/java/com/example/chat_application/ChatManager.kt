@@ -27,6 +27,7 @@ class ChatManager {
         return chatStack.find { it.id == id }
 
     }
+
     // Add this method to ChatManager class
     fun updateDisplayNames(userMap: Map<String, String>) {
         val allChats = getAll().toMutableList()
@@ -88,10 +89,12 @@ class ChatManager {
                 // Insert to the left subtree if name comes before current node
                 node.left = node.left?.let { insertNode(it, chat) } ?: ChatBSTNode(chat)
             }
+
             comparison > 0 -> {
                 // Insert to the right subtree if name comes after current node
                 node.right = node.right?.let { insertNode(it, chat) } ?: ChatBSTNode(chat)
             }
+
             else -> {
                 // Names are equal, decide based on ID
                 if (chat.id != node.chat.id) {
@@ -198,7 +201,11 @@ class ChatManager {
         return results
     }
 
-    private fun findPartialMatchesInSubtree(node: ChatBSTNode?, query: String, results: MutableList<Chat>) {
+    private fun findPartialMatchesInSubtree(
+        node: ChatBSTNode?,
+        query: String,
+        results: MutableList<Chat>
+    ) {
         if (node == null) return
 
         // First check left subtree (smaller names)

@@ -59,6 +59,17 @@
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="16dp">
 
+                <ImageView
+                    android:id="@+id/editImageButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="bottom|end"
+                    android:src="@drawable/ic_camera"
+                    android:background="@drawable/circle_background"
+                    android:contentDescription="Edit profile picture"
+                    android:padding="8dp"
+                    android:elevation="400dp"/>
+
                 <androidx.cardview.widget.CardView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
@@ -76,19 +87,6 @@
 
 
                 </androidx.cardview.widget.CardView>
-
-                <ImageView
-                    android:id="@+id/editImageButton"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
-                    android:layout_gravity="bottom|end"
-                    android:background="@color/black"
-                    android:backgroundTint="?attr/generalTitleBar"
-                    android:contentDescription="Edit Image"
-                    android:padding="8dp"
-                    android:src="@drawable/ic_camera"
-                    app:tint="@color/white" />
-
 
             </FrameLayout>
 
