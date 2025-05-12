@@ -65,6 +65,7 @@ object FirebaseService {
             Log.d(tag, "Firebase is disabled, skipping initialization")
             return
         }
+        firebaseEnabled = enabled
 
         try {
             // Initialize Firebase components

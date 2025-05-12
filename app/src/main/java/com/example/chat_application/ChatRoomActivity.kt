@@ -59,7 +59,6 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var backBtn: ImageButton
     private lateinit var inputText: EditText
     private lateinit var profileImageView: ImageButton
-    private lateinit var menuBtn: ImageButton
     private lateinit var messagesRecyclerView: RecyclerView
     private lateinit var nameView: TextView
     private lateinit var inputLayout: LinearLayout
@@ -116,6 +115,7 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var chat : Chat
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d("ChatRoomActivity", "initializing chatroom ")
         setupThemeAndLayout(savedInstanceState)
         voiceRecorder = VoiceRecorder(this)
         setupImagePickerLauncher()
@@ -235,7 +235,7 @@ class ChatRoomActivity : AppCompatActivity() {
         backBtn = findViewById(R.id.backButton)
         profileImageView = findViewById(R.id.profileImageView)
         inputText = findViewById(R.id.messageInput)
-        menuBtn = findViewById(R.id.menuButton)
+
         messagesRecyclerView = findViewById(R.id.messagesRecyclerView)
         nameView = findViewById(R.id.contactNameTextView)
         inputLayout = findViewById(R.id.messageInputLayout)

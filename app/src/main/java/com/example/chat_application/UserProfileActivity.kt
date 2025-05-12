@@ -1,6 +1,5 @@
 package com.example.chat_application
 
-import android.content.ContentValues.TAG
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -84,33 +83,41 @@ class UserProfileActivity : AppCompatActivity() {
         val existingChat = findExistingChat(existingChats, currentUserId, profileUserId)
 
         if (existingChat != null) {
+            Log.d(TAG, "opening existing chat")
             // Chat with same participants exists, open it
             val chat = chatFromJson(existingChat)
             openExistingChat(chat)
         } else {
+            Log.d(TAG, "creating new chat")
             // Create a new chat
             val chat_id = UUID.randomUUID().toString()
 
-            val participantIdsArray = JSONArray().apply {
-                put(currentUserId)
-                put(profileUserId)
+            // Create participantIds as a JSONObject instead of an array
+            val participantIdsObject = JSONObject().apply {
+                put(currentUserId, true)
+                put(profileUserId, true)
+            }
+
+            val unreadCountObject = JSONObject().apply {
+                put(profileUserId, 0)
+                put(currentUserId, 0)
             }
 
             val chatObject = JSONObject().apply {
                 put("id", chat_id)
                 put("name", profileUserName)
+                put("displayName", profileUserName)
                 put("lastMessage", "")
                 put("timestamp", System.currentTimeMillis())
-                put("unreadCount", 0)
-                put("participantIds", participantIdsArray)
+                put("unreadCount", unreadCountObject)
+                put("participantIds", participantIdsObject)
                 put("type", "direct")
             }
 
-
-
-            chat = Chat(
+            val chat = Chat(
                 id = chat_id,
                 name = profileUserName,
+                displayName = profileUserName,
                 lastMessage = "",
                 timestamp = System.currentTimeMillis(),
                 unreadCount = hashMapOf(
@@ -145,20 +152,36 @@ class UserProfileActivity : AppCompatActivity() {
                 val chatObject = chats.getJSONObject(i)
 
                 // Only check direct chats
-                if (chatObject.getString("type") == "direct") {
-                    val participantIds = chatObject.getJSONArray("participantIds")
+                if (chatObject.optString("type", "direct") == "direct") {
+                    // Handle both array and object formats for participantIds
+                    val participantIds = when {
+                        chatObject.has("participantIds") -> {
+                            val participantsValue = chatObject.get("participantIds")
+                            when (participantsValue) {
+                                is JSONArray -> participantsValue
+                                is JSONObject -> {
+                                    // Convert object to array of keys
+                                    JSONArray().apply {
+                                        participantsValue.keys().forEach {
+                                            put(it)
+                                        }
+                                    }
+                                }
+                                else -> null
+                            }
+                        }
+                        else -> null
+                    }
 
-                    // Check if the chat has exactly 2 participants and they match our users
-                    if (participantIds.length() == 2) {
-                        val participantsMatch =
-                            (participantIds.getString(0) == currentUserId && participantIds.getString(
-                                1
-                            ) == profileUserId) ||
-                                    (participantIds.getString(0) == profileUserId && participantIds.getString(
-                                        1
-                                    ) == currentUserId)
+                    // Check if participants match
+                    if (participantIds != null && participantIds.length() == 2) {
+                        val participants = listOf(
+                            participantIds.getString(0),
+                            participantIds.getString(1)
+                        )
 
-                        if (participantsMatch) {
+                        if ((participants[0] == currentUserId && participants[1] == profileUserId) ||
+                            (participants[0] == profileUserId && participants[1] == currentUserId)) {
                             return chatObject
                         }
                     }
@@ -169,30 +192,58 @@ class UserProfileActivity : AppCompatActivity() {
         }
         return null
     }
-
     // Convert JSONObject to Chat object
     private fun chatFromJson(jsonObject: JSONObject): Chat {
-        val participantIdsArray = jsonObject.getJSONArray("participantIds")
+        // Handle participantIds in both array and object formats
         val participantsList = hashMapOf<String, Boolean>()
+        val participantsValue = jsonObject.get("participantIds")
 
-        for (i in 0 until participantIdsArray.length()) {
-            participantsList[participantIdsArray.getString(i)] = true
+        when (participantsValue) {
+            is JSONArray -> {
+                // Old format - array of strings
+                for (i in 0 until participantsValue.length()) {
+                    participantsList[participantsValue.getString(i)] = true
+                }
+            }
+            is JSONObject -> {
+                // New format - object with boolean values
+                val keys = participantsValue.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    participantsList[key] = participantsValue.getBoolean(key)
+                }
+            }
+            else -> {
+                Log.e(TAG, "Unexpected participantIds format")
+            }
         }
 
         // Parse unreadCount as Map<String, Int>
         val unreadCountMap = mutableMapOf<String, Int>()
         if (jsonObject.has("unreadCount")) {
-            val unreadCountJson = jsonObject.getJSONObject("unreadCount")
-            val keys = unreadCountJson.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                unreadCountMap[key] = unreadCountJson.getInt(key)
+            val unreadCountValue = jsonObject.get("unreadCount")
+            when (unreadCountValue) {
+                is JSONObject -> {
+                    val keys = unreadCountValue.keys()
+                    while (keys.hasNext()) {
+                        val key = keys.next()
+                        unreadCountMap[key] = unreadCountValue.getInt(key)
+                    }
+                }
+                is Int -> {
+                    // Handle legacy format where unreadCount might be a single integer
+                    unreadCountMap[UserSettings.userId] = unreadCountValue
+                }
+                else -> {
+                    Log.e(TAG, "Unexpected unreadCount format")
+                }
             }
         }
 
         return Chat(
             id = jsonObject.getString("id"),
-            name = jsonObject.getString("name"),
+            name = jsonObject.optString("name", ""),
+            displayName = jsonObject.optString("displayName", ""),
             lastMessage = jsonObject.optString("lastMessage", ""),
             timestamp = jsonObject.optLong("timestamp", 0),
             unreadCount = unreadCountMap,
@@ -204,9 +255,11 @@ class UserProfileActivity : AppCompatActivity() {
 
     // Open existing chat
     private fun openExistingChat(chat: Chat) {
+        Log.d(TAG, "1")
         val intent = Intent(this, ChatRoomActivity::class.java).apply {
             putExtra("CHAT_OBJECT", chat)
         }
+        Log.d(TAG, "2")
         startActivity(intent)
         finish()
     }

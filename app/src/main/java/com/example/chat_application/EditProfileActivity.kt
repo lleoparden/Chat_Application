@@ -186,6 +186,7 @@ class EditProfileActivity : AppCompatActivity() {
             progressIndicator.visibility = View.GONE
             Log.d(TAG, "Finished loading user info into views")
         }
+        Log.d(TAG, "loooooooooooooooooooool")
     }
 
     private fun pickImage() {

@@ -247,7 +247,7 @@ class InviteFriendsActivity : AppCompatActivity() {
 
     private fun navigateToChat(userId: String) {
         Log.i(TAG, "Navigation to chat with user ID: $userId")
-        val intent = Intent(this, ChatRoomActivity::class.java).apply {
+        val intent = Intent(this, UserProfileActivity::class.java).apply {
             putExtra("USER_ID", userId)
         }
         startActivity(intent)

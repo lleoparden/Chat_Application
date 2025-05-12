@@ -77,10 +77,11 @@
         android:id="@+id/storyRecyclerView"
         android:layout_width="395dp"
         android:layout_height="670dp"
+        android:layout_marginBottom="1dp"
         android:background="?attr/MainMenuBG"
         android:clipToPadding="false"
         android:padding="8dp"
-
+        app:layout_constraintBottom_toTopOf="@+id/bottomNavigation"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/topBar" />
@@ -91,10 +92,12 @@
         android:id="@+id/bottomNavigation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:menu="@menu/bottom_nav_menu_main"
         android:background="?attr/ChatroomTop"
         app:itemIconTint="@color/bottom_nav_item_color"
-        app:itemTextColor="@color/bottom_nav_item_color" />
+        app:itemTextColor="@color/bottom_nav_item_color"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:menu="@menu/bottom_nav_menu_main" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
