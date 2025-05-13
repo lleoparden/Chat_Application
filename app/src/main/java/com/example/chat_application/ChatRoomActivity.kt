@@ -52,6 +52,7 @@ import com.example.chat_application.dataclasses.UserData
 import com.github.dhaval2404.imagepicker.ImagePicker
 import com.example.chat_application.services.ImageUploadService
 import com.google.firebase.database.MutableData
+import com.google.firebase.database.ServerValue
 import com.google.firebase.database.Transaction
 
 class ChatRoomActivity : AppCompatActivity() {
@@ -356,13 +357,16 @@ class ChatRoomActivity : AppCompatActivity() {
     private fun deleteSelectedMessages() {
         if (selectedMessageIds.isEmpty()) return
 
+        // Store chatId before filtering (in case we delete all messages)
+        val currentChatId = if (messageList.isNotEmpty()) messageList[0].chatId else chatId
+
         // Create a new list with unselected messages
         val updatedList = messageList.filter { !selectedMessageIds.contains(it.id) }.toMutableList()
 
         // Delete from Firebase if enabled
         if (resources.getBoolean(R.bool.firebaseOn)) {
             for (messageId in selectedMessageIds) {
-                database.child("messages").child(chatId).child(messageId).removeValue()
+                database.child("messages").child(currentChatId).child(messageId).removeValue()
             }
         }
 
@@ -370,12 +374,32 @@ class ChatRoomActivity : AppCompatActivity() {
         messageList.clear()
         messageList.addAll(updatedList)
 
+        // Update the last message and timestamp in Firebase
+        val updates = HashMap<String, Any>()
+
+        if (messageList.isNotEmpty()) {
+            // If there are still messages, update with the last one
+            updates["timestamp"] = messageList.last().timestamp
+            updates["lastMessage"] = messageList.last().content
+        } else {
+            updates["timestamp"] = ServerValue.TIMESTAMP
+            updates["lastMessage"] = "<No messages>"
+        }
+
+        // Apply the updates with explicit error handling
+        database.child("chats").child(currentChatId).updateChildren(updates)
+            .addOnSuccessListener {
+                Log.d("ChatActivity", "Successfully updated chat metadata")
+            }
+            .addOnFailureListener { e ->
+                Log.e("ChatActivity", "Failed to update chat metadata", e)
+            }
+
         // Save to local storage
         saveMessagesToLocalStorage()
 
         // Exit selection mode and update UI
-        Toast.makeText(this, "${selectedMessageIds.size} message(s) deleted", Toast.LENGTH_SHORT)
-            .show()
+        Toast.makeText(this, "${selectedMessageIds.size} message(s) deleted", Toast.LENGTH_SHORT).show()
         exitSelectionMode()
     }
 
