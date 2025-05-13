@@ -8,6 +8,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import android.view.MotionEvent
 import android.graphics.Rect
+import android.media.MediaPlayer
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -493,9 +494,11 @@ class ChatRoomActivity : AppCompatActivity() {
 
         sendBtn.setOnClickListener {
             val textMsg = inputText.text.toString().trim()
+            val messageSound = MediaPlayer.create(this, R.raw.happy_pop_3_185288)
             if (textMsg.isNotEmpty()) {
                 sendMessage(textMsg)
                 inputText.text.clear()
+                messageSound.start()
             }
         }
 
@@ -511,9 +514,11 @@ class ChatRoomActivity : AppCompatActivity() {
 
         confirmImageButton.setOnClickListener {
             // If there's a selected image, upload it
+            val messageSound = MediaPlayer.create(this, R.raw.happy_pop_3_185288)
             selectedImageUri?.let { uri ->
                 uploadAndSendImage(uri)
             }
+            messageSound.start()
         }
 
 
@@ -1027,7 +1032,7 @@ class ChatRoomActivity : AppCompatActivity() {
         val cancelThreshold = 150 // in pixels, adjust as needed
         var startX = 0f
         var hasCancelled = false
-
+        val messageSound = MediaPlayer.create(this, R.raw.voice_note_start)
         recordButton.setOnTouchListener { view, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -1035,6 +1040,7 @@ class ChatRoomActivity : AppCompatActivity() {
                         startX = event.rawX
                         hasCancelled = false
                         startRecording()
+                        messageSound.start()
                     } else {
                         requestRecordPermission()
                     }
