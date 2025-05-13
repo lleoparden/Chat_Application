@@ -124,7 +124,9 @@ class GroupProfileActivity : AppCompatActivity() {
         membersRecyclerView.layoutManager = LinearLayoutManager(this)
         memberAdapter = GroupMemberAdapter(groupMembers) { user ->
             // Handle click on group member
-            viewUserProfile(user)
+            if (user.uid != UserSettings.userId) {
+                viewUserProfile(user)
+            }
         }
         membersRecyclerView.adapter = memberAdapter
     }
