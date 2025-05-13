@@ -163,16 +163,41 @@
                 app:layout_constraintTop_toBottomOf="@+id/userStatusEdit" />
 
 
+            <TextView
+                android:id="@+id/mutualGroupsLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Mutual Groups"
+                android:textSize="19sp"
+                android:textStyle="bold"
+                android:textColor="?attr/generalText"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/userStatusEdit" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/mutualGroupsRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:nestedScrollingEnabled="false"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/mutualGroupsLabel" />
+
+            <!-- Move the START CHAT button down -->
             <Button
                 android:id="@+id/startChatButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="9dp"
+                android:layout_marginTop="24dp"
                 android:text="START CHAT"
                 android:textStyle="bold"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/userStatusEdit" />
+                app:layout_constraintTop_toBottomOf="@+id/mutualGroupsRecyclerView" />
+
+
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>

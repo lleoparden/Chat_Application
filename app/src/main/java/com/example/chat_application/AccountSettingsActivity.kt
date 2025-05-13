@@ -11,6 +11,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
 import android.view.View
+import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.ProgressBar
@@ -75,31 +76,31 @@ class AccountSettingsActivity : AppCompatActivity() {
     }
 
     private fun showAuthenticationDialog() {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("Verify It's You")
-        builder.setMessage("Please enter your password to continue")
-        builder.setCancelable(false)
+        val dialogView = layoutInflater.inflate(R.layout.authentication_dialog, null)
+        val passwordInput = dialogView.findViewById<EditText>(R.id.password_input)
+        val verifyButton = dialogView.findViewById<Button>(R.id.verify_button)
+        val cancelButton = dialogView.findViewById<Button>(R.id.cancel_button)
 
-        val input = EditText(this)
-        input.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-        input.hint = "Current Password"
-        input.setHintTextColor(resources.getColor(android.R.color.darker_gray))
-        builder.setView(input)
+        // Create dialog without buttons (we'll use the ones from XML)
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Verify It's You")
+            .setView(dialogView)
+            .setCancelable(false)
+            .create()
 
-        builder.setPositiveButton("Verify") { _, _ ->
-            val password = input.text.toString().trim()
+        // Set up button click listeners
+        verifyButton.setOnClickListener {
+            val password = passwordInput.text.toString().trim()
+            dialog.dismiss()
             verifyPassword(password)
         }
 
-        builder.setNegativeButton("Cancel") { _, _ ->
-            // If user cancels, go back to previous screen
-            finish()
+        cancelButton.setOnClickListener {
+            dialog.dismiss()
+            finish() // If user cancels, go back to previous screen
         }
 
-        val dialog = builder.create()
         dialog.show()
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(resources.getColor(android.R.color.black))
-        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(resources.getColor(android.R.color.black))
     }
 
     private fun verifyPassword(password: String) {
@@ -346,6 +347,7 @@ class AccountSettingsActivity : AppCompatActivity() {
 
     private fun navigateBack() {
         startActivity(Intent(this, SettingsActivity::class.java))
+        finish()
     }
 
     private fun updateUserInChatsList(displayName: String) {

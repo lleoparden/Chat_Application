@@ -247,6 +247,7 @@ class InviteFriendsActivity : AppCompatActivity() {
         Log.i(TAG, "Navigation to chat with user ID: $userId")
         val intent = Intent(this, UserProfileActivity::class.java).apply {
             putExtra("USER_ID", userId)
+            putExtra("came_from", "InviteFriend")
         }
         startActivity(intent)
     }

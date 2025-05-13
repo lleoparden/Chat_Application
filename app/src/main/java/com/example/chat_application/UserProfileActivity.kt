@@ -9,10 +9,16 @@ import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.example.chat_application.adapters.MutualGroupAdapter
 import com.example.chat_application.dataclasses.Chat
 import com.example.chat_application.dataclasses.UserSettings
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.firestore.FirebaseFirestore
 import org.json.JSONArray
 import org.json.JSONObject
@@ -32,6 +38,7 @@ class UserProfileActivity : AppCompatActivity() {
     private lateinit var displayDescription: TextView
     private lateinit var displayStatus: TextView
     private lateinit var startnewchatButton: Button
+    private lateinit var mutualGroupRecycler: RecyclerView
 
     private var currentUserId = ""
     private var viewingUserId = ""
@@ -40,6 +47,8 @@ class UserProfileActivity : AppCompatActivity() {
 
     private lateinit var chatsReference: DatabaseReference
     private lateinit var firebaseDatabase: FirebaseDatabase
+
+    private lateinit var mutualGroupAdapter: MutualGroupAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(UserSettings.getThemeResource())
@@ -56,6 +65,8 @@ class UserProfileActivity : AppCompatActivity() {
         viewingUserId = intent.getStringExtra("USER_ID") ?: currentUserId
         isOwnProfile = currentUserId == viewingUserId
 
+
+
         initializeViews()
         updateUIWithUserData()
 
@@ -68,6 +79,64 @@ class UserProfileActivity : AppCompatActivity() {
         startnewchatButton.setOnClickListener {
             createNewChat(currentUserId, viewingUserId, name)
         }
+
+        mutualGroupAdapter = MutualGroupAdapter(emptyList()) { viewGroup ->
+            val intent = Intent(this, GroupProfileActivity::class.java).apply {
+                putExtra("came_from", "UserProfile")
+                putExtra("CHAT_OBJECT", viewGroup)
+            }
+            startActivity(intent)
+            finish()
+        }
+        mutualGroupRecycler.adapter = mutualGroupAdapter
+// Then update with actual data later
+        getMutualGroups { groups ->
+            mutualGroupAdapter = MutualGroupAdapter(groups) { /* ... */ }
+            mutualGroupRecycler.adapter = mutualGroupAdapter
+            mutualGroupAdapter.notifyDataSetChanged()
+        }
+    }
+
+    private fun getMutualGroups(callback: (List<Chat>) -> Unit) {
+        val currentUserId = UserSettings.userId
+
+        if (currentUserId == null) {
+            callback(emptyList())
+            return
+        }
+
+        chatsReference.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val mutualGroups = mutableListOf<Chat>()
+
+                for (chatSnapshot in snapshot.children) {
+                    val chat = chatSnapshot.getValue(Chat::class.java)
+                    chat?.let {
+                        // If the current user is a participant in this chat group
+                        if (it.participantIds.containsKey(currentUserId) &&
+                            it.participantIds[currentUserId] == true && chat.type == "group"&& it.participantIds.containsKey(viewingUserId) &&
+                            it.participantIds[viewingUserId] == true) {
+                            // Add the chat ID if it's not already set
+                            if (it.id.isEmpty()) {
+                                it.id = chatSnapshot.key ?: ""
+                            }
+                            mutualGroups.add(it)
+                        }
+                    }
+                }
+
+                // Sort by timestamp (newest first)
+                mutualGroups.sortByDescending { it.timestamp }
+
+                // Return the result via callback
+                callback(mutualGroups)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("Firebase", "Error getting mutual groups: ${error.message}")
+                callback(emptyList())
+            }
+        })
     }
 
     private fun createNewChat(
@@ -329,6 +398,8 @@ class UserProfileActivity : AppCompatActivity() {
         displayDescription = findViewById(R.id.userDescriptionEdit)
         displayStatus = findViewById(R.id.userStatusEdit)
         startnewchatButton = findViewById(R.id.startChatButton)
+        mutualGroupRecycler= findViewById(R.id.mutualGroupsRecyclerView)
+        mutualGroupRecycler.layoutManager = LinearLayoutManager(this)
     }
 
     private fun saveChatToFirebase(chat: Chat) {
@@ -373,8 +444,14 @@ class UserProfileActivity : AppCompatActivity() {
                 startActivity(Intent(this, MainActivity::class.java))
                 overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
             }
-        } else {
+        } else if (sourceActivity == "InviteFriend") {
             // Default to AddNewChatActivity or whatever the previous screen should be
+            startActivity(Intent(this, InviteFriendsActivity::class.java))
+            overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
+        }else if(sourceActivity == "GroupProfile"){
+            startActivity(Intent(this, GroupProfileActivity::class.java))
+            overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
+        }else{
             startActivity(Intent(this, AddNewChatActivity::class.java))
             overridePendingTransition(R.anim.activityright, R.anim.activityoutright)
         }
