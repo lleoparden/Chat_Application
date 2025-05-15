@@ -72,6 +72,7 @@ object ImageUploadService {
                         .placeholder(R.drawable.ic_person)
                         .error(R.drawable.ic_person)
                         .diskCacheStrategy(DiskCacheStrategy.NONE)
+                        .skipMemoryCache(true)  // Add this line
                 )
                 .into(imageView)
         } else {

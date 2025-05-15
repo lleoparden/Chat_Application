@@ -11,7 +11,6 @@ import android.graphics.Rect
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.view.ViewGroup
 import android.view.ViewTreeObserver.OnGlobalLayoutListener
 import android.view.WindowManager
 import android.widget.Button
@@ -88,7 +87,6 @@ class ChatRoomActivity : AppCompatActivity() {
     private var timerRunnable: Runnable? = null
     private var secondsElapsed = 0
 
-
     private lateinit var imagePickerLauncher: ActivityResultLauncher<Intent>
     private lateinit var imageButton: ImageButton
     private var isImageUploading = false
@@ -116,7 +114,9 @@ class ChatRoomActivity : AppCompatActivity() {
     private lateinit var chatMessagesFile: File
 
     private lateinit var chat: Chat
+    var user: UserData? = null
 
+    //region Lifecycle Methods
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d("ChatRoomActivity", "initializing chatroom ")
         setupThemeAndLayout(savedInstanceState)
@@ -144,22 +144,42 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadChatWallpaper() {
-        val wallpaperPath = UserSettings.getChatWallpaper()
+    override fun onDestroy() {
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            HelperFunctions.setUserOffline(UserSettings.userId)
+        }
+        removeRealtimeMessageListener()
 
-        Glide.with(this)
-            .load(if (wallpaperPath != null) Uri.fromFile(File(wallpaperPath)) else R.drawable.chatbg)
-            .apply(
-                RequestOptions()
-                    .diskCacheStrategy(DiskCacheStrategy.NONE) // Disable caching
-                    .skipMemoryCache(true) // Skip memory cache
-                    .error(R.drawable.chatbg)
-            )
-            .into(chatBackground)
+        // Clean up voice notes resources
+        if (isRecording) {
+            voiceRecorder.cancelRecording()
+        }
+
+        // Clean up voice note player in adapter
+        if (::messageAdapter.isInitialized) {
+            messageAdapter.cleanup()
+        }
+
+        super.onDestroy()
     }
 
-    //region Setup Methods
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == RECORD_AUDIO_PERMISSION_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Recording permission granted", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Recording permission denied", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    //endregion
 
+    //region Setup and Initialization
     private fun setupThemeAndLayout(savedInstanceState: Bundle?) {
         // Apply theme from UserSettings before calling super.onCreate()
         setTheme(UserSettings.getThemeResource())
@@ -195,39 +215,6 @@ class ChatRoomActivity : AppCompatActivity() {
         // Initialize chat-specific messages file
         chatMessagesFile = File(filesDir, "messages_${chatId}.json")
     }
-
-    var user: UserData? = null
-    private fun initializeProfileImage() {
-
-        if (chat.type == "direct") {
-            user = HelperFunctions.loadUserById(otherParticipantId, this)
-
-            if (user != null) {
-                HelperFunctions.loadImageFromUrl(user!!.profilePictureUrl, profileImageView)
-                nameView.text = user!!.displayName
-            } else {
-                HelperFunctions.getUserData(otherParticipantId) { user ->
-                    HelperFunctions.loadImageFromUrl(
-                        user?.profilePictureUrl.toString(),
-                        profileImageView
-                    )
-                    nameView.text = user?.displayName.toString()
-                }
-            }
-        } else {
-            HelperFunctions.getGroupPfp(chat.id) { url ->
-                if (url != null) {
-                    // Make sure we're on the UI thread when updating the ImageView
-                    profileImageView.post {
-                        HelperFunctions.loadImageFromUrl(url, profileImageView)
-                        // Set contact name in the top bar
-                    }
-                }
-            }
-        }
-
-    }
-
 
     private fun initializeViews() {
         sendBtn = findViewById(R.id.sendButton)
@@ -268,6 +255,36 @@ class ChatRoomActivity : AppCompatActivity() {
         deleteAction = findViewById(R.id.deleteAction)
     }
 
+    private fun initializeProfileImage() {
+
+        if (chat.type == "direct") {
+            user = HelperFunctions.loadUserById(otherParticipantId, this)
+
+            if (user != null) {
+                HelperFunctions.loadImageFromUrl(user!!.profilePictureUrl, profileImageView)
+                nameView.text = user!!.displayName
+            } else {
+                HelperFunctions.getUserData(otherParticipantId) { user ->
+                    HelperFunctions.loadImageFromUrl(
+                        user?.profilePictureUrl.toString(),
+                        profileImageView
+                    )
+                    nameView.text = user?.displayName.toString()
+                }
+            }
+        } else {
+            HelperFunctions.getGroupPfp(chat.id) { url ->
+                if (url != null) {
+                    // Make sure we're on the UI thread when updating the ImageView
+                    profileImageView.post {
+                        HelperFunctions.loadImageFromUrl(url, profileImageView)
+                        // Set contact name in the top bar
+                    }
+                }
+            }
+        }
+
+    }
 
     private fun setupRecyclerView() {
 
@@ -291,198 +308,6 @@ class ChatRoomActivity : AppCompatActivity() {
         messagesRecyclerView.layoutManager = layoutManager
         messagesRecyclerView.adapter = messageAdapter
     }
-
-    private fun handleMessageLongClick(message: Message) {
-        if (!isInSelectionMode) {
-            enterSelectionMode()
-        }
-        toggleMessageSelection(message)
-    }
-
-    private fun enterSelectionMode() {
-        isInSelectionMode = true
-        selectedMessageIds.clear()
-
-        // Show selection toolbar
-        normalToolbarContent.visibility = View.GONE
-        selectionToolbarContent.visibility = View.VISIBLE
-
-        // Show selection action panel (optional, depending on your design preference)
-        inputLayout.visibility = View.GONE
-        selectionActionPanel.visibility = View.VISIBLE
-
-        updateSelectionCount()
-    }
-
-    private fun exitSelectionMode() {
-        isInSelectionMode = false
-        selectedMessageIds.clear()
-
-        // Restore normal toolbar
-        selectionToolbarContent.visibility = View.GONE
-        normalToolbarContent.visibility = View.VISIBLE
-
-        // Restore input layout
-        selectionActionPanel.visibility = View.GONE
-        inputLayout.visibility = View.VISIBLE
-
-        // Reset UI
-        messageAdapter.notifyDataSetChanged()
-    }
-
-    private fun toggleMessageSelection(message: Message) {
-        if (selectedMessageIds.contains(message.id)) {
-            selectedMessageIds.remove(message.id)
-        } else {
-            selectedMessageIds.add(message.id)
-        }
-
-        // If no messages are selected, exit selection mode
-        if (selectedMessageIds.isEmpty()) {
-            exitSelectionMode()
-            return
-        }
-
-        updateSelectionCount()
-        messageAdapter.notifyDataSetChanged()
-    }
-
-    private fun updateSelectionCount() {
-        val count = selectedMessageIds.size
-        val text = "$count selected"
-        selectionCountTextView.text = text
-        selectionCountText.text = text
-    }
-
-    private fun deleteSelectedMessages() {
-        if (selectedMessageIds.isEmpty()) return
-
-        // Store chatId before filtering (in case we delete all messages)
-        val currentChatId = if (messageList.isNotEmpty()) messageList[0].chatId else chatId
-
-        // Create a new list with unselected messages
-        val updatedList = messageList.filter { !selectedMessageIds.contains(it.id) }.toMutableList()
-
-        // Delete from Firebase if enabled
-        if (resources.getBoolean(R.bool.firebaseOn)) {
-            for (messageId in selectedMessageIds) {
-                database.child("messages").child(currentChatId).child(messageId).removeValue()
-            }
-        }
-
-        // Update local list
-        messageList.clear()
-        messageList.addAll(updatedList)
-
-        // Update the last message and timestamp in Firebase
-        val updates = HashMap<String, Any>()
-
-        if (messageList.isNotEmpty()) {
-            // If there are still messages, update with the last one
-            updates["timestamp"] = messageList.last().timestamp
-            updates["lastMessage"] = messageList.last().content
-        } else {
-            updates["timestamp"] = ServerValue.TIMESTAMP
-            updates["lastMessage"] = "<No messages>"
-        }
-
-        // Apply the updates with explicit error handling
-        database.child("chats").child(currentChatId).updateChildren(updates)
-            .addOnSuccessListener {
-                Log.d("ChatActivity", "Successfully updated chat metadata")
-            }
-            .addOnFailureListener { e ->
-                Log.e("ChatActivity", "Failed to update chat metadata", e)
-            }
-
-        // Save to local storage
-        saveMessagesToLocalStorage()
-
-        // Exit selection mode and update UI
-        Toast.makeText(this, "${selectedMessageIds.size} message(s) deleted", Toast.LENGTH_SHORT).show()
-        exitSelectionMode()
-    }
-
-    private fun setupKeyboardBehavior() {
-        // Set window flags to adjust resize for keyboard
-        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-
-        // Get the root view for detecting layout changes
-        val rootView: View = findViewById(android.R.id.content)
-
-        // Define default bottom padding - replace with your own value
-        val defaultBottomPadding = 80.dpToPx()
-
-        // Reference to message input layout
-        val messageInputLayout: View = findViewById(R.id.messageInputLayout)
-
-        rootView.viewTreeObserver.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
-            private val rect = Rect()
-            private var lastVisibleHeight = 0
-            private var initialHeight = 0
-
-            override fun onGlobalLayout() {
-                // Get current visible frame
-                rootView.getWindowVisibleDisplayFrame(rect)
-                val visibleHeight = rect.height()
-
-                // Initialize height on first run
-                if (initialHeight == 0) {
-                    initialHeight = visibleHeight
-                }
-
-                // Detect keyboard visibility changes
-                if (lastVisibleHeight != 0 && lastVisibleHeight != visibleHeight) {
-                    val isKeyboardVisible =
-                        visibleHeight < initialHeight * 0.85 // More reliable detection
-
-                    if (isKeyboardVisible) {
-                        // Calculate keyboard height as a percentage of screen height for better adaptation
-                        val keyboardHeight = initialHeight - visibleHeight
-                        val safeKeyboardPadding = keyboardHeight + (defaultBottomPadding / 2)
-
-                        // Apply padding to accommodate keyboard
-                        messagesRecyclerView.setPadding(
-                            messagesRecyclerView.paddingLeft,
-                            messagesRecyclerView.paddingTop,
-                            messagesRecyclerView.paddingRight,
-                            safeKeyboardPadding + 150
-                        )
-                    } else {
-                        // Reset padding when keyboard is hidden
-                        messagesRecyclerView.setPadding(
-                            messagesRecyclerView.paddingLeft,
-                            messagesRecyclerView.paddingTop,
-                            messagesRecyclerView.paddingRight,
-                            defaultBottomPadding
-                        )
-                    }
-
-                    // Smooth scroll to bottom after layout adjustment with small delay
-                    messagesRecyclerView.postDelayed({
-                        if (messageList.isNotEmpty()) {
-                            messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
-                        }
-                    }, 100)
-                }
-
-                lastVisibleHeight = visibleHeight
-            }
-        })
-
-        // Helper extension function for dp to pixel conversion
-        fun Int.dpToPx(): Int {
-            val density = resources.displayMetrics.density
-            return (this * density).toInt()
-        }
-    }
-
-    // Helper extension function if needed
-    private fun Int.dpToPx(): Int {
-        val density = resources.displayMetrics.density
-        return (this * density).toInt()
-    }
-
 
     private fun setupClickListeners() {
         backBtn.setOnClickListener {
@@ -572,8 +397,96 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
-    //region Message Handling
+    private fun setupKeyboardBehavior() {
+        // Set window flags to adjust resize for keyboard
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
 
+        // Get the root view for detecting layout changes
+        val rootView: View = findViewById(android.R.id.content)
+
+        // Define default bottom padding - replace with your own value
+        val defaultBottomPadding = 80.dpToPx()
+
+        // Reference to message input layout
+        val messageInputLayout: View = findViewById(R.id.messageInputLayout)
+
+        rootView.viewTreeObserver.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
+            private val rect = Rect()
+            private var lastVisibleHeight = 0
+            private var initialHeight = 0
+
+            override fun onGlobalLayout() {
+                // Get current visible frame
+                rootView.getWindowVisibleDisplayFrame(rect)
+                val visibleHeight = rect.height()
+
+                // Initialize height on first run
+                if (initialHeight == 0) {
+                    initialHeight = visibleHeight
+                }
+
+                // Detect keyboard visibility changes
+                if (lastVisibleHeight != 0 && lastVisibleHeight != visibleHeight) {
+                    val isKeyboardVisible =
+                        visibleHeight < initialHeight * 0.85 // More reliable detection
+
+                    if (isKeyboardVisible) {
+                        // Calculate keyboard height as a percentage of screen height for better adaptation
+                        val keyboardHeight = initialHeight - visibleHeight
+                        val safeKeyboardPadding = keyboardHeight + (defaultBottomPadding / 2)
+
+                        // Apply padding to accommodate keyboard
+                        messagesRecyclerView.setPadding(
+                            messagesRecyclerView.paddingLeft,
+                            messagesRecyclerView.paddingTop,
+                            messagesRecyclerView.paddingRight,
+                            safeKeyboardPadding + 150
+                        )
+                    } else {
+                        // Reset padding when keyboard is hidden
+                        messagesRecyclerView.setPadding(
+                            messagesRecyclerView.paddingLeft,
+                            messagesRecyclerView.paddingTop,
+                            messagesRecyclerView.paddingRight,
+                            defaultBottomPadding
+                        )
+                    }
+
+                    // Smooth scroll to bottom after layout adjustment with small delay
+                    messagesRecyclerView.postDelayed({
+                        if (messageList.isNotEmpty()) {
+                            messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
+                        }
+                    }, 100)
+                }
+
+                lastVisibleHeight = visibleHeight
+            }
+        })
+
+        // Helper extension function for dp to pixel conversion
+        fun Int.dpToPx(): Int {
+            val density = resources.displayMetrics.density
+            return (this * density).toInt()
+        }
+    }
+
+    private fun loadChatWallpaper() {
+        val wallpaperPath = UserSettings.getChatWallpaper()
+
+        Glide.with(this)
+            .load(if (wallpaperPath != null) Uri.fromFile(File(wallpaperPath)) else R.drawable.chatbg)
+            .apply(
+                RequestOptions()
+                    .diskCacheStrategy(DiskCacheStrategy.NONE) // Disable caching
+                    .skipMemoryCache(true) // Skip memory cache
+                    .error(R.drawable.chatbg)
+            )
+            .into(chatBackground)
+    }
+    //endregion
+
+    //region Message Handling
     private fun sendMessage(textMessage: String) {
         val messageId = generateMessageId()
 
@@ -654,8 +567,211 @@ class ChatRoomActivity : AppCompatActivity() {
         return db.collection("users").document().id
     }
 
-    //region Local Storage
+    private fun processMessageFromFirebase(messageMap: Map<*, *>, messageId: String) {
+        val message = createMessageFromMap(messageMap) ?: return
 
+        // Check if we already have this message
+        val existingIndex = messageList.indexOfFirst { it.id == message.id }
+        if (existingIndex >= 0) {
+            // Update existing message
+            messageList[existingIndex] = message
+            messageAdapter.notifyItemChanged(existingIndex)
+        } else {
+            // Add new message
+            messageList.add(message)
+            // Re-sort the list after adding the message
+            sortMessagesByTimestamp()
+            // Notify the adapter that the dataset has changed
+            messageAdapter.notifyDataSetChanged()
+            messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
+        }
+
+        saveMessagesToLocalStorage()
+    }
+
+    private fun createMessageFromMap(messageMap: Map<*, *>): Message? {
+        try {
+            val id = messageMap["id"] as? String ?: return null
+            val chatId = messageMap["chatId"] as? String ?: return null
+            val senderId = messageMap["senderId"] as? String ?: return null
+            val content = messageMap["content"] as? String ?: ""
+            val timestamp = (messageMap["timestamp"] as? Long) ?: 0L
+
+            val messageTypeStr = messageMap["messageType"] as? String ?: MessageType.TEXT.toString()
+            val messageType = try {
+                MessageType.valueOf(messageTypeStr)
+            } catch (e: Exception) {
+                MessageType.TEXT
+            }
+
+            val readStatusMap = HashMap<String, Boolean>()
+            val readStatusRaw = messageMap["readStatus"] as? Map<*, *>
+            readStatusRaw?.forEach { (key, value) ->
+                if (key is String && value is Boolean) {
+                    readStatusMap[key] = value
+                }
+            }
+
+            return if (messageType == MessageType.VOICE_NOTE) {
+                val voiceNoteDuration = (messageMap["voiceNoteDuration"] as? Long)?.toInt() ?: 0
+                val voiceNoteBase64 = messageMap["voiceNoteBase64"] as? String ?: ""
+
+                // Generate a local file path for the voice note
+                val localPath = if (voiceNoteBase64.isNotEmpty()) {
+                    // Create a unique filename based on message ID
+                    val voiceNoteDir = File(filesDir, "VoiceNotes")
+                    if (!voiceNoteDir.exists()) {
+                        voiceNoteDir.mkdirs()
+                    }
+                    val localFilePath = "${voiceNoteDir.absolutePath}/VN_${id}.3gp"
+
+                    // Save the Base64 data to a local file if it doesn't exist already
+                    val localFile = File(localFilePath)
+                    if (!localFile.exists() && voiceNoteBase64.isNotEmpty()) {
+                        voiceRecorder.saveBase64ToFile(voiceNoteBase64, localFilePath)
+                    }
+
+                    localFilePath
+                } else {
+                    ""
+                }
+
+                Message(
+                    id = id,
+                    chatId = chatId,
+                    senderId = senderId,
+                    content = content,
+                    timestamp = timestamp,
+                    readStatus = readStatusMap,
+                    messageType = messageType,
+                    voiceNoteDuration = voiceNoteDuration,
+                    voiceNoteLocalPath = localPath,
+                    voiceNoteBase64 = voiceNoteBase64
+                )
+            } else {
+                Message(
+                    id = id,
+                    chatId = chatId,
+                    senderId = senderId,
+                    content = content,
+                    timestamp = timestamp,
+                    readStatus = readStatusMap,
+                    messageType = messageType
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("ChatRoomActivity", "Error creating message from map: ${e.message}")
+            return null
+        }
+    }
+    //endregion
+
+    //region Firebase Integration
+
+    private fun saveMessageToFirebase(messageData: Message, messageId: String) {
+        val messageMap = if (messageData.messageType == MessageType.VOICE_NOTE) {
+            hashMapOf(
+                "id" to messageData.id,
+                "chatId" to messageData.chatId,
+                "senderId" to messageData.senderId,
+                "content" to messageData.content,
+                "timestamp" to messageData.timestamp,
+                "readStatus" to messageData.readStatus,
+                "messageType" to messageData.messageType.toString(),
+                "voiceNoteDuration" to messageData.voiceNoteDuration,
+                "voiceNoteLocalPath" to "", // Don't save local path to Firebase
+                "voiceNoteBase64" to messageData.voiceNoteBase64 // Save the Base64 data instead
+            )
+        } else {
+            hashMapOf(
+                "id" to messageData.id,
+                "chatId" to messageData.chatId,
+                "senderId" to messageData.senderId,
+                "content" to messageData.content,
+                "timestamp" to messageData.timestamp,
+                "readStatus" to messageData.readStatus,
+                "messageType" to messageData.messageType.toString()
+            )
+        }
+
+        // Save under messages/chatId/messageId in Realtime Database
+        database.child("messages")
+            .child(chatId)
+            .child(messageId)
+            .setValue(messageMap)
+            .addOnSuccessListener {
+                Log.d("Firebase", "Message saved to Realtime DB")
+            }
+            .addOnFailureListener { e ->
+                Log.e("Firebase", "Error saving to Realtime DB: ${e.message}")
+                Toast.makeText(
+                    this,
+                    "Failed to send message. Check your connection.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+    }
+
+    private fun setupRealtimeMessageListener() {
+        val messagesRef = database.child("messages").child(chatId)
+
+        messagesListener = messagesRef.addChildEventListener(object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                Log.d("Firebase", "New message received in realtime")
+                val messageMap = snapshot.value as? Map<*, *> ?: return
+                processMessageFromFirebase(messageMap, snapshot.key ?: "")
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                Log.d("Firebase", "Message updated in realtime")
+                val messageMap = snapshot.value as? Map<*, *> ?: return
+                val messageId = snapshot.key ?: return
+
+                // Find and update the message in our list
+                val messageIndex = messageList.indexOfFirst { it.id == messageId }
+                if (messageIndex >= 0) {
+                    val updatedMessage = createMessageFromMap(messageMap) ?: return
+                    messageList[messageIndex] = updatedMessage
+                    messageAdapter.notifyItemChanged(messageIndex)
+                    saveMessagesToLocalStorage()
+                }
+            }
+
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                val messageId = snapshot.key ?: return
+                val messageIndex = messageList.indexOfFirst { it.id == messageId }
+                if (messageIndex >= 0) {
+                    messageList.removeAt(messageIndex)
+                    messageAdapter.notifyItemRemoved(messageIndex)
+                    saveMessagesToLocalStorage()
+                }
+            }
+
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
+                // Not needed for this implementation
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("Firebase", "Database error: ${error.message}")
+                Toast.makeText(
+                    this@ChatRoomActivity,
+                    "Database connection error: ${error.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        })
+    }
+
+    private fun removeRealtimeMessageListener() {
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            messagesListener?.let {
+                database.child("messages").child(chatId).removeEventListener(it)
+            }
+        }
+    }
+    //endregion
+
+    //region Local Storage
     private fun saveMessagesToLocalStorage() {
         val jsonArray = JSONArray()
 
@@ -770,7 +886,6 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
-    // Create a helper function to sort messages
     private fun sortMessagesByTimestamp() {
         messageList.sortBy { it.timestamp }
     }
@@ -795,234 +910,126 @@ class ChatRoomActivity : AppCompatActivity() {
 
         return readStatusMap
     }
+    //endregion
 
-    //region Firebase Methods
+    //region Message Selection Mode
+    private fun enterSelectionMode() {
+        isInSelectionMode = true
+        selectedMessageIds.clear()
 
-    private fun saveMessageToFirebase(messageData: Message, messageId: String) {
-        val messageMap = if (messageData.messageType == MessageType.VOICE_NOTE) {
-            hashMapOf(
-                "id" to messageData.id,
-                "chatId" to messageData.chatId,
-                "senderId" to messageData.senderId,
-                "content" to messageData.content,
-                "timestamp" to messageData.timestamp,
-                "readStatus" to messageData.readStatus,
-                "messageType" to messageData.messageType.toString(),
-                "voiceNoteDuration" to messageData.voiceNoteDuration,
-                "voiceNoteLocalPath" to "", // Don't save local path to Firebase
-                "voiceNoteBase64" to messageData.voiceNoteBase64 // Save the Base64 data instead
-            )
+        // Show selection toolbar
+        normalToolbarContent.visibility = View.GONE
+        selectionToolbarContent.visibility = View.VISIBLE
+
+        // Show selection action panel (optional, depending on your design preference)
+        inputLayout.visibility = View.GONE
+        selectionActionPanel.visibility = View.VISIBLE
+
+        updateSelectionCount()
+    }
+
+    private fun exitSelectionMode() {
+        isInSelectionMode = false
+        selectedMessageIds.clear()
+
+        // Restore normal toolbar
+        selectionToolbarContent.visibility = View.GONE
+        normalToolbarContent.visibility = View.VISIBLE
+
+        // Restore input layout
+        selectionActionPanel.visibility = View.GONE
+        inputLayout.visibility = View.VISIBLE
+
+        // Reset UI
+        messageAdapter.notifyDataSetChanged()
+    }
+
+    private fun toggleMessageSelection(message: Message) {
+        if (selectedMessageIds.contains(message.id)) {
+            selectedMessageIds.remove(message.id)
         } else {
-            hashMapOf(
-                "id" to messageData.id,
-                "chatId" to messageData.chatId,
-                "senderId" to messageData.senderId,
-                "content" to messageData.content,
-                "timestamp" to messageData.timestamp,
-                "readStatus" to messageData.readStatus,
-                "messageType" to messageData.messageType.toString()
-            )
+            selectedMessageIds.add(message.id)
         }
 
-        // Save under messages/chatId/messageId in Realtime Database
-        database.child("messages")
-            .child(chatId)
-            .child(messageId)
-            .setValue(messageMap)
+        // If no messages are selected, exit selection mode
+        if (selectedMessageIds.isEmpty()) {
+            exitSelectionMode()
+            return
+        }
+
+        updateSelectionCount()
+        messageAdapter.notifyDataSetChanged()
+    }
+
+    private fun updateSelectionCount() {
+        val count = selectedMessageIds.size
+        val text = "$count selected"
+        selectionCountTextView.text = text
+        selectionCountText.text = text
+    }
+
+    private fun deleteSelectedMessages() {
+        if (selectedMessageIds.isEmpty()) return
+
+        // Store chatId before filtering (in case we delete all messages)
+        val currentChatId = if (messageList.isNotEmpty()) messageList[0].chatId else chatId
+
+        // Create a new list with unselected messages
+        val updatedList = messageList.filter { !selectedMessageIds.contains(it.id) }.toMutableList()
+
+        // Delete from Firebase if enabled
+        if (resources.getBoolean(R.bool.firebaseOn)) {
+            for (messageId in selectedMessageIds) {
+                database.child("messages").child(currentChatId).child(messageId).removeValue()
+            }
+        }
+
+        // Update local list
+        messageList.clear()
+        messageList.addAll(updatedList)
+
+        // Update the last message and timestamp in Firebase
+        val updates = HashMap<String, Any>()
+
+        if (messageList.isNotEmpty()) {
+            // If there are still messages, update with the last one
+            updates["timestamp"] = messageList.last().timestamp
+            updates["lastMessage"] = messageList.last().content
+        } else {
+            updates["timestamp"] = ServerValue.TIMESTAMP
+            updates["lastMessage"] = "Chat Created..."
+        }
+
+        // Apply the updates with explicit error handling
+        database.child("chats").child(currentChatId).updateChildren(updates)
             .addOnSuccessListener {
-                Log.d("Firebase", "Message saved to Realtime DB")
+                Log.d("ChatActivity", "Successfully updated chat metadata")
             }
             .addOnFailureListener { e ->
-                Log.e("Firebase", "Error saving to Realtime DB: ${e.message}")
-                Toast.makeText(
-                    this,
-                    "Failed to send message. Check your connection.",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-    }
-
-    private fun setupRealtimeMessageListener() {
-        val messagesRef = database.child("messages").child(chatId)
-
-        messagesListener = messagesRef.addChildEventListener(object : ChildEventListener {
-            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                Log.d("Firebase", "New message received in realtime")
-                val messageMap = snapshot.value as? Map<*, *> ?: return
-                processMessageFromFirebase(messageMap, snapshot.key ?: "")
+                Log.e("ChatActivity", "Failed to update chat metadata", e)
             }
 
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                Log.d("Firebase", "Message updated in realtime")
-                val messageMap = snapshot.value as? Map<*, *> ?: return
-                val messageId = snapshot.key ?: return
-
-                // Find and update the message in our list
-                val messageIndex = messageList.indexOfFirst { it.id == messageId }
-                if (messageIndex >= 0) {
-                    val updatedMessage = createMessageFromMap(messageMap) ?: return
-                    messageList[messageIndex] = updatedMessage
-                    messageAdapter.notifyItemChanged(messageIndex)
-                    saveMessagesToLocalStorage()
-                }
-            }
-
-            override fun onChildRemoved(snapshot: DataSnapshot) {
-                val messageId = snapshot.key ?: return
-                val messageIndex = messageList.indexOfFirst { it.id == messageId }
-                if (messageIndex >= 0) {
-                    messageList.removeAt(messageIndex)
-                    messageAdapter.notifyItemRemoved(messageIndex)
-                    saveMessagesToLocalStorage()
-                }
-            }
-
-            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
-                // Not needed for this implementation
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("Firebase", "Database error: ${error.message}")
-                Toast.makeText(
-                    this@ChatRoomActivity,
-                    "Database connection error: ${error.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        })
-    }
-
-    private fun processMessageFromFirebase(messageMap: Map<*, *>, messageId: String) {
-        val message = createMessageFromMap(messageMap) ?: return
-
-        // Check if we already have this message
-        val existingIndex = messageList.indexOfFirst { it.id == message.id }
-        if (existingIndex >= 0) {
-            // Update existing message
-            messageList[existingIndex] = message
-            messageAdapter.notifyItemChanged(existingIndex)
-        } else {
-            // Add new message
-            messageList.add(message)
-            // Re-sort the list after adding the message
-            sortMessagesByTimestamp()
-            // Notify the adapter that the dataset has changed
-            messageAdapter.notifyDataSetChanged()
-            messagesRecyclerView.smoothScrollToPosition(messageList.size - 1)
-        }
-
+        // Save to local storage
         saveMessagesToLocalStorage()
+
+        // Exit selection mode and update UI
+        Toast.makeText(this, "${selectedMessageIds.size} message(s) deleted", Toast.LENGTH_SHORT).show()
+        exitSelectionMode()
     }
 
-    private fun createMessageFromMap(messageMap: Map<*, *>): Message? {
-        try {
-            val id = messageMap["id"] as? String ?: return null
-            val chatId = messageMap["chatId"] as? String ?: return null
-            val senderId = messageMap["senderId"] as? String ?: return null
-            val content = messageMap["content"] as? String ?: ""
-            val timestamp = (messageMap["timestamp"] as? Long) ?: 0L
-
-            val messageTypeStr = messageMap["messageType"] as? String ?: MessageType.TEXT.toString()
-            val messageType = try {
-                MessageType.valueOf(messageTypeStr)
-            } catch (e: Exception) {
-                MessageType.TEXT
-            }
-
-            val readStatusMap = HashMap<String, Boolean>()
-            val readStatusRaw = messageMap["readStatus"] as? Map<*, *>
-            readStatusRaw?.forEach { (key, value) ->
-                if (key is String && value is Boolean) {
-                    readStatusMap[key] = value
-                }
-            }
-
-            return if (messageType == MessageType.VOICE_NOTE) {
-                val voiceNoteDuration = (messageMap["voiceNoteDuration"] as? Long)?.toInt() ?: 0
-                val voiceNoteBase64 = messageMap["voiceNoteBase64"] as? String ?: ""
-
-                // Generate a local file path for the voice note
-                val localPath = if (voiceNoteBase64.isNotEmpty()) {
-                    // Create a unique filename based on message ID
-                    val voiceNoteDir = File(filesDir, "VoiceNotes")
-                    if (!voiceNoteDir.exists()) {
-                        voiceNoteDir.mkdirs()
-                    }
-                    val localFilePath = "${voiceNoteDir.absolutePath}/VN_${id}.3gp"
-
-                    // Save the Base64 data to a local file if it doesn't exist already
-                    val localFile = File(localFilePath)
-                    if (!localFile.exists() && voiceNoteBase64.isNotEmpty()) {
-                        voiceRecorder.saveBase64ToFile(voiceNoteBase64, localFilePath)
-                    }
-
-                    localFilePath
-                } else {
-                    ""
-                }
-
-                Message(
-                    id = id,
-                    chatId = chatId,
-                    senderId = senderId,
-                    content = content,
-                    timestamp = timestamp,
-                    readStatus = readStatusMap,
-                    messageType = messageType,
-                    voiceNoteDuration = voiceNoteDuration,
-                    voiceNoteLocalPath = localPath,
-                    voiceNoteBase64 = voiceNoteBase64
-                )
-            } else {
-                Message(
-                    id = id,
-                    chatId = chatId,
-                    senderId = senderId,
-                    content = content,
-                    timestamp = timestamp,
-                    readStatus = readStatusMap,
-                    messageType = messageType
-                )
-            }
-        } catch (e: Exception) {
-            Log.e("ChatRoomActivity", "Error creating message from map: ${e.message}")
-            return null
+    private fun handleMessageLongClick(message: Message) {
+        if (!isInSelectionMode) {
+            enterSelectionMode()
         }
-    }
-
-    override fun onDestroy() {
-        if (resources.getBoolean(R.bool.firebaseOn)) {
-            HelperFunctions.setUserOffline(UserSettings.userId)
-        }
-        removeRealtimeMessageListener()
-
-        // Clean up voice notes resources
-        if (isRecording) {
-            voiceRecorder.cancelRecording()
-        }
-
-        // Clean up voice note player in adapter
-        if (::messageAdapter.isInitialized) {
-            messageAdapter.cleanup()
-        }
-
-        super.onDestroy()
-    }
-
-    private fun removeRealtimeMessageListener() {
-        if (resources.getBoolean(R.bool.firebaseOn)) {
-            messagesListener?.let {
-                database.child("messages").child(chatId).removeEventListener(it)
-            }
-        }
+        toggleMessageSelection(message)
     }
 
     internal fun isMessageSelected(messageId: String): Boolean {
         return selectedMessageIds.contains(messageId)
     }
+    //endregion
 
-    // Sending Voice Notes --------------------------->
-
+    //region Voice Recording
     private fun setupVoiceRecordingButton() {
         val cancelThreshold = 150 // in pixels, adjust as needed
         var startX = 0f
@@ -1063,7 +1070,6 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
-
     private fun startRecording() {
         isRecording = true
         val voiceNotePath = voiceRecorder.startRecording()
@@ -1090,7 +1096,6 @@ class ChatRoomActivity : AppCompatActivity() {
         timerHandler?.post(timerRunnable!!)
     }
 
-
     private fun stopRecording() {
         if (!isRecording) return
 
@@ -1114,6 +1119,22 @@ class ChatRoomActivity : AppCompatActivity() {
             // Delete the short recording file
             val file = File(filePath)
             if (file.exists()) file.delete()
+        }
+    }
+
+    private fun cancelRecording() {
+        if (isRecording) {
+            isRecording = false
+            voiceRecorder.cancelRecording()
+
+            // Hide recording UI with null checks
+            val recordingLayout = findViewById<LinearLayout>(R.id.recordingLayout)
+            val messageInputLayout = findViewById<LinearLayout>(R.id.messageInputLayout)
+
+            recordingLayout?.visibility = View.GONE
+            messageInputLayout?.visibility = View.VISIBLE
+            timerHandler?.removeCallbacks(timerRunnable!!)
+
         }
     }
 
@@ -1170,23 +1191,6 @@ class ChatRoomActivity : AppCompatActivity() {
         }
     }
 
-    private fun cancelRecording() {
-        if (isRecording) {
-            isRecording = false
-            voiceRecorder.cancelRecording()
-
-            // Hide recording UI with null checks
-            val recordingLayout = findViewById<LinearLayout>(R.id.recordingLayout)
-            val messageInputLayout = findViewById<LinearLayout>(R.id.messageInputLayout)
-
-            recordingLayout?.visibility = View.GONE
-            messageInputLayout?.visibility = View.VISIBLE
-            timerHandler?.removeCallbacks(timerRunnable!!)
-
-        }
-    }
-
-    // Add these permission methods
     private fun checkRecordPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
             this,
@@ -1201,28 +1205,13 @@ class ChatRoomActivity : AppCompatActivity() {
             RECORD_AUDIO_PERMISSION_CODE
         )
     }
+    //endregion
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == RECORD_AUDIO_PERMISSION_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "Recording permission granted", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "Recording permission denied", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    // Sending Images --------------------------->
-
+    //region Image Handling
     private fun setupImagePickerLauncher() {
         imagePickerLauncher =
             registerForActivityResult(StartActivityForResult()) { result: ActivityResult ->
-                if (result.resultCode == Activity.RESULT_OK) {
+                if (result.resultCode == RESULT_OK) {
                     val data = result.data
                     if (data != null && data.data != null) {
                         // Get the selected image URI
@@ -1232,6 +1221,15 @@ class ChatRoomActivity : AppCompatActivity() {
                         showImagePreview(selectedImageUri!!)
                     }
                 }
+            }
+    }
+
+    private fun pickImage() {
+        ImagePicker.with(this)
+            .compress(1024)         // Compress image size
+            .maxResultSize(1080, 1080) // Maximum result size
+            .createIntent { intent: Intent ->
+                imagePickerLauncher.launch(intent)
             }
     }
 
@@ -1248,7 +1246,6 @@ class ChatRoomActivity : AppCompatActivity() {
             Toast.makeText(this, "Failed to preview image", Toast.LENGTH_SHORT).show()
         }
     }
-
     private fun hideImagePreview() {
         // Clear the selected image
         selectedImageUri = null
@@ -1296,15 +1293,6 @@ class ChatRoomActivity : AppCompatActivity() {
         )
     }
 
-    private fun pickImage() {
-        ImagePicker.with(this)
-            .compress(1024)         // Compress image size
-            .maxResultSize(1080, 1080) // Maximum result size
-            .createIntent { intent: Intent ->
-                imagePickerLauncher.launch(intent)
-            }
-    }
-
     private fun sendImageMessage(imageUrl: String) {
         val messageId = generateMessageId()
 
@@ -1347,5 +1335,12 @@ class ChatRoomActivity : AppCompatActivity() {
             saveMessageToFirebase(message, messageId)
         }
     }
+    //endregion
 
+    //region Utility Methods
+    private fun Int.dpToPx(): Int {
+        val density = resources.displayMetrics.density
+        return (this * density).toInt()
+    }
+    //endregion
 }

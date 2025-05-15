@@ -141,6 +141,16 @@ class GroupProfileActivity : AppCompatActivity() {
                     // Display the selected image immediately
                     ImageUploadService.loadImageIntoView(this, selectedImageUri, groupImage)
 
+                    if (selectedImageUri != null) {
+                        // Save image locally with group ID
+                        ImageUploadService.saveImageLocally(
+                            this,
+                            selectedImageUri!!,
+                            groupChat.id,
+                            "group_"
+                        )
+                    }
+
                     // Create an upload callback
                     val uploadCallback = object : ImageUploadService.ImageUploadCallback {
                         override fun onUploadSuccess(imageUrl: String) {
