@@ -56,6 +56,7 @@
                     android:layout_gravity="bottom|end"
                     android:src="@drawable/ic_camera"
                     android:background="@drawable/circle_background"
+                    android:backgroundTint="@color/chatListLight"
                     android:contentDescription="Edit profile picture"
                     android:padding="8dp" />
 

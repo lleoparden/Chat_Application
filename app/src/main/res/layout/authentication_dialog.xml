@@ -3,23 +3,30 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="16dp"
+    android:background="@drawable/bg_button_primary"
+    android:backgroundTint="?attr/generalBG">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Please enter your password to continue"
-        android:textSize="16sp"
+        android:textSize="17sp"
+        android:textColor="?attr/generalText"
         android:layout_marginBottom="16dp"/>
 
     <EditText
         android:id="@+id/password_input"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/border"
         android:hint="Current Password"
         android:inputType="textPassword"
-        android:textColorHint="@android:color/darker_gray"
-        android:layout_marginBottom="16dp"/>
+        android:paddingStart="10dp"
+        android:paddingTop="7dp"
+        android:paddingBottom="7dp"
+        android:textColorHint="@android:color/darker_gray" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -34,6 +41,7 @@
             android:text="Cancel"
             android:textColor="@android:color/black"
             android:layout_marginEnd="8dp"
+            android:background="@drawable/bg_button_primary"
             style="@style/Widget.AppCompat.Button.Borderless"/>
 
         <Button
@@ -41,6 +49,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Verify"
+            android:background="@drawable/bg_button_primary"
             android:textColor="@android:color/black"
             style="@style/Widget.AppCompat.Button.Borderless"/>
     </LinearLayout>
