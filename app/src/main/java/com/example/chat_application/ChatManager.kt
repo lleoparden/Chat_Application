@@ -183,8 +183,6 @@ class ChatManager {
 
     fun get(index: Int): Chat = chatStack[index]
 
-    fun getAt(index: Int): Chat = chatStack[index]
-
     fun getAll(): List<Chat> = chatStack.toList()
 
     // Sort chats by timestamp (newest first)

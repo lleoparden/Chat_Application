@@ -388,6 +388,25 @@ class UserProfileActivity : AppCompatActivity() {
                     startActivity(intent)
                 }
             }
+        }else{
+            HelperFunctions.getUserData(viewingUserId) { user ->
+                if (user != null) {
+                    displayNameText.text = user.displayName
+                    name = user.displayName
+                    displayNumber.text = user.phoneNumber
+                    displayDescription.text = user.userDescription
+                    displayStatus.text = user.userStatus
+                    HelperFunctions.loadImageFromUrl(user.profilePictureUrl, profileImage)
+
+                    profileImage.setOnClickListener {
+                        if (user.profilePictureUrl != "") {
+                            val intent = Intent(this, ImageViewActivity::class.java)
+                            intent.putExtra("image_url", user.profilePictureUrl)
+                            startActivity(intent)
+                        }
+                    }
+                }
+            }
         }
     }
 

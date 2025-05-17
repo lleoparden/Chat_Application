@@ -6,7 +6,7 @@ import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import android.widget.TextView
-import com.google.android.material.card.MaterialCardView
+import android.widget.Toast
 
 class AboutActivity : AppCompatActivity() {
 
@@ -43,15 +43,15 @@ class AboutActivity : AppCompatActivity() {
                     val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
                     val clip = android.content.ClipData.newPlainText("Developer Email", email)
                     clipboard.setPrimaryClip(clip)
-                    android.widget.Toast.makeText(this@AboutActivity,
+                    Toast.makeText(this@AboutActivity,
                         "Email copied to clipboard: $email",
-                        android.widget.Toast.LENGTH_SHORT).show()
+                        Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 // Handle any other exceptions that might occur
-                android.widget.Toast.makeText(this@AboutActivity,
+                Toast.makeText(this@AboutActivity,
                     "Couldn't open email app",
-                    android.widget.Toast.LENGTH_SHORT).show()
+                    Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -86,7 +86,8 @@ class AboutActivity : AppCompatActivity() {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             startActivity(intent)
         } catch (e: Exception) {
-            // Handle the exception (could show a toast or dialog informing the user)
+            Toast.makeText(this@AboutActivity,
+                "Couldn't open URL", Toast.LENGTH_SHORT).show()
         }
     }
 
